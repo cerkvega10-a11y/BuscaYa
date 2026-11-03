@@ -132,10 +132,22 @@ async function startWhatsAppSocket(options = {}) {
     try {
       const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = await loadBaileys();
       const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-      const { version, isLatest } = await Promise.race([
-        fetchLatestBaileysVersion(),
-        new Promise(resolve => setTimeout(() => resolve({ version: [2, 3000, 1015901307], isLatest: true }), 1500))
-      ]).catch(() => ({ version: [2, 3000, 1015901307], isLatest: true }));
+      // Usar versión cacheada para evitar caer en una versión obsoleta (rechazada por WhatsApp con código 405)
+      let version = waState.cachedVersion;
+      let isLatest = true;
+      if (!version) {
+        const fetched = await Promise.race([
+          fetchLatestBaileysVersion(),
+          new Promise(resolve => setTimeout(() => resolve(null), 5000))
+        ]).catch(() => null);
+        if (fetched && Array.isArray(fetched.version)) {
+          version = fetched.version;
+          isLatest = fetched.isLatest;
+          waState.cachedVersion = version;
+        } else {
+          version = [2, 3000, 1043857760];
+        }
+      }
 
       console.log(`[WhatsApp Service] Iniciando Baileys v${version.join('.')} (Última: ${isLatest})...`);
 
@@ -147,7 +159,9 @@ async function startWhatsAppSocket(options = {}) {
         browser: ['Windows', 'Chrome', '10.0.0'],
         syncFullHistory: false,
         generateHighQualityLinkPreview: true,
-        connectTimeoutMs: 20000
+        connectTimeoutMs: 20000,
+        // Mantener cada QR / código de vinculación vigente 60s (evita que la sesión se cierre mientras se teclea el código)
+        qrTimeout: 60000
       });
 
       waState.sock = sock;
@@ -218,9 +232,11 @@ async function startWhatsAppSocket(options = {}) {
             waState.connectedPhone = null;
             setTimeout(() => startWhatsAppSocket(), 1500);
           } else {
+            // 515 (restartRequired) ocurre justo después de vincular el teléfono: reconectar de inmediato
             waState.status = 'connecting';
             waState.sock = null;
-            setTimeout(() => startWhatsAppSocket(), 2000);
+            const delay = statusCode === 515 ? 300 : 2000;
+            setTimeout(() => startWhatsAppSocket(), delay);
           }
         }
       });
