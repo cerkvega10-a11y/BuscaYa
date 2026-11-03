@@ -1,0 +1,187 @@
+/* 
+ * AGENTE 1 - ARQUITECTO UI/UX Y DISEÑADOR VISUAL (FRONTEND STYLING)
+ * Paleta oficial de WhatsApp:
+ * Blanco puro: #FFFFFF
+ * Gris fondo secundario: #F0F2F5
+ * Verde WhatsApp Vibrante: #25D366
+ * Verde Oscuro Institucional: #075E54 & #128C7E
+ * Texto institucional: #111B21
+ * Verde Burbuja WhatsApp: #DCF8C6
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --wa-bg: #FFFFFF;
+  --wa-bg-soft: #F0F2F5;
+  --wa-green: #25D366;
+  --wa-green-hover: #20bd5a;
+  --wa-dark-green: #075E54;
+  --wa-teal: #128C7E;
+  --wa-text: #111B21;
+  --wa-bubble-user: #DCF8C6;
+  --wa-bubble-ai: #FFFFFF;
+  --wa-chat-bg: #EFEAE2;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--wa-text);
+  background-color: var(--wa-bg);
+  overflow-x: hidden;
+}
+
+/* WhatsApp Pattern Background */
+.wa-chat-pattern {
+  background-color: var(--wa-chat-bg);
+  background-image: radial-gradient(#d1c7bd 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* QR Code Laser Scanline Effect */
+@keyframes qrScanline {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 96%;
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.8;
+  }
+}
+
+.qr-scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(37, 211, 102, 0) 0%, rgba(37, 211, 102, 1) 50%, rgba(37, 211, 102, 0) 100%);
+  box-shadow: 0 0 12px #25D366, 0 0 4px #25D366;
+  animation: qrScanline 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Typing indicator dots */
+@keyframes typingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #667781;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c2c8d0;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #075E54;
+}
+
+/* Speech bubbles arrow */
+.wa-tail-in {
+  position: relative;
+}
+.wa-tail-in::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid #FFFFFF;
+  border-left: 8px solid transparent;
+}
+
+.wa-tail-out {
+  position: relative;
+}
+.wa-tail-out::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid #DCF8C6;
+  border-right: 8px solid transparent;
+}
+
+/* Subtle glowing pulse */
+@keyframes softPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(37, 211, 102, 0);
+  }
+}
+
+.pulse-green {
+  animation: softPulse 2s infinite;
+}
+
+/* Mercado Pago Brand Styling */
+.mp-blue-gradient {
+  background: linear-gradient(135deg, #009ee3 0%, #007eb5 100%);
+}
+
+.mp-badge-tag {
+  background-color: #e6f6fc;
+  color: #007eb5;
+  border: 1px solid #b8e6f8;
+}
+
+/* Google Sheets Cloud Green */
+.gs-green {
+  color: #0F9D58;
+}
+
+.gs-badge {
+  background-color: #E6F4EA;
+  color: #137333;
+  border: 1px solid #CEEAD6;
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
