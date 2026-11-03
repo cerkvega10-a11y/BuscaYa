@@ -60,7 +60,7 @@ try {
 const GROQ_PARTS = ["gsk", "_zlt2L3l5", "mQdPI66no", "SD5WGdyb3", "FYz4GZx5Y", "EXMZi5Q6J", "OgMPi3yF"];
 const GEM_PARTS = ["AQ.", "Ab8RN6L7O", "5NEQIRscZ", "eZQcRxq3n", "jDEJRYmzQ", "qL8dwO9iX", "8bDOg"];
 const GROQ_API_KEY = process.env.GROQ_API_KEY || GROQ_PARTS.join("");
-const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 const OFFICIAL_GOOGLE_GEMINI_KEY = process.env.GEMINI_API_KEY || GEM_PARTS.join("");
 
 // Alias de retrocompatibilidad
@@ -138,15 +138,23 @@ async function callGroqApi({ prompt, history = [], systemInstruction, model, api
 
   // 2. Motor Groq AI Oficial (https://api.groq.com/openai/v1/chat/completions)
   const activeGroqKey = rawKey.startsWith("gsk_") ? rawKey : GROQ_API_KEY;
-  const cleanRequestedModel = (model && !model.toLowerCase().includes("gemini")) ? model : GROQ_MODEL;
+  const ALLOWED_GROQ_MODELS = [
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-120b",
+    "allam-2-7b"
+  ];
+  const cleanRequestedModel = (model && ALLOWED_GROQ_MODELS.includes(model))
+    ? model
+    : "openai/gpt-oss-20b";
 
-  // Modelos válidos en el catálogo de Groq con fallback automático
+  // Modelos habilitados en el catálogo activo de esta cuenta Groq con fallback automático
   const candidateModels = [
     cleanRequestedModel,
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
-    "llama-3.3-70b-versatile",
-    "llama3-8b-8192",
-    "llama-3.1-8b-instant"
+    "allam-2-7b"
   ];
   const uniqueModels = Array.from(new Set(candidateModels.filter(Boolean)));
 
@@ -160,7 +168,7 @@ async function callGroqApi({ prompt, history = [], systemInstruction, model, api
         messages.push({ role: "system", content: systemInstruction.trim() });
       }
       if (Array.isArray(history) && history.length > 0) {
-        history.slice(-8).forEach(h => {
+        history.slice(-6).forEach(h => {
           if (h && (h.role === "user" || h.role === "assistant") && typeof h.content === "string") {
             messages.push({ role: h.role, content: h.content });
           }
@@ -172,7 +180,7 @@ async function callGroqApi({ prompt, history = [], systemInstruction, model, api
         model: mod,
         messages: messages,
         temperature: typeof temperature === "number" ? temperature : 0.4,
-        max_tokens: 1200
+        max_tokens: 900
       };
 
       const controller = new AbortController();
@@ -193,9 +201,11 @@ async function callGroqApi({ prompt, history = [], systemInstruction, model, api
       if (resp.ok) {
         const data = await resp.json();
         if (data.choices && data.choices[0] && data.choices[0].message) {
+          let cleanReply = String(data.choices[0].message.content || "");
+          cleanReply = cleanReply.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
           return {
             success: true,
-            reply: data.choices[0].message.content,
+            reply: cleanReply || data.choices[0].message.content,
             modelUsed: mod,
             finishReason: data.choices[0].finish_reason,
             provider: "Groq AI (LPU Ultra-Rápido)"

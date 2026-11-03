@@ -10,7 +10,7 @@
 const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || "APP_USR-899898196221843-110216-55453e6e222d621462d3d4c34db122b8-1373614520";
 const GROQ_PARTS = ["gsk", "_zlt2L3l5", "mQdPI66no", "SD5WGdyb3", "FYz4GZx5Y", "EXMZi5Q6J", "OgMPi3yF"];
 const GROQ_API_KEY = process.env.GROQ_API_KEY || GROQ_PARTS.join("");
-const GROQ_ACTIVE_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const GROQ_ACTIVE_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 
 async function auditMercadoPago() {
   const start = Date.now();
