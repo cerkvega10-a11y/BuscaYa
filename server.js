@@ -25,16 +25,16 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial (Baileys Multi-Device + Meta Cloud API Webhook | Tel: +52 56 5606 5182)
+// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1360478027157417 | Tel: +52 56 5606 5182)
 let waService = null;
 try {
   waService = require('./whatsapp-service.js');
 } catch (e) {
   console.warn('[Server] WhatsApp Service no disponible aún:', e.message);
 }
-const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1455001214355994";
+const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1360478027157417";
 const META_OFFICIAL_PHONE_DISPLAY = "+52 56 5606 5182";
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAl07HE27DwBSZCiGokOqMwcPowpMaHamUtGm7LYHbzkTpDsUZCnKzTOOiyP2ZBhhc2dB7Fof8hWUZC9ZC2ckjXT7yxiVmRriNjaF29ZAhqZA7wTpn0u3KtrFltqZBzbKhdhP1VebV5KXkBB2Q3uCEIRF55HZAqpFlJkZA7DKTbAV1Wfy3lvd7NZBB61vor3DeO4TdJwu12dzeKLBgqSqqcUvGcjUroPzmZAwujIX9rkkitseQeOkr8iaT0X977lDfs1Y2dz908mupQZAwL9eEXf57Nnl";
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./pages/api/auditor.js');
