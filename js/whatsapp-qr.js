@@ -10,21 +10,21 @@ const WHATSAPP_CONFIG_KEY = "buscaya_whatsapp_bot_config";
 
 // Estado inicial por defecto de la sesión WhatsApp Maestro
 const DEFAULT_WA_SESSION = {
-  status: "waiting", // 'disconnected', 'waiting', 'connected'
-  connectedPhone: "+52 55 9214 7733",
-  deviceName: "Samsung Galaxy S24 Ultra (BuscaYa Server Phone)",
-  batteryLevel: 94,
-  latencyMs: 42,
+  status: "connected", // 'disconnected', 'waiting', 'connected'
+  connectedPhone: "+52 56 5606 5182",
+  deviceName: "Agente Oficial BuscaYa (+52 56 5606 5182)",
+  batteryLevel: 100,
+  latencyMs: 24,
   webhookStatus: "active",
   lastSync: new Date().toISOString(),
   qrSeed: Math.random().toString(36).substring(2, 10)
 };
 
 const DEFAULT_BOT_CONFIG = {
-  selectedModel: "gemini-2.0-flash",
-  modelDisplayName: "Google Gemini 2.5 Pro / 2.0 Flash (Recomendado)",
+  selectedModel: "gemini-1.5-pro",
+  modelDisplayName: "Google Gemini 1.5 Pro / Groq LPU (Híbrido Oficial)",
   temperature: 0.3,
-  webhookUrl: "https://api.buscaya.com/v1/ai-agent/webhook",
+  webhookUrl: "https://buscaya.neuralmediahouse.com/api/whatsapp/webhook",
   systemPrompt: "Eres BuscaYa, el asistente virtual inteligente en WhatsApp para encontrar los mejores negocios locales en México. Siempre saluda con amabilidad y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞, 🕒, ✨, 🔧). Pregunta el nombre del cliente y qué servicio necesita. Busca en la base de datos verificada y entrega los negocios abiertos recomendados con su teléfono, servicios, foto oficial y enlace a Google Maps.",
   knowledgeBase: "Reglas de Negocio BuscaYa Oficial:\n1. Solo recomendar negocios con suscripción activa o demo vigente en la plataforma.\n2. Priorizar negocios que estén en horario abierto según la hora y día del usuario.\n3. Brindar formato limpio de WhatsApp con negritas, tarjeta visual con foto y emojis profesionales.\n4. Compartir siempre el enlace verificado a Google Maps y enlace directo de WhatsApp.",
   responseTemplate: "¡Hola {cliente}! 👋 Encontré este negocio verificado cerca de ti:\n\n🏢 *{negocio}* (Abierto ahora)\n📍 *Ubicación:* {colonia}, {municipio}\n🔧 *Servicios:* {servicios}\n🕒 *Horario:* {horario}\n📞 *Teléfono:* {telefono}\n🗺️ *Google Maps:* {maps_url}",

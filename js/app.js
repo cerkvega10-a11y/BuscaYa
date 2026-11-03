@@ -2472,9 +2472,9 @@ async function fetchWhatsAppLiveStatus() {
 
   setWhatsAppQrImageSafe();
 
-  if (statusPill) statusPill.textContent = "Phone ID: 1455001214355994";
+  if (statusPill) statusPill.textContent = "+52 56 5606 5182 (ID: 1455001214355994)";
   if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
-  if (phoneDisplay) phoneDisplay.textContent = "1455001214355994";
+  if (phoneDisplay) phoneDisplay.textContent = "+52 56 5606 5182";
   if (telemetryDevice) telemetryDevice.textContent = "Meta Cloud API";
   if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-signal text-emerald-500"></i> <span>100% Cloud</span>`;
   if (telemetryLatency) telemetryLatency.textContent = "24 ms";
@@ -2490,7 +2490,7 @@ function updateWhatsAppMasterUI() {
 }
 
 async function generateNewMasterQr() {
-  showToast("🟢 Conexión Activa vía Meta Cloud API (Webhook - ID: 1455001214355994). No requiere Código QR.", "success");
+  showToast("🟢 Conexión Activa vía Meta Cloud API (+52 56 5606 5182 | ID: 1455001214355994). No requiere Código QR.", "success");
 }
 
 async function requestWhatsAppPairingCode() {
@@ -4135,7 +4135,7 @@ function confirmSendSharedLocation() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "+52 55 9214 7733",
+      from: "+52 56 5606 5182",
       location: { latitude: lat, longitude: lng },
       query: serviceQuery
     })

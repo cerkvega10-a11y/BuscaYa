@@ -25,10 +25,12 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial vía Meta Cloud API (Webhook - Phone Number ID: 1455001214355994)
+// Conexión WhatsApp Oficial vía Meta Cloud API (Webhook - Phone Number ID: 1455001214355994 | Tel: +52 56 5606 5182)
 // Módulo de vinculación por Código QR (Baileys) deshabilitado para arquitectura Serverless Vercel
 const waService = null;
 const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1455001214355994";
+const META_OFFICIAL_PHONE_DISPLAY = "+52 56 5606 5182";
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./pages/api/auditor.js');
@@ -2090,8 +2092,33 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
           }
         }
 
+        // Si el mensaje proviene de Meta Cloud API oficial y existe Access Token configurado, enviar respuesta real a WhatsApp
+        if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN && finalBotReplyText) {
+          try {
+            const cleanTo = String(senderPhone || '').replace(/\D/g, '');
+            const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+            await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: cleanTo,
+                type: "text",
+                text: { preview_url: true, body: finalBotReplyText }
+              })
+            });
+          } catch (metaSendErr) {
+            console.warn("[Meta Cloud API Send Warning]:", metaSendErr.message);
+          }
+        }
+
         const botReply = {
           recipient: senderPhone,
+          agentPhone: META_OFFICIAL_PHONE_DISPLAY,
           isAudio: isAudioMessage,
           audioTranscription: audioTranscription,
           locationDetected: {
@@ -2186,14 +2213,15 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
       qr: null,
       qrRaw: null,
       phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
-      connectedPhone: `Meta Cloud API (ID: ${META_CLOUD_PHONE_NUMBER_ID})`,
-      connectedName: "Conexión Activa vía Meta Cloud API (Webhook)",
+      connectedPhone: META_OFFICIAL_PHONE_DISPLAY,
+      connectedName: "Agente Oficial BuscaYa (+52 56 5606 5182)",
       batteryLevel: 100,
       latencyMs: 24,
       lastUpdate: new Date().toISOString(),
       metaCloudApi: {
         connected: true,
         phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
+        phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
         status: "active",
         webhookPath: "/api/whatsapp/webhook",
         label: "Conexión Activa vía Meta Cloud API (Webhook)"
