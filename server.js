@@ -25,16 +25,16 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1360478027157417 | Tel: +52 56 5606 5182)
+// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1483800511476902 | Tel: +52 56 5606 5182)
 let waService = null;
 try {
   waService = require('./whatsapp-service.js');
 } catch (e) {
   console.warn('[Server] WhatsApp Service no disponible aún:', e.message);
 }
-const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1360478027157417";
+const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1483800511476902";
 const META_OFFICIAL_PHONE_DISPLAY = "+52 56 5606 5182";
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAl07HE27DwBSZCiGokOqMwcPowpMaHamUtGm7LYHbzkTpDsUZCnKzTOOiyP2ZBhhc2dB7Fof8hWUZC9ZC2ckjXT7yxiVmRriNjaF29ZAhqZA7wTpn0u3KtrFltqZBzbKhdhP1VebV5KXkBB2Q3uCEIRF55HZAqpFlJkZA7DKTbAV1Wfy3lvd7NZBB61vor3DeO4TdJwu12dzeKLBgqSqqcUvGcjUroPzmZAwujIX9rkkitseQeOkr8iaT0X977lDfs1Y2dz908mupQZAwL9eEXf57Nnl";
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAqrmYBr7VwBSwaFW29OXq9X6LoWKRBObCG3ufRrSqxKmaU59hlWufZAVfzMZByhWObKNI67DvLjJMTI0wiih5ZC6qnpObFUsDXZC8lGC0kcp6qMneqCZBLWNSONkzRTxAP2SgeHiN81s9RkluHdZCLZAoqGjZANIiGV0z81NsGMShN4CZBShAZADFdCQp4OmNsuO4KDd3DHH7eXef2bGvzZCwiObHplXjxAsdW7aZBw49b7x0z6wyAfybsRKPgI2fgANZAnT6cFdn6zTjZBfD7UbMgAKheSds31vXqhZCefgZDZD";
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./pages/api/auditor.js');
