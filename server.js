@@ -25,16 +25,16 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1402219842976650 | Nombre: Busca Ya)
+// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1452371877954474 | Nombre: Busca Ya)
 let waService = null;
 try {
   waService = require('./whatsapp-service.js');
 } catch (e) {
   console.warn('[Server] WhatsApp Service no disponible aún:', e.message);
 }
-const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1402219842976650";
-const META_OFFICIAL_PHONE_DISPLAY = "+1 711-697-4640";
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAqrmYBr7VwBSwaFW29OXq9X6LoWKRBObCG3ufRrSqxKmaU59hlWufZAVfzMZByhWObKNI67DvLjJMTI0wiih5ZC6qnpObFUsDXZC8lGC0kcp6qMneqCZBLWNSONkzRTxAP2SgeHiN81s9RkluHdZCLZAoqGjZANIiGV0z81NsGMShN4CZBShAZADFdCQp4OmNsuO4KDd3DHH7eXef2bGvzZCwiObHplXjxAsdW7aZBw49b7x0z6wyAfybsRKPgI2fgANZAnT6cFdn6zTjZBfD7UbMgAKheSds31vXqhZCefgZDZD";
+const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1452371877954474";
+const META_OFFICIAL_PHONE_DISPLAY = "+1 711-960-5605";
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAQV9tIT1lsBSzHC7dQ4EIyfrZB4TzPRbhyFBpCdmnhdW1eTN3F5ZAlzQ5Yog3N82ZCUjlt54Q5bcMRdZBU3rsf6lo2XlQwR5DWJ5JEMVKAisC77E7o0iO6NbZCBJymBRUi53VDPOiDmEKulZAHF5Nr7KhcyzRaiFfANZCt1zJPSzDlBlJiC1V2ZCXFTjJVfWgZDZD";
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./pages/api/auditor.js');
@@ -2226,7 +2226,7 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   }
 
   // ==============================================================
-  // 9. ENDPOINTS DE VINCULACIÓN OFICIAL WHATSAPP BUSINESS (+1 711-697-4640)
+  // 9. ENDPOINTS DE VINCULACIÓN OFICIAL WHATSAPP BUSINESS (+1 711-960-5605)
   // ==============================================================
   if (req.method === 'GET' && pathname === '/api/whatsapp/qr-status') {
     (async () => {
@@ -2283,7 +2283,7 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     req.on('end', async () => {
       try {
         const { phoneNumber } = JSON.parse(body || '{}');
-        const targetPhone = phoneNumber || '17116974640';
+        const targetPhone = phoneNumber || '17119605605';
 
         if (!waService) {
           res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
