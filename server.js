@@ -1856,6 +1856,13 @@ ${activeSummary || "No hay negocios registrados actualmente."}
         const changes = entry && entry.changes && entry.changes[0];
         const messages = changes && changes.value && changes.value.messages;
 
+        // Si es una notificación de estado de entrega de Meta (sent/delivered/read), confirmar HTTP 200 inmediatamente
+        if (changes && changes.value && changes.value.statuses && (!messages || !messages[0])) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "status_receipt_acknowledged" }));
+          return;
+        }
+
         if (messages && messages[0]) {
           const msg = messages[0];
           senderPhone = msg.from || senderPhone;
@@ -2111,7 +2118,7 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
           try {
             const cleanTo = String(senderPhone || '').replace(/\D/g, '');
             const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-            await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+            const metaRes = await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
               method: "POST",
               headers: {
                 "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
@@ -2125,6 +2132,8 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
                 text: { preview_url: true, body: finalBotReplyText }
               })
             });
+            const metaResText = await metaRes.text();
+            console.log(`[Meta Cloud API Outbound]: Status ${metaRes.status} -> ${cleanTo}`, metaResText);
           } catch (metaSendErr) {
             console.warn("[Meta Cloud API Send Warning]:", metaSendErr.message);
           }
