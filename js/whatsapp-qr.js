@@ -11,8 +11,8 @@ const WHATSAPP_CONFIG_KEY = "buscaya_whatsapp_bot_config";
 // Estado inicial por defecto de la sesión WhatsApp Maestro
 const DEFAULT_WA_SESSION = {
   status: "connected", // 'disconnected', 'waiting', 'connected'
-  connectedPhone: "+52 56 5606 5182",
-  deviceName: "Agente Oficial BuscaYa (+52 56 5606 5182)",
+  connectedPhone: "+1 711-697-4640",
+  deviceName: "Agente Oficial BuscaYa (+1 711-697-4640)",
   batteryLevel: 100,
   latencyMs: 24,
   webhookStatus: "active",

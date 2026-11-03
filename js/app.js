@@ -1353,7 +1353,7 @@ async function runVercelApiAudit(showNotification = true) {
       waSem.textContent = data.whatsapp?.semaphore || "🟢 Conexión Activa vía Meta Cloud API (Webhook)";
     }
     if (waDet) {
-      waDet.textContent = data.whatsapp?.detail || "Phone Number ID: 1455001214355994 (QR Deshabilitado)";
+      waDet.textContent = data.whatsapp?.detail || "Nombre: Busca Ya | Tel: +1 711-697-4640 | Phone ID: 1402219842976650";
     }
 
     if (tsLabel) {
@@ -2500,9 +2500,9 @@ async function fetchWhatsAppLiveStatus() {
     if (data.status === "connected") {
       if (qrOverlay) qrOverlay.classList.remove("hidden");
       if (qrLaser) qrLaser.classList.add("hidden");
-      if (statusPill) statusPill.textContent = `Conectado: ${data.connectedPhone || "+52 56 5606 5182"}`;
+      if (statusPill) statusPill.textContent = `Conectado: ${data.connectedPhone || "+1 711-697-4640"}`;
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
-      if (phoneDisplay) phoneDisplay.textContent = data.connectedPhone || "+52 56 5606 5182";
+      if (phoneDisplay) phoneDisplay.textContent = data.connectedPhone || "+1 711-697-4640";
       if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "Agente BuscaYa Activo";
       if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-battery-full text-emerald-500"></i> <span>${data.batteryLevel || 98}%</span>`;
       if (telemetryLatency) telemetryLatency.textContent = `${data.latencyMs || 28} ms`;
@@ -2511,7 +2511,7 @@ async function fetchWhatsAppLiveStatus() {
       setWhatsAppQrImageSafe(data.qr);
       if (qrOverlay) qrOverlay.classList.add("hidden");
       if (qrLaser) qrLaser.classList.remove("hidden");
-      if (statusPill) statusPill.textContent = "+52 56 5606 5182 (Listo para Vincular)";
+      if (statusPill) statusPill.textContent = "+1 711-697-4640 (Listo para Vincular)";
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-ping";
     }
   } catch (err) {
@@ -4191,7 +4191,7 @@ function confirmSendSharedLocation() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "+52 56 5606 5182",
+      from: "+1 711-697-4640",
       location: { latitude: lat, longitude: lng },
       query: serviceQuery
     })
