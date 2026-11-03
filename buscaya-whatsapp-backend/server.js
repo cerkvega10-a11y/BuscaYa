@@ -143,6 +143,9 @@ async function loadBaileys() {
   };
 }
 
+// Registro de IDs de mensajes enviados por el bot para evitar bucles infinitos permitiendo pruebas desde el mismo número
+const sentBotMessageIds = new Set();
+
 // Limpieza de carpeta de sesión si se solicita desconexión total
 function cleanSessionFolder() {
   try {
@@ -293,9 +296,12 @@ async function startWhatsAppSocket() {
 
       // Escucha de mensajes entrantes para el Bot de IA
       sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
         for (const msg of messages) {
-          if (!msg.message || msg.key.fromMe) continue;
+          if (!msg.message) continue;
+          const msgId = msg.key?.id;
+          // Ignorar mensajes que el propio bot envió para evitar bucles
+          if (msgId && sentBotMessageIds.has(msgId)) continue;
+
           const jid = msg.key.remoteJid || '';
           if (!jid || jid === 'status@broadcast' || jid.endsWith('@g.us') || jid.endsWith('@newsletter') || jid.endsWith('@broadcast')) {
             continue;
@@ -584,7 +590,11 @@ INSTRUCCIONES OBLIGATORIAS:
   waConversationMemory.set(phone, prevHistory);
 
   // Enviar respuesta por WhatsApp
-  await sock.sendMessage(remoteJid, { text: replyText });
+  const sentMsg = await sock.sendMessage(remoteJid, { text: replyText });
+  if (sentMsg?.key?.id) {
+    sentBotMessageIds.add(sentMsg.key.id);
+    if (sentBotMessageIds.size > 2000) sentBotMessageIds.clear();
+  }
   console.log(`[WhatsApp Persistent Enviado a +${phone}]: Respuesta entregada exitosamente.`);
 
   waState.messagesLog.unshift({
