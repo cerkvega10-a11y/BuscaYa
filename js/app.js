@@ -2482,6 +2482,10 @@ function getWhatsAppBackendBaseUrl() {
   if (custom && custom.trim()) {
     return custom.trim().replace(/\/$/, "");
   }
+  // En producción (Vercel o dominio oficial), conectar directamente al microservicio persistente en Render
+  if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return "https://buscaya-whatsapp-backend.onrender.com";
+  }
   return "";
 }
 

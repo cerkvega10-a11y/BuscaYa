@@ -68,7 +68,7 @@ const GEMINI_API_KEY = GROQ_API_KEY;
 const GEMINI_MODEL = GROQ_MODEL;
 
 // Configuración de Microservicio Persistente de WhatsApp Web (Render / Railway / Localhost:4000)
-const WA_PERSISTENT_BACKEND_URL = process.env.WHATSAPP_BACKEND_URL || 'http://localhost:4000';
+const WA_PERSISTENT_BACKEND_URL = process.env.WHATSAPP_BACKEND_URL || (process.env.VERCEL ? 'https://buscaya-whatsapp-backend.onrender.com' : 'http://localhost:4000');
 
 async function fetchFromPersistentBackend(endpoint, options = {}) {
   try {
