@@ -67,6 +67,30 @@ const OFFICIAL_GOOGLE_GEMINI_KEY = process.env.GEMINI_API_KEY || GEM_PARTS.join(
 const GEMINI_API_KEY = GROQ_API_KEY;
 const GEMINI_MODEL = GROQ_MODEL;
 
+// Configuración de Microservicio Persistente de WhatsApp Web (Render / Railway / Localhost:4000)
+const WA_PERSISTENT_BACKEND_URL = process.env.WHATSAPP_BACKEND_URL || 'http://localhost:4000';
+
+async function fetchFromPersistentBackend(endpoint, options = {}) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const targetUrl = `${WA_PERSISTENT_BACKEND_URL}${endpoint}`;
+    const res = await fetch(targetUrl, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (_) {}
+  return null;
+}
+
 function pushBoundedLog(logArray, entry, maxEntries = 200) {
   logArray.unshift(entry);
   if (logArray.length > maxEntries) {
@@ -2304,14 +2328,24 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   }
 
   // ==============================================================
-  // 9. ENDPOINTS DE VINCULACIÓN OFICIAL WHATSAPP BUSINESS (+1 711-960-5605)
+  // 9. ENDPOINTS DE VINCULACIÓN OFICIAL WHATSAPP BUSINESS & MICROSERVICIO PERSISTENTE
   // ==============================================================
-  if (req.method === 'GET' && pathname === '/api/whatsapp/qr-status') {
+  if (req.method === 'GET' && (pathname === '/api/whatsapp/status' || pathname === '/api/whatsapp/qr-status')) {
     (async () => {
       try {
+        // 1. Prioridad: Consultar Microservicio Persistente Node.js/Express (Render / Railway / Localhost:4000)
+        const remoteStatus = await fetchFromPersistentBackend('/api/whatsapp/status');
+        if (remoteStatus && remoteStatus.success) {
+          remoteStatus.source = "persistent_microservice";
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(remoteStatus));
+          return;
+        }
+
+        // 2. Fallback local si el microservicio remoto aún no está disponible
         const keepAlive = parsedUrl.searchParams.get('keepAlive') === '1';
         let statusObj = waService && typeof waService.ensureWhatsAppQrOrConnected === 'function'
-          ? await waService.ensureWhatsAppQrOrConnected({ waitMs: 6500, keepAlive })
+          ? await waService.ensureWhatsAppQrOrConnected({ waitMs: 4000, keepAlive })
           : (waService ? waService.getWhatsAppStatus() : { status: 'waiting', qr: null });
 
         statusObj.metaCloudApi = {
@@ -2338,9 +2372,16 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     return;
   }
 
-  if (req.method === 'POST' && pathname === '/api/whatsapp/restart-session') {
+  if (req.method === 'POST' && (pathname === '/api/whatsapp/restart' || pathname === '/api/whatsapp/restart-session')) {
     (async () => {
       try {
+        const remoteRestart = await fetchFromPersistentBackend('/api/whatsapp/restart', { method: 'POST' });
+        if (remoteRestart && remoteRestart.success) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(remoteRestart));
+          return;
+        }
+
         let result = { success: true, status: 'waiting', qr: null, message: 'Generando código QR oficial de WhatsApp Web...' };
         if (waService && typeof waService.restartWhatsAppSession === 'function') {
           result = await waService.restartWhatsAppSession();
@@ -2355,11 +2396,21 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     return;
   }
 
-  if (req.method === 'POST' && pathname === '/api/whatsapp/request-pair-code') {
+  if (req.method === 'POST' && (pathname === '/api/whatsapp/request-pair-code' || pathname === '/api/whatsapp/request-pairing-code')) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       try {
+        const remotePair = await fetchFromPersistentBackend('/api/whatsapp/request-pair-code', {
+          method: 'POST',
+          body
+        });
+        if (remotePair && remotePair.success) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(remotePair));
+          return;
+        }
+
         const { phoneNumber } = JSON.parse(body || '{}');
         const targetPhone = phoneNumber || '17119605605';
 
@@ -2382,18 +2433,28 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   }
 
   if (req.method === 'POST' && pathname === '/api/whatsapp/disconnect') {
-    if (waService) {
-      waService.disconnectWhatsApp().then(result => {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result));
-      }).catch(err => {
+    (async () => {
+      try {
+        const remoteDisc = await fetchFromPersistentBackend('/api/whatsapp/disconnect', { method: 'POST' });
+        if (remoteDisc && remoteDisc.success) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(remoteDisc));
+          return;
+        }
+
+        if (waService) {
+          const result = await waService.disconnectWhatsApp();
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(result));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: 'Desconectado' }));
+        }
+      } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: err.message }));
-      });
-    } else {
-      res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'Servicio no disponible' }));
-    }
+      }
+    })();
     return;
   }
 
@@ -2806,11 +2867,14 @@ if (require.main === module && !process.env.VERCEL) {
     console.log(` WhatsApp Hook:  http://localhost:${PORT}/api/whatsapp/webhook (GPS Location Ready)`);
     console.log(`======================================================\n`);
 
-    // Iniciar servicio Baileys Multi-Device para vinculación real de WhatsApp
-    if (waService) {
+    // El socket de WhatsApp es administrado por el Microservicio Persistente (buscaya-whatsapp-backend en puerto 4000 / Render / Railway)
+    const usePersistentMicroservice = process.env.USE_PERSISTENT_BACKEND !== 'false';
+    if (!usePersistentMicroservice && waService) {
       waService.startWhatsAppSocket().catch(err => {
         console.warn('[WhatsApp Socket Startup Warning]:', err.message);
       });
+    } else {
+      console.log(` 🤖 WhatsApp Bot: Enrutado a Microservicio Persistente (${WA_PERSISTENT_BACKEND_URL})`);
     }
   });
 }

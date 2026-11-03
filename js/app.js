@@ -2474,6 +2474,28 @@ function setWhatsAppQrImageSafe(qrDataUrl) {
   }
 }
 
+// ==============================================================
+// AGENTE FRONTEND: CONEXIÓN VERCEL -> MICROSERVICIO PERSISTENTE
+// ==============================================================
+function getWhatsAppBackendBaseUrl() {
+  const custom = localStorage.getItem("buscaya_wa_backend_url");
+  if (custom && custom.trim()) {
+    return custom.trim().replace(/\/$/, "");
+  }
+  return "";
+}
+
+function saveWhatsAppBackendBaseUrl(url) {
+  if (url && url.trim()) {
+    localStorage.setItem("buscaya_wa_backend_url", url.trim().replace(/\/$/, ""));
+    showToast("URL del Backend de WhatsApp actualizada con éxito", "success");
+  } else {
+    localStorage.removeItem("buscaya_wa_backend_url");
+    showToast("URL del Backend de WhatsApp restablecida a por defecto", "info");
+  }
+  fetchWhatsAppLiveStatus();
+}
+
 async function fetchWhatsAppLiveStatus() {
   if (waStatusFetchInFlight) return;
 
@@ -2487,32 +2509,54 @@ async function fetchWhatsAppLiveStatus() {
   const telemetryBattery = document.getElementById("telemetryBattery");
   const telemetryLatency = document.getElementById("telemetryLatency");
   const telemetryWebhook = document.getElementById("telemetryWebhook");
+  const connectedOverlayTitle = document.getElementById("waConnectedOverlayTitle");
+  const connectedOverlayPhone = document.getElementById("waConnectedOverlayPhone");
 
   waStatusFetchInFlight = true;
   try {
-    const endpoint = waHasRenderedOfficialQr
-      ? "/api/whatsapp/qr-status?keepAlive=1"
-      : "/api/whatsapp/qr-status";
-    const res = await fetch(endpoint);
+    const baseUrl = getWhatsAppBackendBaseUrl();
+    const endpoint = baseUrl
+      ? `${baseUrl}/api/whatsapp/status`
+      : "/api/whatsapp/status";
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(endpoint, { signal: controller.signal });
+    clearTimeout(timeout);
+
     if (!res.ok) return;
     const data = await res.json();
 
     if (data.status === "connected") {
+      // 🟢 Bot Vinculado Exitosamente: Ocultar QR y mostrar confirmación
       if (qrOverlay) qrOverlay.classList.remove("hidden");
       if (qrLaser) qrLaser.classList.add("hidden");
-      if (statusPill) statusPill.textContent = `Conectado: ${data.connectedPhone || "+1 711-960-5605"}`;
+      if (qrImg) qrImg.classList.add("hidden");
+
+      const phone = data.connectedPhone || data.phone || "+52 56 5606 5182";
+      if (statusPill) statusPill.textContent = `🟢 Bot Vinculado Exitosamente (${phone})`;
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
-      if (phoneDisplay) phoneDisplay.textContent = data.connectedPhone || "+1 711-960-5605";
-      if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "Agente BuscaYa Activo";
+      if (phoneDisplay) phoneDisplay.textContent = phone;
+      if (connectedOverlayTitle) connectedOverlayTitle.textContent = "🟢 Bot Vinculado Exitosamente";
+      if (connectedOverlayPhone) connectedOverlayPhone.textContent = phone;
+
+      if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "BuscaYa Multi-Device";
       if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-battery-full text-emerald-500"></i> <span>${data.batteryLevel || 98}%</span>`;
       if (telemetryLatency) telemetryLatency.textContent = `${data.latencyMs || 28} ms`;
-      if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100%";
-    } else if (data.qr && data.qr.startsWith("data:image/")) {
-      setWhatsAppQrImageSafe(data.qr);
-      if (qrOverlay) qrOverlay.classList.add("hidden");
-      if (qrLaser) qrLaser.classList.remove("hidden");
-      if (statusPill) statusPill.textContent = "+1 711-960-5605 (Listo para Vincular)";
-      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-ping";
+      if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100% Persistente";
+    } else {
+      const qrData = data.qrCode || data.qr;
+      if (qrData && qrData.startsWith("data:image/")) {
+        // Inyectar Base64 en etiqueta <img> del panel
+        setWhatsAppQrImageSafe(qrData);
+        if (qrOverlay) qrOverlay.classList.add("hidden");
+        if (qrLaser) qrLaser.classList.remove("hidden");
+        if (statusPill) statusPill.textContent = "🟡 Esperando Escaneo de QR...";
+        if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-amber-400 animate-ping";
+      } else if (data.status === "connecting") {
+        if (statusPill) statusPill.textContent = "Conectando Socket...";
+        if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-blue-400 animate-pulse";
+      }
     }
   } catch (err) {
     console.warn("[WhatsApp Status Fetch Warning]", err);
@@ -2521,10 +2565,32 @@ async function fetchWhatsAppLiveStatus() {
   }
 }
 
+function renderBackendUrlDisplay() {
+  const el = document.getElementById("waBackendUrlDisplay");
+  if (!el) return;
+  const current = getWhatsAppBackendBaseUrl();
+  el.textContent = current || "Por defecto (Automático / Proxy Vercel)";
+}
+
+function promptEditBackendUrl() {
+  const current = getWhatsAppBackendBaseUrl();
+  const next = prompt("Ingresa la URL pública o local de tu Microservicio WhatsApp persistente (ej: https://buscaya-whatsapp-backend.onrender.com o http://localhost:4000). Deja vacío para usar el proxy automático de Vercel:", current);
+  if (next !== null) {
+    saveWhatsAppBackendBaseUrl(next);
+    renderBackendUrlDisplay();
+  }
+}
+
+function disconnectWhatsAppMaster() {
+  disconnectMasterPhone();
+}
+
 function updateWhatsAppMasterUI() {
+  renderBackendUrlDisplay();
   fetchWhatsAppLiveStatus();
   if (!waStatusPollingTimer) {
-    waStatusPollingTimer = setInterval(fetchWhatsAppLiveStatus, 2500);
+    // Polling estricto cada 3 segundos hacia el microservicio
+    waStatusPollingTimer = setInterval(fetchWhatsAppLiveStatus, 3000);
   }
 }
 
@@ -2537,15 +2603,20 @@ async function generateNewMasterQr() {
 
   showToast("Generando nuevo Código QR oficial de WhatsApp...", "info");
   try {
-    const res = await fetch("/api/whatsapp/restart-session", { method: "POST" });
+    const baseUrl = getWhatsAppBackendBaseUrl();
+    const endpoint = baseUrl
+      ? `${baseUrl}/api/whatsapp/restart`
+      : "/api/whatsapp/restart-session";
+    const res = await fetch(endpoint, { method: "POST" });
     const data = await res.json();
-    if (data.qr && data.qr.startsWith("data:image/")) {
-      setWhatsAppQrImageSafe(data.qr);
+    const qrData = data.qrCode || data.qr;
+    if (qrData && qrData.startsWith("data:image/")) {
+      setWhatsAppQrImageSafe(qrData);
       showToast("¡Código QR oficial listo para escanear!", "success");
     }
-    setTimeout(fetchWhatsAppLiveStatus, 600);
+    setTimeout(fetchWhatsAppLiveStatus, 800);
   } catch (err) {
-    showToast("Reintentando conexión con WhatsApp...", "warning");
+    showToast("Reintentando conexión con microservicio WhatsApp...", "warning");
   }
 }
 
@@ -2570,7 +2641,11 @@ async function requestWhatsAppPairingCode() {
   showToast("Conectando con WhatsApp para generar código de 8 dígitos...", "info");
 
   try {
-    const res = await fetch("/api/whatsapp/request-pair-code", {
+    const baseUrl = getWhatsAppBackendBaseUrl();
+    const endpoint = baseUrl
+      ? `${baseUrl}/api/whatsapp/request-pair-code`
+      : "/api/whatsapp/request-pair-code";
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phoneNumber: phoneVal })
@@ -2604,7 +2679,11 @@ async function disconnectMasterPhone() {
 
   showToast("Desvinculando dispositivo...", "info");
   try {
-    const res = await fetch("/api/whatsapp/disconnect", { method: "POST" });
+    const baseUrl = getWhatsAppBackendBaseUrl();
+    const endpoint = baseUrl
+      ? `${baseUrl}/api/whatsapp/disconnect`
+      : "/api/whatsapp/disconnect";
+    const res = await fetch(endpoint, { method: "POST" });
     const data = await res.json();
     if (data.success) {
       showToast("Dispositivo desvinculado con éxito.", "success");
