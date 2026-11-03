@@ -35,7 +35,7 @@ try {
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'data') : path.join(__dirname, 'data');
 const DB_FILE_PATH = path.join(DATA_DIR, 'server-db.json');
 
 // Credenciales Oficiales de Mercado Pago
@@ -2380,28 +2380,33 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n======================================================`);
-  console.log(` BuscaYa Server con Suscripciones Mercado Pago Activo`);
-  console.log(` Local:          http://localhost:${PORT}`);
-  console.log(` Public Key:     ${MP_PUBLIC_KEY}`);
-  console.log(` Access Token:   [PROTEGIDO EN SERVIDOR]`);
-  console.log(` Plan Free Trial: 7 Días ($0 Hoy) -> $499 MXN en Día 8`);
-  console.log(` MP Webhook:     http://localhost:${PORT}/api/mercadopago/webhook`);
-  console.log(` WhatsApp Hook:  http://localhost:${PORT}/api/whatsapp/webhook (GPS Location Ready)`);
-  console.log(`======================================================\n`);
+if (require.main === module && !process.env.VERCEL) {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n======================================================`);
+    console.log(` BuscaYa Server con Suscripciones Mercado Pago Activo`);
+    console.log(` Local:          http://localhost:${PORT}`);
+    console.log(` Public Key:     ${MP_PUBLIC_KEY}`);
+    console.log(` Access Token:   [PROTEGIDO EN SERVIDOR]`);
+    console.log(` Plan Free Trial: 7 Días ($0 Hoy) -> $499 MXN en Día 8`);
+    console.log(` MP Webhook:     http://localhost:${PORT}/api/mercadopago/webhook`);
+    console.log(` WhatsApp Hook:  http://localhost:${PORT}/api/whatsapp/webhook (GPS Location Ready)`);
+    console.log(`======================================================\n`);
 
-  // Iniciar servicio Baileys Multi-Device para vinculación real de WhatsApp
-  if (waService) {
-    waService.startWhatsAppSocket({
-      callGeminiApi,
-      getBusinesses: () => SERVER_BUSINESSES,
-      getSystemPrompt: () => {
-        return CURRENT_SYSTEM_PROMPT || "Eres BuscaYa, el asistente virtual oficial en WhatsApp para encontrar los mejores negocios locales en México. Siempre saluda con amabilidad y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞, 🕒, ✨, 🔧). Recomienda negocios verificados con su nombre, colonia, municipio, horario y teléfono.";
-      },
-      messagesLog: WHATSAPP_MESSAGES_LOG
-    }).catch(err => {
-      console.warn('[WhatsApp Socket Startup Warning]:', err.message);
-    });
-  }
-});
+    // Iniciar servicio Baileys Multi-Device para vinculación real de WhatsApp
+    if (waService) {
+      waService.startWhatsAppSocket({
+        callGeminiApi,
+        getBusinesses: () => SERVER_BUSINESSES,
+        getSystemPrompt: () => {
+          return CURRENT_SYSTEM_PROMPT || "Eres BuscaYa, el asistente virtual oficial en WhatsApp para encontrar los mejores negocios locales en México. Siempre saluda con amabilidad y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞, 🕒, ✨, 🔧). Recomienda negocios verificados con su nombre, colonia, municipio, horario y teléfono.";
+        },
+        messagesLog: WHATSAPP_MESSAGES_LOG
+      }).catch(err => {
+        console.warn('[WhatsApp Socket Startup Warning]:', err.message);
+      });
+    }
+  });
+}
+
+// Exportar listener para Vercel Serverless Functions
+module.exports = server;
