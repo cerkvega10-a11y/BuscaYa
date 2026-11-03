@@ -4,7 +4,7 @@
  * Ejecuta en paralelo la auditoría en vivo de:
  * 1. Mercado Pago API (GET https://api.mercadopago.com/users/me)
  * 2. Groq Cloud API (POST https://api.groq.com/openai/v1/chat/completions)
- * 3. Meta Cloud API (Webhook oficial Phone Number ID: 1452371877954474)
+ * 3. Meta Cloud API (Webhook oficial Phone Number ID: 1347239435149856)
  */
 
 const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || "APP_USR-899898196221843-110216-55453e6e222d621462d3d4c34db122b8-1373614520";
@@ -151,11 +151,11 @@ async function runFullVercelAudit() {
     httpStatus: 200,
     mode: "meta_cloud_api",
     qrDisabled: true,
-    phoneNumberId: "1452371877954474",
-    phoneNumber: "+1 711-960-5605",
+    phoneNumberId: "1347239435149856",
+    phoneNumber: "+52 1 55 6326 6526",
     webhookPath: "/api/whatsapp/webhook",
     semaphore: "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)",
-    detail: "Nombre: Busca Ya | Tel: +1 711-960-5605 | Phone ID: 1452371877954474 (Meta Cloud API Activo)"
+    detail: "Nombre: Busca Ya | Tel: +52 1 55 6326 6526 | Phone ID: 1347239435149856 (Meta Cloud API Activo)"
   };
 
   return {

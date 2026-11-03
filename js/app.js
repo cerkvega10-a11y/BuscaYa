@@ -1353,7 +1353,7 @@ async function runVercelApiAudit(showNotification = true) {
       waSem.textContent = data.whatsapp?.semaphore || "🟢 Conexión Activa vía Meta Cloud API (Webhook)";
     }
     if (waDet) {
-      waDet.textContent = data.whatsapp?.detail || "Nombre: Busca Ya | Tel: +1 711-960-5605 | Phone ID: 1452371877954474";
+      waDet.textContent = data.whatsapp?.detail || "Nombre: Busca Ya | Tel: +52 1 55 6326 6526 | Phone ID: 1347239435149856";
     }
 
     if (tsLabel) {
@@ -4387,7 +4387,7 @@ function confirmSendSharedLocation() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "+1 711-960-5605",
+      from: "+52 1 55 6326 6526",
       location: { latitude: lat, longitude: lng },
       query: serviceQuery
     })

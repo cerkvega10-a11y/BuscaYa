@@ -465,7 +465,7 @@ INSTRUCCIONES:
 async function requestPairingCode(phoneNumber) {
   if (!phoneNumber) throw new Error("Número de teléfono requerido");
   
-  // Limpiar número: solo dígitos (ej: 17119605605)
+  // Limpiar número: solo dígitos (ej: 5215563266526)
   let cleaned = phoneNumber.replace(/\D/g, '');
   if (cleaned.length === 10) {
     // Si el usuario ingresó 10 dígitos nacionales de México, anteponer lada internacional 521
@@ -473,7 +473,7 @@ async function requestPairingCode(phoneNumber) {
   } else if (cleaned.length === 12 && cleaned.startsWith('52') && !cleaned.startsWith('521')) {
     cleaned = '521' + cleaned.slice(2);
   }
-  if (cleaned.length < 10) throw new Error("Número de teléfono inválido (debe incluir 10 dígitos o lada internacional, ej: 17119605605)");
+  if (cleaned.length < 10) throw new Error("Número de teléfono inválido (debe incluir 10 dígitos o lada internacional, ej: 5215563266526)");
 
   await ensureWhatsAppQrOrConnected({ waitMs: 6500, keepAlive: false });
 

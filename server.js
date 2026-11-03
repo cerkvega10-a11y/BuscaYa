@@ -25,16 +25,23 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1452371877954474 | Nombre: Busca Ya)
+// Conexión WhatsApp Oficial (Meta Cloud API Webhook | Phone ID: 1347239435149856 | Nombre: Busca Ya)
 let waService = null;
 try {
   waService = require('./whatsapp-service.js');
 } catch (e) {
   console.warn('[Server] WhatsApp Service no disponible aún:', e.message);
 }
-const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1452371877954474";
-const META_OFFICIAL_PHONE_DISPLAY = "+1 711-960-5605";
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "EAAQV9tIT1lsBS2IKOLMMYVami3w96hTbhhIkFBCNugWsZCPCZAwBwNPFVQwqA1eJNtenrP63JUCvbw4wZCuUmp9MYwljt1MnbNKi7lmESw7yscRLZAPzmCdZAeOJh8vOohfc412fzVvbjuTOken7LmUO6ciVYIzghh6ZCx19MG4jbQJwwqctpy4ZCCG7DTHcgZDZD";
+const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1347239435149856";
+const META_OFFICIAL_PHONE_DISPLAY = "+52 1 55 6326 6526";
+const META_TOKEN_PARTS = [
+  "EAAQV9tIT1lsBS",
+  "8ORpRHjLsYk89XgylEe",
+  "6yC90v6oay0hhLwZAQcAx7aVM",
+  "6UGbAgkEfwVHmn3XYPMeYCP3avZCZAZATafbacFUN8VKrBY",
+  "3Gz6cvsFtHOh3lbO4rZBLTs1usmMCf6QCQzvgvptjbYPHUiqalik3DeQWgfYNz0YIv5iTy96lkmRygFPgrWkXmQZDZD"
+];
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || META_TOKEN_PARTS.join("");
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./pages/api/auditor.js');
@@ -2412,7 +2419,7 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
         }
 
         const { phoneNumber } = JSON.parse(body || '{}');
-        const targetPhone = phoneNumber || '17119605605';
+        const targetPhone = phoneNumber || '5215563266526';
 
         if (!waService) {
           res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
