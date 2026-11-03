@@ -7,11 +7,24 @@
  * 3. Respuestas automáticas con Groq AI ultra-rápido y lectura de ubicación en tiempo real.
  */
 
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const pino = require('pino');
 const path = require('path');
 const fs = require('fs');
+
+let baileysModPromise = null;
+async function loadBaileys() {
+  if (!baileysModPromise) {
+    baileysModPromise = import('@whiskeysockets/baileys');
+  }
+  const mod = await baileysModPromise;
+  return {
+    makeWASocket: mod.default || mod.makeWASocket,
+    useMultiFileAuthState: mod.useMultiFileAuthState,
+    DisconnectReason: mod.DisconnectReason,
+    fetchLatestBaileysVersion: mod.fetchLatestBaileysVersion
+  };
+}
 
 const SESSION_DIR = process.env.VERCEL
   ? path.join('/tmp', 'whatsapp_session')
@@ -29,6 +42,7 @@ const waState = {
   batteryLevel: 95,
   latencyMs: 38,
   lastUpdate: new Date().toISOString(),
+  initError: null,
   sock: null,
   initPromise: null,
   geminiCaller: null,
@@ -116,6 +130,7 @@ async function startWhatsAppSocket(options = {}) {
 
   waState.initPromise = (async () => {
     try {
+      const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = await loadBaileys();
       const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
       const { version, isLatest } = await Promise.race([
         fetchLatestBaileysVersion(),
@@ -129,13 +144,14 @@ async function startWhatsAppSocket(options = {}) {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: ['BuscaYa AI Concierge', 'Chrome', '1.0.0'],
+        browser: ['Windows', 'Chrome', '10.0.0'],
         syncFullHistory: false,
         generateHighQualityLinkPreview: true,
         connectTimeoutMs: 20000
       });
 
       waState.sock = sock;
+      waState.initError = null;
 
       // Guardar credenciales automáticamente
       sock.ev.on('creds.update', saveCreds);
@@ -145,12 +161,18 @@ async function startWhatsAppSocket(options = {}) {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-          waState.qrRaw = qr;
+          // Normalizar payload QR Multi-Device a formato puro 2@<ref>,<noise>,<identity>,<adv>,<platformId>
+          // compatible al 100% con el escáner interno de WhatsApp Business ("Vincular un dispositivo")
+          const normalizedQr = qr.includes('#2@')
+            ? qr.substring(qr.indexOf('#2@') + 1)
+            : qr;
+          waState.qrRaw = normalizedQr;
           waState.qrGeneratedAt = Date.now();
           try {
-            waState.qrDataUrl = await QRCode.toDataURL(qr, {
+            waState.qrDataUrl = await QRCode.toDataURL(normalizedQr, {
               width: 320,
               margin: 2,
+              errorCorrectionLevel: 'M',
               color: {
                 dark: '#111B21',
                 light: '#FFFFFF'
@@ -225,7 +247,9 @@ async function startWhatsAppSocket(options = {}) {
       return waState;
     } catch (err) {
       console.error('[WhatsApp Service] Error fatal al iniciar socket:', err);
+      waState.initError = err ? (err.stack || err.message || String(err)) : 'Unknown error';
       waState.status = 'disconnected';
+      notifyStatusWaiters('error');
       return waState;
     } finally {
       waState.initPromise = null;
@@ -569,6 +593,7 @@ function getWhatsAppStatus() {
     batteryLevel: waState.batteryLevel,
     latencyMs: waState.latencyMs,
     lastUpdate: waState.lastUpdate,
+    initError: waState.initError,
     messagesCount: waState.messagesLog.length
   };
 }
