@@ -324,110 +324,120 @@ async function startWhatsAppSocket() {
 }
 
 // ==============================================================
-// AGENTE ENRUTADOR DEL BOT DE IA (GEMINI 1.5 PRO / GROQ LPU)
+// AGENTE ENRUTADOR DEL BOT DE IA (GROQ LPU & GOOGLE GEMINI)
 // ==============================================================
 async function callAiEngine({ prompt, history = [], systemInstruction }) {
-  // 1. Prioridad: Google Gemini API (gemini-1.5-pro)
-  if (GEMINI_API_KEY && GEMINI_API_KEY.trim()) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY.trim())}`;
-      
-      const contents = [];
-      if (Array.isArray(history) && history.length > 0) {
-        history.slice(-8).forEach(h => {
-          if (h && typeof h.content === 'string') {
-            contents.push({
-              role: h.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: h.content }]
-            });
-          }
+  // 1. Prioridad: Groq Cloud LPU Ultrarrápido (openai/gpt-oss-20b / qwen/qwen3.8-27b)
+  if (GROQ_API_KEY && GROQ_API_KEY.trim()) {
+    const modelsToTry = [
+      process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b',
+      'openai/gpt-oss-120b'
+    ];
+
+    const messages = [];
+    if (systemInstruction) {
+      messages.push({ role: 'system', content: systemInstruction });
+    }
+    if (Array.isArray(history) && history.length > 0) {
+      history.slice(-6).forEach(h => {
+        if (h && typeof h.content === 'string') {
+          messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content });
+        }
+      });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    for (const model of modelsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 7000);
+
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY.trim()}`
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.35,
+            max_tokens: 600
+          }),
+          signal: controller.signal
         });
-      }
-      contents.push({
-        role: 'user',
-        parts: [{ text: prompt }]
-      });
+        clearTimeout(timeout);
 
-      const bodyPayload = {
-        contents,
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 900
+        if (res.ok) {
+          const data = await res.json();
+          const reply = data?.choices?.[0]?.message?.content;
+          if (reply && reply.trim()) {
+            return { success: true, reply: reply.trim(), provider: `Groq LPU (${model})` };
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.warn(`[Groq AI ${model} Warning ${res.status}]:`, errData?.error?.message || res.statusText);
         }
-      };
-
-      if (systemInstruction) {
-        bodyPayload.systemInstruction = {
-          parts: [{ text: systemInstruction }]
-        };
+      } catch (groqErr) {
+        console.warn(`[Groq AI ${model} Error]:`, groqErr.message);
       }
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text && text.trim()) {
-          return { success: true, reply: text.trim(), provider: 'Google Gemini 1.5 Pro' };
-        }
-      } else {
-        const errText = await res.text();
-        console.warn(`[Gemini API Warning ${res.status}]:`, errText.slice(0, 150));
-      }
-    } catch (gemErr) {
-      console.warn('[Gemini API Fallback Activating]:', gemErr.message);
     }
   }
 
-  // 2. Fallback de Alta Velocidad: Groq Cloud LPU
-  if (GROQ_API_KEY && GROQ_API_KEY.trim()) {
-    try {
-      const messages = [];
-      if (systemInstruction) {
-        messages.push({ role: 'system', content: systemInstruction });
-      }
-      if (Array.isArray(history) && history.length > 0) {
-        history.slice(-8).forEach(h => {
-          if (h && typeof h.content === 'string') {
-            messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content });
-          }
-        });
-      }
-      messages.push({ role: 'user', content: prompt });
-
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY.trim()}`
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages,
-          temperature: 0.35,
-          max_tokens: 900
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const reply = data?.choices?.[0]?.message?.content;
-        if (reply && reply.trim()) {
-          return { success: true, reply: reply.trim(), provider: 'Groq LPU' };
+  // 2. Respaldo: Google Gemini API (gemini-3.8-flash / gemini-flash-latest)
+  if (GEMINI_API_KEY && GEMINI_API_KEY.trim()) {
+    const geminiModels = ['gemini-3.8-flash', 'gemini-flash-latest'];
+    for (const gModel of geminiModels) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY.trim())}`;
+        const contents = [];
+        if (Array.isArray(history) && history.length > 0) {
+          history.slice(-6).forEach(h => {
+            if (h && typeof h.content === 'string') {
+              contents.push({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }]
+              });
+            }
+          });
         }
+        contents.push({ role: 'user', parts: [{ text: prompt }] });
+
+        const bodyPayload = {
+          contents,
+          generationConfig: { temperature: 0.35, maxOutputTokens: 600 }
+        };
+        if (systemInstruction) {
+          bodyPayload.systemInstruction = { parts: [{ text: systemInstruction }] };
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          const data = await res.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text && text.trim()) {
+            return { success: true, reply: text.trim(), provider: `Google Gemini (${gModel})` };
+          }
+        }
+      } catch (gemErr) {
+        console.warn(`[Gemini API ${gModel} Warning]:`, gemErr.message);
       }
-    } catch (groqErr) {
-      console.warn('[Groq LPU Warning]:', groqErr.message);
     }
   }
 
   return {
     success: false,
-    reply: "¡Hola! 👋 Gracias por comunicarte con BuscaYa 🇲🇽. En este momento estamos optimizando nuestros servidores. ¿Qué servicio o negocio estás buscando cerca de ti?"
+    reply: "¡Hola! 👋 Bienvenido a BuscaYa 🇲🇽. ¿Qué servicio, restaurante o comercio estás buscando hoy? Dime tu colonia o ubicación para recomendarte los mejores negocios verificados cerca de ti."
   };
 }
 
@@ -499,10 +509,23 @@ async function handleIncomingMessage(sock, msg) {
       .sort((a, b) => a._distKm - b._distKm);
   }
 
-  const compactList = activeBiz.slice(0, 35).map(b => ({
+  // Filtrado semántico rápido por giro / palabra clave del usuario para reducir tokens
+  let prioritizedBiz = activeBiz;
+  if (!isLocation && userText) {
+    const queryWords = userText.toLowerCase().replace(/[?¿!¡,.]/g, '').split(/\s+/).filter(w => w.length > 2);
+    const matches = activeBiz.filter(b => {
+      const haystack = `${b.businessName} ${b.category} ${b.services} ${b.neighborhood} ${b.municipality}`.toLowerCase();
+      return queryWords.some(w => haystack.includes(w));
+    });
+    if (matches.length > 0) {
+      prioritizedBiz = matches;
+    }
+  }
+
+  const compactList = prioritizedBiz.slice(0, 6).map(b => ({
     negocio: b.businessName,
     categoria: b.category,
-    servicios: b.services,
+    servicios: (b.services || '').slice(0, 120),
     colonia: b.neighborhood,
     municipio: b.municipality,
     telefono: b.phone,
