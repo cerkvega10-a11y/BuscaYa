@@ -487,6 +487,16 @@ const MIME_TYPES = {
 const BUNDLED_STATIC_FILES = {};
 try {
   BUNDLED_STATIC_FILES['/index.html'] = fs.readFileSync(path.join(__dirname, 'index.html'));
+  BUNDLED_STATIC_FILES['/aviso-de-privacidad.html'] = fs.readFileSync(path.join(__dirname, 'aviso-de-privacidad.html'));
+  BUNDLED_STATIC_FILES['/aviso-de-privacidad'] = BUNDLED_STATIC_FILES['/aviso-de-privacidad.html'];
+  BUNDLED_STATIC_FILES['/privacidad'] = BUNDLED_STATIC_FILES['/aviso-de-privacidad.html'];
+  BUNDLED_STATIC_FILES['/logo.png'] = fs.readFileSync(path.join(__dirname, 'logo.png'));
+  BUNDLED_STATIC_FILES['/favicon.png'] = fs.readFileSync(path.join(__dirname, 'favicon.png'));
+  BUNDLED_STATIC_FILES['/favicon.ico'] = BUNDLED_STATIC_FILES['/favicon.png'];
+  BUNDLED_STATIC_FILES['/assets/logo.png'] = fs.readFileSync(path.join(__dirname, 'assets', 'logo.png'));
+  BUNDLED_STATIC_FILES['/assets/favicon.png'] = fs.readFileSync(path.join(__dirname, 'assets', 'favicon.png'));
+  BUNDLED_STATIC_FILES['/assets/promo-7dias.jpg'] = fs.readFileSync(path.join(__dirname, 'assets', 'promo-7dias.jpg'));
+  BUNDLED_STATIC_FILES['/assets/logo-transparent.png'] = fs.readFileSync(path.join(__dirname, 'assets', 'logo-transparent.png'));
   BUNDLED_STATIC_FILES['/css/styles.css'] = fs.readFileSync(path.join(__dirname, 'css', 'styles.css'));
   BUNDLED_STATIC_FILES['/js/geo-data.js'] = fs.readFileSync(path.join(__dirname, 'js', 'geo-data.js'));
   BUNDLED_STATIC_FILES['/js/seed-data.js'] = fs.readFileSync(path.join(__dirname, 'js', 'seed-data.js'));
@@ -2737,7 +2747,10 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     return;
   }
 
-  const ext = path.extname(filePath).toLowerCase();
+  let ext = path.extname(filePath).toLowerCase();
+  if (!ext && (reqPath.includes('privacidad') || reqPath.includes('index'))) {
+    ext = '.html';
+  }
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
   fs.stat(filePath, (err, stats) => {
