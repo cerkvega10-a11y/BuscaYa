@@ -151,11 +151,11 @@ async function runFullVercelAudit() {
     httpStatus: 200,
     mode: "meta_cloud_api",
     qrDisabled: true,
-    phoneNumberId: "1483800511476902",
+    phoneNumberId: "1402219842976650",
     phoneNumber: "+52 56 5606 5182",
     webhookPath: "/api/whatsapp/webhook",
     semaphore: "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)",
-    detail: "Tel: +52 56 5606 5182 | Phone ID: 1483800511476902 (Meta Cloud API Activo)"
+    detail: "Nombre: Busca Ya | Phone ID: 1402219842976650 (Meta Cloud API Activo)"
   };
 
   return {
