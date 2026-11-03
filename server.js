@@ -257,26 +257,66 @@ const HUMAN_HANDOFF_SESSIONS = {
   }
 };
 
-// 2. Analítica de Retorno de Inversión (ROI) por Negocio
+// 2. Analítica de Retorno de Inversión (ROI) por Negocio (Inicializado estrictamente en 0 para negocios nuevos)
+const createEmptyAnalytics = () => ({
+  impressions: 0,
+  clicks: 0,
+  calls: 0,
+  maps: 0,
+  menus: 0,
+  ctr: 0.0,
+  history: [
+    { day: "Lun", impressions: 0, clicks: 0 },
+    { day: "Mar", impressions: 0, clicks: 0 },
+    { day: "Mié", impressions: 0, clicks: 0 },
+    { day: "Jue", impressions: 0, clicks: 0 },
+    { day: "Vie", impressions: 0, clicks: 0 },
+    { day: "Sáb", impressions: 0, clicks: 0 },
+    { day: "Dom", impressions: 0, clicks: 0 }
+  ]
+});
+
 const BUSINESS_ANALYTICS = {
-  "default": {
-    impressions: 64,
-    clicks: 27,
-    calls: 15,
-    maps: 8,
-    menus: 4,
-    ctr: 42.1,
-    history: [
-      { day: "Lun", impressions: 8, clicks: 3 },
-      { day: "Mar", impressions: 11, clicks: 5 },
-      { day: "Mié", impressions: 9, clicks: 4 },
-      { day: "Jue", impressions: 12, clicks: 6 },
-      { day: "Vie", impressions: 14, clicks: 5 },
-      { day: "Sáb", impressions: 7, clicks: 3 },
-      { day: "Dom", impressions: 3, clicks: 1 }
-    ]
-  }
+  "default": createEmptyAnalytics()
 };
+
+function getDayNameEs(date = new Date()) {
+  const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  return days[date.getDay()];
+}
+
+function recordAnalyticsEvent(bizId, eventType) {
+  const bId = bizId || 'default';
+  if (!BUSINESS_ANALYTICS[bId]) {
+    BUSINESS_ANALYTICS[bId] = createEmptyAnalytics();
+  }
+  const metrics = BUSINESS_ANALYTICS[bId];
+  const today = getDayNameEs();
+  const dayItem = metrics.history.find(h => h.day === today);
+
+  if (eventType === 'impression') {
+    metrics.impressions++;
+    if (dayItem) dayItem.impressions++;
+  } else if (eventType === 'call') {
+    metrics.clicks++;
+    metrics.calls++;
+    if (dayItem) dayItem.clicks++;
+  } else if (eventType === 'map') {
+    metrics.clicks++;
+    metrics.maps++;
+    if (dayItem) dayItem.clicks++;
+  } else if (eventType === 'menu') {
+    metrics.clicks++;
+    metrics.menus++;
+    if (dayItem) dayItem.clicks++;
+  }
+
+  metrics.ctr = metrics.impressions > 0 
+    ? Number(((metrics.clicks / metrics.impressions) * 100).toFixed(1)) 
+    : 0.0;
+
+  return metrics;
+}
 
 // 3. Catálogos y Menús en PDF para RAG Inteligente
 const BUSINESS_CATALOGS = {
@@ -1791,10 +1831,21 @@ ${visualFormatRule}`;
         const elapsed = Date.now() - start;
 
         if (aiRes.success) {
+          const recommendedIds = [];
+          if (aiRes.reply) {
+            bizList.forEach(b => {
+              if (b.businessName && aiRes.reply.toLowerCase().includes(b.businessName.toLowerCase())) {
+                recordAnalyticsEvent(b.id, 'impression');
+                recommendedIds.push(b.id);
+              }
+            });
+          }
+
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
             success: true,
             reply: aiRes.reply,
+            recommendedBusinessIds: recommendedIds,
             modelUsed: aiRes.modelUsed,
             latencyMs: elapsed,
             provider: "Groq AI (LPU Ultra-Rápido)"
@@ -2030,29 +2081,7 @@ ${visualFormatRule}`;
 
         // Registrar métricas de ROI (Impresiones)
         if (recommendedBiz) {
-          const bId = recommendedBiz.id;
-          if (!BUSINESS_ANALYTICS[bId]) {
-            BUSINESS_ANALYTICS[bId] = {
-              impressions: 1,
-              clicks: 0,
-              calls: 0,
-              maps: 0,
-              menus: 0,
-              ctr: 0,
-              history: [
-                { day: "Lun", impressions: 0, clicks: 0 },
-                { day: "Mar", impressions: 0, clicks: 0 },
-                { day: "Mié", impressions: 0, clicks: 0 },
-                { day: "Jue", impressions: 0, clicks: 0 },
-                { day: "Vie", impressions: 0, clicks: 0 },
-                { day: "Sáb", impressions: 0, clicks: 0 },
-                { day: "Dom", impressions: 1, clicks: 0 }
-              ]
-            };
-          } else {
-            BUSINESS_ANALYTICS[bId].impressions++;
-            BUSINESS_ANALYTICS[bId].ctr = Number(((BUSINESS_ANALYTICS[bId].clicks / BUSINESS_ANALYTICS[bId].impressions) * 100).toFixed(1));
-          }
+          recordAnalyticsEvent(recommendedBiz.id, 'impression');
         }
 
         // Construir consulta contextual para Groq AI
@@ -2107,6 +2136,11 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
 
           if (aiRes.success && aiRes.reply) {
             finalBotReplyText = aiRes.reply;
+            activeBusinesses.forEach(b => {
+              if (b.businessName && finalBotReplyText.toLowerCase().includes(b.businessName.toLowerCase())) {
+                recordAnalyticsEvent(b.id, 'impression');
+              }
+            });
           }
         } catch (groqErr) {
           console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
@@ -2374,7 +2408,14 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   if (req.method === 'GET' && pathname.startsWith('/api/business/analytics')) {
     const parts = pathname.split('/');
     const bizId = parts[parts.length - 1] || 'default';
-    const analytics = BUSINESS_ANALYTICS[bizId] || BUSINESS_ANALYTICS['default'];
+    if (!BUSINESS_ANALYTICS[bizId]) {
+      BUSINESS_ANALYTICS[bizId] = createEmptyAnalytics();
+    }
+    const analytics = BUSINESS_ANALYTICS[bizId];
+
+    const estimatedRoi = analytics.clicks > 0 
+      ? (analytics.clicks * 180 / 499).toFixed(1) 
+      : "0.0";
 
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
@@ -2382,7 +2423,7 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
       businessId: bizId,
       analytics: analytics,
       monthlyFeeMx: 499,
-      estimatedRoiMultiplier: (analytics.clicks > 0 ? (analytics.clicks * 180 / 499).toFixed(1) : "3.5"),
+      estimatedRoiMultiplier: estimatedRoi,
       leadsGenerated: analytics.clicks
     }));
     return;
@@ -2393,39 +2434,19 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
       try {
-        const { businessId, eventType, phone } = JSON.parse(body || '{}');
-        const bId = businessId || 'default';
-
-        if (!BUSINESS_ANALYTICS[bId]) {
-          BUSINESS_ANALYTICS[bId] = {
-            impressions: 1,
-            clicks: 0,
-            calls: 0,
-            maps: 0,
-            menus: 0,
-            ctr: 0,
-            history: [
-              { day: "Lun", impressions: 5, clicks: 2 },
-              { day: "Mar", impressions: 8, clicks: 3 },
-              { day: "Mié", impressions: 6, clicks: 2 },
-              { day: "Jue", impressions: 9, clicks: 4 },
-              { day: "Vie", impressions: 10, clicks: 5 },
-              { day: "Sáb", impressions: 4, clicks: 1 },
-              { day: "Dom", impressions: 2, clicks: 1 }
-            ]
-          };
-        }
-
-        const metrics = BUSINESS_ANALYTICS[bId];
-        if (eventType === 'impression') metrics.impressions++;
-        if (eventType === 'call') { metrics.clicks++; metrics.calls++; }
-        if (eventType === 'map') { metrics.clicks++; metrics.maps++; }
-        if (eventType === 'menu') { metrics.clicks++; metrics.menus++; }
-
-        metrics.ctr = Number(((metrics.clicks / Math.max(1, metrics.impressions)) * 100).toFixed(1));
+        const { businessId, eventType } = JSON.parse(body || '{}');
+        const metrics = recordAnalyticsEvent(businessId, eventType);
+        const estimatedRoi = metrics.clicks > 0 
+          ? (metrics.clicks * 180 / 499).toFixed(1) 
+          : "0.0";
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: true, metrics: metrics, eventType }));
+        res.end(JSON.stringify({ 
+          success: true, 
+          metrics: metrics, 
+          eventType,
+          estimatedRoiMultiplier: estimatedRoi
+        }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: err.message }));

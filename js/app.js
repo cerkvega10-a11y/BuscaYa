@@ -3634,6 +3634,23 @@ async function handleSandboxSend() {
       const formattedHtml = formatGeminiResponseToHtml(data.reply);
       appendSandboxMessage("ai", formattedHtml, true);
 
+      // Registrar impresiones automáticas para negocios lanzados/recomendados por la IA
+      if (Array.isArray(data.recommendedBusinessIds) && data.recommendedBusinessIds.length > 0) {
+        data.recommendedBusinessIds.forEach(bizId => {
+          if (typeof trackBusinessEvent === 'function') {
+            trackBusinessEvent(bizId, 'impression');
+          }
+        });
+      } else if (data.reply) {
+        activeBusinesses.forEach(b => {
+          if (b.businessName && data.reply.toLowerCase().includes(b.businessName.toLowerCase())) {
+            if (typeof trackBusinessEvent === 'function') {
+              trackBusinessEvent(b.id, 'impression');
+            }
+          }
+        });
+      }
+
       const elapsed = data.latencyMs || (Date.now() - startTime);
       const teleMatch = document.getElementById("sandboxTelemetryMatch");
       const teleLat = document.getElementById("sandboxTelemetryLatency");
@@ -3784,6 +3801,23 @@ async function processAiQuery(query, isSandbox = false) {
     const elapsed = geminiResult.latencyMs || (Date.now() - startTime);
     const formattedHtml = formatGeminiResponseToHtml(geminiResult.reply);
 
+    // Registrar impresiones automáticas para negocios lanzados/recomendados por la IA
+    if (Array.isArray(geminiResult.recommendedBusinessIds) && geminiResult.recommendedBusinessIds.length > 0) {
+      geminiResult.recommendedBusinessIds.forEach(bizId => {
+        if (typeof trackBusinessEvent === 'function') {
+          trackBusinessEvent(bizId, 'impression');
+        }
+      });
+    } else if (geminiResult.reply) {
+      activeBusinesses.forEach(b => {
+        if (b.businessName && geminiResult.reply.toLowerCase().includes(b.businessName.toLowerCase())) {
+          if (typeof trackBusinessEvent === 'function') {
+            trackBusinessEvent(b.id, 'impression');
+          }
+        }
+      });
+    }
+
     if (isSandbox) {
       appendSandboxMessage("ai", formattedHtml, true);
       const teleMatch = document.getElementById("sandboxTelemetryMatch");
@@ -3817,9 +3851,16 @@ async function processAiQuery(query, isSandbox = false) {
     let sponsoredRecommendationHtml = "";
     let sponsoredBiz = null;
 
+    if (typeof trackBusinessEvent === 'function') {
+      trackBusinessEvent(best.id, 'impression');
+    }
+
     if (aiConfig.enableSponsored) {
       sponsoredBiz = activeBusinesses.find(b => b.id !== best.id && b.isSponsored);
       if (sponsoredBiz) {
+        if (typeof trackBusinessEvent === 'function') {
+          trackBusinessEvent(sponsoredBiz.id, 'impression');
+        }
         sponsoredRecommendationHtml = `
           <div class="mt-3 pt-3 border-t border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50/40 p-3 rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
             <div class="flex items-center space-x-1.5 text-purple-900 font-black text-[11px] uppercase tracking-wider">
@@ -3840,11 +3881,11 @@ async function processAiQuery(query, isSandbox = false) {
               💡 <i>${sponsoredBiz.services}</i>
             </p>
             <div class="pt-1 flex flex-wrap gap-1.5">
-              <a href="${sponsoredBiz.mapsUrl || '#'}" target="_blank" class="px-2.5 py-1 rounded-lg bg-purple-700 text-white text-[10px] font-bold flex items-center space-x-1 hover:bg-purple-800 transition-colors">
+              <a href="${sponsoredBiz.mapsUrl || '#'}" target="_blank" onclick="handleInteractiveAction('map', '${sponsoredBiz.id}', '${escapeHtml(sponsoredBiz.businessName)}')" class="px-2.5 py-1 rounded-lg bg-purple-700 text-white text-[10px] font-bold flex items-center space-x-1 hover:bg-purple-800 transition-colors">
                 <i class="fa-solid fa-location-dot text-amber-300"></i>
                 <span>Ver en Maps</span>
               </a>
-              <a href="https://wa.me/52${sponsoredBiz.phone.replace(/\D/g, '')}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#25D366] text-[#075E54] text-[10px] font-black flex items-center space-x-1 hover:bg-[#20bd5a] transition-colors">
+              <a href="https://wa.me/52${sponsoredBiz.phone.replace(/\D/g, '')}" target="_blank" onclick="handleInteractiveAction('call', '${sponsoredBiz.id}', '${sponsoredBiz.phone}')" class="px-2.5 py-1 rounded-lg bg-[#25D366] text-[#075E54] text-[10px] font-black flex items-center space-x-1 hover:bg-[#20bd5a] transition-colors">
                 <i class="fa-brands fa-whatsapp"></i>
                 <span>Contactar Socio Plus</span>
               </a>
@@ -3885,12 +3926,12 @@ async function processAiQuery(query, isSandbox = false) {
           ${best.menuUrl ? `<p class="text-[11px] text-amber-700 font-bold">🍽️ Menú disponible en línea con Código QR</p>` : ""}
 
           <div class="pt-1 flex flex-wrap gap-2">
-            <a href="${best.mapsUrl || '#'}" target="_blank" class="px-3 py-1.5 rounded-xl bg-[#075E54] text-white text-[11px] font-bold flex items-center space-x-1.5 hover:bg-[#064e46] transition-colors shadow-2xs">
+            <a href="${best.mapsUrl || '#'}" target="_blank" onclick="handleInteractiveAction('map', '${best.id}', '${escapeHtml(best.businessName)}')" class="px-3 py-1.5 rounded-xl bg-[#075E54] text-white text-[11px] font-bold flex items-center space-x-1.5 hover:bg-[#064e46] transition-colors shadow-2xs">
               <i class="fa-solid fa-location-dot text-[#25D366]"></i>
               <span>Ver en Google Maps</span>
             </a>
 
-            <a href="https://wa.me/52${best.phone.replace(/\D/g, '')}" target="_blank" class="px-3 py-1.5 rounded-xl bg-[#25D366] text-[#075E54] text-[11px] font-black flex items-center space-x-1.5 hover:bg-[#20bd5a] transition-colors shadow-2xs">
+            <a href="https://wa.me/52${best.phone.replace(/\D/g, '')}" target="_blank" onclick="handleInteractiveAction('call', '${best.id}', '${best.phone}')" class="px-3 py-1.5 rounded-xl bg-[#25D366] text-[#075E54] text-[11px] font-black flex items-center space-x-1.5 hover:bg-[#20bd5a] transition-colors shadow-2xs">
               <i class="fa-brands fa-whatsapp"></i>
               <span>Contactar por WhatsApp</span>
             </a>
@@ -4316,6 +4357,11 @@ function processLocationQuery(coords, serviceQuery = "", isSandbox = false) {
 
   setTimeout(() => {
     if (best) {
+      // Registrar impresiones automáticas para negocios lanzados/recomendados
+      if (typeof trackBusinessEvent === 'function') {
+        trackBusinessEvent(best.id, 'impression');
+      }
+
       const distanceFormatted = typeof formatDistanceDisplay === "function" 
         ? formatDistanceDisplay(best.distanceKm)
         : `a ${best.distanceKm.toFixed(1)} km de ti`;
@@ -4334,6 +4380,11 @@ function processLocationQuery(coords, serviceQuery = "", isSandbox = false) {
         if (sponsoredCandidates.length > 0) {
           sponsoredCandidates.sort((a, b) => a.distanceKm - b.distanceKm);
           sponsoredBiz = sponsoredCandidates[0];
+          
+          if (typeof trackBusinessEvent === 'function') {
+            trackBusinessEvent(sponsoredBiz.id, 'impression');
+          }
+
           const spDist = typeof formatDistanceDisplay === "function"
             ? formatDistanceDisplay(sponsoredBiz.distanceKm)
             : `a ${sponsoredBiz.distanceKm.toFixed(1)} km`;
@@ -4361,11 +4412,11 @@ function processLocationQuery(coords, serviceQuery = "", isSandbox = false) {
                 💡 <i>${sponsoredBiz.services}</i>
               </p>
               <div class="pt-1 flex flex-wrap gap-1.5">
-                <a href="${spNavUrl}" target="_blank" class="px-2.5 py-1 rounded-lg bg-purple-700 text-white text-[10px] font-bold flex items-center space-x-1 hover:bg-purple-800 transition-colors">
+                <a href="${spNavUrl}" target="_blank" onclick="handleInteractiveAction('map', '${sponsoredBiz.id}', '${escapeHtml(sponsoredBiz.businessName)}')" class="px-2.5 py-1 rounded-lg bg-purple-700 text-white text-[10px] font-bold flex items-center space-x-1 hover:bg-purple-800 transition-colors">
                   <i class="fa-solid fa-diamond-turn-right text-amber-300"></i>
                   <span>Navegar con Maps</span>
                 </a>
-                <a href="https://wa.me/52${sponsoredBiz.phone.replace(/\D/g, '')}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#25D366] text-[#075E54] text-[10px] font-black flex items-center space-x-1 hover:bg-[#20bd5a] transition-colors">
+                <a href="https://wa.me/52${sponsoredBiz.phone.replace(/\D/g, '')}" target="_blank" onclick="handleInteractiveAction('call', '${sponsoredBiz.id}', '${sponsoredBiz.phone}')" class="px-2.5 py-1 rounded-lg bg-[#25D366] text-[#075E54] text-[10px] font-black flex items-center space-x-1 hover:bg-[#20bd5a] transition-colors">
                   <i class="fa-brands fa-whatsapp"></i>
                   <span>Contactar Socio Plus</span>
                 </a>
@@ -4414,15 +4465,22 @@ function processLocationQuery(coords, serviceQuery = "", isSandbox = false) {
             ${best.menuUrl ? `<p class="text-[11px] text-amber-700 font-bold">🍽️ Menú disponible en línea con Código QR</p>` : ""}
 
             <div class="pt-1 flex flex-wrap gap-2">
-              <a href="${navUrl}" target="_blank" class="px-3 py-1.5 rounded-xl bg-[#075E54] text-white text-[11px] font-bold flex items-center space-x-1.5 hover:bg-[#064e46] transition-colors shadow-2xs">
+              <a href="${navUrl}" target="_blank" onclick="handleInteractiveAction('map', '${best.id}', '${escapeHtml(best.businessName)}')" class="px-3 py-1.5 rounded-xl bg-[#075E54] text-white text-[11px] font-bold flex items-center space-x-1.5 hover:bg-[#064e46] transition-colors shadow-2xs">
                 <i class="fa-solid fa-diamond-turn-right text-[#25D366]"></i>
                 <span>Navegar con Google Maps</span>
               </a>
 
-              <a href="https://wa.me/52${best.phone.replace(/\D/g, '')}" target="_blank" class="px-3 py-1.5 rounded-xl bg-[#25D366] text-[#075E54] text-[11px] font-black flex items-center space-x-1.5 hover:bg-[#20bd5a] transition-colors shadow-2xs">
+              <a href="https://wa.me/52${best.phone.replace(/\D/g, '')}" target="_blank" onclick="handleInteractiveAction('call', '${best.id}', '${best.phone}')" class="px-3 py-1.5 rounded-xl bg-[#25D366] text-[#075E54] text-[11px] font-black flex items-center space-x-1.5 hover:bg-[#20bd5a] transition-colors shadow-2xs">
                 <i class="fa-brands fa-whatsapp"></i>
                 <span>Contactar por WhatsApp</span>
               </a>
+
+              ${best.menuUrl ? `
+                <button type="button" onclick="handleInteractiveAction('menu', '${best.id}', '${best.phone}')" class="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[11px] font-bold flex items-center space-x-1.5 hover:bg-amber-600 transition-colors shadow-2xs">
+                  <i class="fa-solid fa-utensils"></i>
+                  <span>Ver Menú/Catálogo</span>
+                </button>
+              ` : ''}
             </div>
           </div>
 
@@ -4736,76 +4794,187 @@ async function handleRunCronWorkerNow() {
 // ==============================================================
 // 1. DASHBOARD DE ROI & MÉTRICAS DE RENDIMIENTO (MI NEGOCIO)
 // ==============================================================
+
+function getEmptyBusinessAnalytics() {
+  return {
+    impressions: 0,
+    clicks: 0,
+    calls: 0,
+    maps: 0,
+    menus: 0,
+    ctr: 0.0,
+    history: [
+      { day: "Lun", impressions: 0, clicks: 0 },
+      { day: "Mar", impressions: 0, clicks: 0 },
+      { day: "Mié", impressions: 0, clicks: 0 },
+      { day: "Jue", impressions: 0, clicks: 0 },
+      { day: "Vie", impressions: 0, clicks: 0 },
+      { day: "Sáb", impressions: 0, clicks: 0 },
+      { day: "Dom", impressions: 0, clicks: 0 }
+    ]
+  };
+}
+
+function getLocalBusinessAnalytics(bizId) {
+  const bId = bizId || 'default';
+  try {
+    const raw = localStorage.getItem(`buscaya_analytics_${bId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.impressions === 'number') {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return getEmptyBusinessAnalytics();
+}
+
+function saveLocalBusinessAnalytics(bizId, analytics) {
+  const bId = bizId || 'default';
+  try {
+    localStorage.setItem(`buscaya_analytics_${bId}`, JSON.stringify(analytics));
+  } catch (e) {}
+}
+
+function getDayNameEs(date = new Date()) {
+  const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  return days[date.getDay()];
+}
+
+/**
+ * Registra y acumula eventos de rendimiento (impresiones, llamadas, mapas, catálogos)
+ */
+function trackBusinessEvent(bizId, eventType) {
+  if (!bizId) return;
+  const metrics = getLocalBusinessAnalytics(bizId);
+  const today = getDayNameEs();
+  if (!Array.isArray(metrics.history) || metrics.history.length === 0) {
+    metrics.history = getEmptyBusinessAnalytics().history;
+  }
+  const dayItem = metrics.history.find(h => h.day === today);
+
+  if (eventType === 'impression') {
+    metrics.impressions = (metrics.impressions || 0) + 1;
+    if (dayItem) dayItem.impressions = (dayItem.impressions || 0) + 1;
+  } else if (eventType === 'call') {
+    metrics.clicks = (metrics.clicks || 0) + 1;
+    metrics.calls = (metrics.calls || 0) + 1;
+    if (dayItem) dayItem.clicks = (dayItem.clicks || 0) + 1;
+  } else if (eventType === 'map') {
+    metrics.clicks = (metrics.clicks || 0) + 1;
+    metrics.maps = (metrics.maps || 0) + 1;
+    if (dayItem) dayItem.clicks = (dayItem.clicks || 0) + 1;
+  } else if (eventType === 'menu') {
+    metrics.clicks = (metrics.clicks || 0) + 1;
+    metrics.menus = (metrics.menus || 0) + 1;
+    if (dayItem) dayItem.clicks = (dayItem.clicks || 0) + 1;
+  }
+
+  metrics.ctr = metrics.impressions > 0 
+    ? Number(((metrics.clicks / metrics.impressions) * 100).toFixed(1)) 
+    : 0.0;
+
+  saveLocalBusinessAnalytics(bizId, metrics);
+
+  // Sincronizar en segundo plano con el servidor
+  fetch("/api/business/track-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ businessId: bizId, eventType: eventType })
+  }).catch(() => {});
+
+  // Si el panel de este negocio está abierto en pantalla, refrescar números inmediatamente
+  const activeEditId = document.getElementById("clientEditId")?.value;
+  if (!activeEditId || activeEditId === bizId) {
+    loadBusinessAnalyticsUI(bizId);
+  }
+}
+
 async function loadBusinessAnalyticsUI(bizId) {
   const currentBizId = bizId || document.getElementById("clientEditId")?.value || "default";
 
+  // Iniciar con datos locales o estrictamente en 0 si es nuevo
+  let localMetrics = getLocalBusinessAnalytics(currentBizId);
+  let estimatedRoi = localMetrics.clicks > 0 
+    ? (localMetrics.clicks * 180 / 499).toFixed(1) 
+    : "0.0";
+
   try {
     const res = await fetch(`/api/business/analytics/${currentBizId}`);
-    let data;
     if (res.ok) {
-      data = await res.json();
-    } else {
-      // Mockup por defecto si no hay conexión
-      data = {
-        analytics: {
-          impressions: 64,
-          clicks: 27,
-          calls: 15,
-          maps: 8,
-          menus: 4,
-          ctr: 42.1,
-          history: [
-            { day: "Lun", impressions: 8, clicks: 3 },
-            { day: "Mar", impressions: 11, clicks: 5 },
-            { day: "Mié", impressions: 9, clicks: 4 },
-            { day: "Jue", impressions: 12, clicks: 6 },
-            { day: "Vie", impressions: 14, clicks: 5 },
-            { day: "Sáb", impressions: 7, clicks: 3 },
-            { day: "Dom", impressions: 3, clicks: 1 }
-          ]
-        },
-        estimatedRoiMultiplier: "9.7"
-      };
-    }
-
-    const a = data.analytics || {};
-    const impEl = document.getElementById("roiImpressionsCount");
-    const clkEl = document.getElementById("roiClicksCount");
-    const ctrEl = document.getElementById("roiCtrPercentage");
-    const roiEl = document.getElementById("roiMultiplierText");
-    const callEl = document.getElementById("roiCallsCount");
-    const mapEl = document.getElementById("roiMapsCount");
-    const menuEl = document.getElementById("roiMenusCount");
-
-    if (impEl) impEl.textContent = a.impressions ?? 64;
-    if (clkEl) clkEl.textContent = a.clicks ?? 27;
-    if (ctrEl) ctrEl.textContent = `${a.ctr ?? 42.1}%`;
-    if (roiEl) roiEl.textContent = `${data.estimatedRoiMultiplier || "9.7"}x`;
-    if (callEl) callEl.textContent = a.calls ?? 15;
-    if (mapEl) mapEl.textContent = a.maps ?? 8;
-    if (menuEl) menuEl.textContent = a.menus ?? 4;
-
-    // Renderizar Gráfica de Barras Semanal
-    const chart = document.getElementById("roiWeeklyBarChart");
-    if (chart && Array.isArray(a.history)) {
-      chart.innerHTML = a.history.map(item => {
-        const maxVal = Math.max(...a.history.map(h => h.impressions), 15);
-        const impHeight = Math.max(15, Math.round((item.impressions / maxVal) * 100));
-        const clkHeight = Math.max(8, Math.round((item.clicks / maxVal) * 100));
-
-        return `
-          <div class="flex flex-col items-center justify-end h-full space-y-1">
-            <div class="flex items-end space-x-1 w-full justify-center h-24">
-              <div class="w-3 sm:w-3.5 bg-emerald-500 rounded-t-sm transition-all hover:opacity-80" style="height: ${impHeight}%;" title="${item.day}: ${item.impressions} impresiones"></div>
-              <div class="w-3 sm:w-3.5 bg-[#009ee3] rounded-t-sm transition-all hover:opacity-80" style="height: ${clkHeight}%;" title="${item.day}: ${item.clicks} contactos"></div>
-            </div>
-            <span class="text-[9px] font-bold text-gray-500 uppercase">${item.day}</span>
-          </div>
-        `;
-      }).join("");
+      const data = await res.json();
+      if (data && data.analytics) {
+        const s = data.analytics;
+        localMetrics.impressions = Math.max(localMetrics.impressions || 0, s.impressions || 0);
+        localMetrics.clicks = Math.max(localMetrics.clicks || 0, s.clicks || 0);
+        localMetrics.calls = Math.max(localMetrics.calls || 0, s.calls || 0);
+        localMetrics.maps = Math.max(localMetrics.maps || 0, s.maps || 0);
+        localMetrics.menus = Math.max(localMetrics.menus || 0, s.menus || 0);
+        localMetrics.ctr = localMetrics.impressions > 0 
+          ? Number(((localMetrics.clicks / localMetrics.impressions) * 100).toFixed(1)) 
+          : 0.0;
+        if (Array.isArray(s.history)) {
+          localMetrics.history = s.history.map(sh => {
+            const lh = (localMetrics.history || []).find(h => h.day === sh.day) || {};
+            return {
+              day: sh.day,
+              impressions: Math.max(sh.impressions || 0, lh.impressions || 0),
+              clicks: Math.max(sh.clicks || 0, lh.clicks || 0)
+            };
+          });
+        }
+        estimatedRoi = localMetrics.clicks > 0 
+          ? (localMetrics.clicks * 180 / 499).toFixed(1) 
+          : "0.0";
+        saveLocalBusinessAnalytics(currentBizId, localMetrics);
+      }
     }
   } catch (err) {
-    console.warn("[Analytics UI]", err.message);
+    console.warn("[Analytics UI Notice]", err.message);
+  }
+
+  const a = localMetrics;
+  const impEl = document.getElementById("roiImpressionsCount");
+  const clkEl = document.getElementById("roiClicksCount");
+  const ctrEl = document.getElementById("roiCtrPercentage");
+  const roiEl = document.getElementById("roiMultiplierText");
+  const callEl = document.getElementById("roiCallsCount");
+  const mapEl = document.getElementById("roiMapsCount");
+  const menuEl = document.getElementById("roiMenusCount");
+
+  if (impEl) impEl.textContent = a.impressions ?? 0;
+  if (clkEl) clkEl.textContent = a.clicks ?? 0;
+  if (ctrEl) ctrEl.textContent = `${(a.ctr ?? 0.0).toFixed(1)}%`;
+  if (roiEl) roiEl.textContent = `${estimatedRoi || "0.0"}x`;
+  if (callEl) callEl.textContent = a.calls ?? 0;
+  if (mapEl) mapEl.textContent = a.maps ?? 0;
+  if (menuEl) menuEl.textContent = a.menus ?? 0;
+
+  // Renderizar Gráfica de Barras Semanal
+  const chart = document.getElementById("roiWeeklyBarChart");
+  if (chart && Array.isArray(a.history)) {
+    const maxVal = Math.max(...a.history.map(h => Math.max(h.impressions || 0, h.clicks || 0)), 1);
+
+    chart.innerHTML = a.history.map(item => {
+      const impHeight = (item.impressions > 0 && maxVal > 0)
+        ? Math.max(12, Math.round((item.impressions / maxVal) * 100))
+        : 3;
+      const clkHeight = (item.clicks > 0 && maxVal > 0)
+        ? Math.max(8, Math.round((item.clicks / maxVal) * 100))
+        : 3;
+      const impStyle = (item.impressions > 0) ? `height: ${impHeight}%;` : `height: 3px; opacity: 0.35;`;
+      const clkStyle = (item.clicks > 0) ? `height: ${clkHeight}%;` : `height: 3px; opacity: 0.35;`;
+
+      return `
+        <div class="flex flex-col items-center justify-end h-full space-y-1">
+          <div class="flex items-end space-x-1 w-full justify-center h-24">
+            <div class="w-3 sm:w-3.5 bg-emerald-500 rounded-t-sm transition-all hover:opacity-80" style="${impStyle}" title="${item.day}: ${item.impressions} impresiones"></div>
+            <div class="w-3 sm:w-3.5 bg-[#009ee3] rounded-t-sm transition-all hover:opacity-80" style="${clkStyle}" title="${item.day}: ${item.clicks} contactos"></div>
+          </div>
+          <span class="text-[9px] font-bold text-gray-500 uppercase">${item.day}</span>
+        </div>
+      `;
+    }).join("");
   }
 }
 
@@ -4814,21 +4983,19 @@ async function loadBusinessAnalyticsUI(bizId) {
  */
 async function handleInteractiveAction(actionType, bizId, data) {
   try {
-    fetch("/api/business/track-event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ businessId: bizId, eventType: actionType })
-    }).catch(() => {});
+    if (bizId) {
+      trackBusinessEvent(bizId, actionType);
+    }
 
     if (actionType === 'call') {
       window.open(`tel:${data}`, '_blank');
-      showToast(`Llamada iniciada con el negocio. Evento contabilizado en ROI.`, "success");
+      if (typeof showToast === "function") showToast(`Llamada iniciada con el negocio. Evento contabilizado en ROI.`, "success");
     } else if (actionType === 'map') {
       window.open(`https://maps.google.com/?q=${encodeURIComponent(data)}`, '_blank');
-      showToast(`Ruta abierta en Google Maps. Evento contabilizado en ROI.`, "info");
+      if (typeof showToast === "function") showToast(`Ruta abierta en Google Maps. Evento contabilizado en ROI.`, "info");
     } else if (actionType === 'menu') {
-      window.open(`https://wa.me/52${data}?text=Hola,%20solicito%20su%20catálogo/menú%20visto%20en%20BuscaYa`, '_blank');
-      showToast(`Consulta de catálogo/menú enviada por WhatsApp.`, "success");
+      window.open(`https://wa.me/52${String(data).replace(/\D/g, '')}?text=Hola,%20solicito%20su%20catálogo/menú%20visto%20en%20BuscaYa`, '_blank');
+      if (typeof showToast === "function") showToast(`Consulta de catálogo/menú enviada por WhatsApp.`, "success");
     }
   } catch (err) {
     console.warn("[Interactive Action]", err);
@@ -5254,6 +5421,9 @@ window.handleSandboxSend = handleSandboxSend;
 window.clearSandboxChat = clearSandboxChat;
 window.openShareLocationModal = openShareLocationModal;
 window.closeShareLocationModal = closeShareLocationModal;
+window.loadBusinessAnalyticsUI = loadBusinessAnalyticsUI;
+window.trackBusinessEvent = trackBusinessEvent;
+window.handleInteractiveAction = handleInteractiveAction;
 
 console.log("App Inicializada");
 
