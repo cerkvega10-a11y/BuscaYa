@@ -13,13 +13,16 @@ const pino = require('pino');
 const path = require('path');
 const fs = require('fs');
 
-const SESSION_DIR = path.join(__dirname, 'whatsapp_session');
+const SESSION_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'whatsapp_session')
+  : path.join(__dirname, 'whatsapp_session');
 
 // Estado en memoria de la sesión de WhatsApp
 const waState = {
   status: 'disconnected', // 'disconnected', 'connecting', 'waiting', 'connected'
   qrRaw: null,
   qrDataUrl: null,
+  qrGeneratedAt: 0,
   pairingCode: null,
   connectedPhone: null,
   connectedName: null,
@@ -33,6 +36,24 @@ const waState = {
   systemPromptProvider: null,
   messagesLog: []
 };
+
+// Suscriptores en espera de eventos de QR o conexión (para mantener vivo el contenedor Serverless)
+const statusWaiters = new Set();
+function notifyStatusWaiters(eventType) {
+  for (const resolver of statusWaiters) {
+    try {
+      resolver(eventType);
+    } catch (_) {}
+  }
+  statusWaiters.clear();
+}
+
+function configureWhatsAppService(options = {}) {
+  if (options.callGeminiApi) waState.geminiCaller = options.callGeminiApi;
+  if (options.getBusinesses) waState.businessesProvider = options.getBusinesses;
+  if (options.getSystemPrompt) waState.systemPromptProvider = options.getSystemPrompt;
+  if (options.messagesLog) waState.messagesLog = options.messagesLog;
+}
 
 // Memoria conversacional multi-turno por usuario de WhatsApp (máx. 8 mensajes por contacto)
 const waConversationMemory = new Map();
@@ -96,7 +117,10 @@ async function startWhatsAppSocket(options = {}) {
   waState.initPromise = (async () => {
     try {
       const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-      const { version, isLatest } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307], isLatest: true }));
+      const { version, isLatest } = await Promise.race([
+        fetchLatestBaileysVersion(),
+        new Promise(resolve => setTimeout(() => resolve({ version: [2, 3000, 1015901307], isLatest: true }), 1500))
+      ]).catch(() => ({ version: [2, 3000, 1015901307], isLatest: true }));
 
       console.log(`[WhatsApp Service] Iniciando Baileys v${version.join('.')} (Última: ${isLatest})...`);
 
@@ -107,7 +131,8 @@ async function startWhatsAppSocket(options = {}) {
         printQRInTerminal: false,
         browser: ['BuscaYa AI Concierge', 'Chrome', '1.0.0'],
         syncFullHistory: false,
-        generateHighQualityLinkPreview: true
+        generateHighQualityLinkPreview: true,
+        connectTimeoutMs: 20000
       });
 
       waState.sock = sock;
@@ -121,6 +146,7 @@ async function startWhatsAppSocket(options = {}) {
 
         if (qr) {
           waState.qrRaw = qr;
+          waState.qrGeneratedAt = Date.now();
           try {
             waState.qrDataUrl = await QRCode.toDataURL(qr, {
               width: 320,
@@ -132,6 +158,7 @@ async function startWhatsAppSocket(options = {}) {
             });
             waState.status = 'waiting';
             waState.lastUpdate = new Date().toISOString();
+            notifyStatusWaiters('qr');
             console.log('[WhatsApp Service] Código QR Oficial de WhatsApp Web generado y listo para escanear.');
           } catch (qrErr) {
             console.error('[WhatsApp Service] Error al generar DataURL de QR:', qrErr);
@@ -149,6 +176,7 @@ async function startWhatsAppSocket(options = {}) {
           waState.connectedPhone = `+${cleanNumber}`;
           waState.connectedName = sock.user?.name || 'BuscaYa Master Phone';
           waState.lastUpdate = new Date().toISOString();
+          notifyStatusWaiters('connected');
 
           console.log(`[WhatsApp Service] ¡CONECTADO CON ÉXITO! Teléfono: ${waState.connectedPhone} (${waState.connectedName})`);
         }
@@ -166,11 +194,11 @@ async function startWhatsAppSocket(options = {}) {
             waState.qrRaw = null;
             waState.qrDataUrl = null;
             waState.connectedPhone = null;
-            setTimeout(() => startWhatsAppSocket(), 2000);
+            setTimeout(() => startWhatsAppSocket(), 1500);
           } else {
             waState.status = 'connecting';
             waState.sock = null;
-            setTimeout(() => startWhatsAppSocket(), 3000);
+            setTimeout(() => startWhatsAppSocket(), 2000);
           }
         }
       });
@@ -436,6 +464,7 @@ async function requestPairingCode(phoneNumber) {
 async function disconnectWhatsApp() {
   if (waState.sock) {
     try {
+      waState.sock.ev.removeAllListeners();
       await waState.sock.logout();
     } catch (e) {
       try { waState.sock.end(); } catch (_) {}
@@ -446,22 +475,83 @@ async function disconnectWhatsApp() {
   waState.sock = null;
   waState.qrRaw = null;
   waState.qrDataUrl = null;
+  waState.qrGeneratedAt = 0;
   waState.pairingCode = null;
   waState.connectedPhone = null;
   waState.connectedName = null;
   waState.lastUpdate = new Date().toISOString();
 
-  // Reiniciar para ofrecer nuevo QR de inmediato
-  setTimeout(() => startWhatsAppSocket(), 1500);
+  // Reiniciar inmediatamente para ofrecer nuevo QR auténtico
+  startWhatsAppSocket().catch(() => {});
   return { success: true, message: "Sesión desconectada. Generando nuevo código QR..." };
 }
 
 /**
- * Reinicia la sesión para regenerar el código QR
+ * Asegura que el socket de Baileys esté activo y espera a que emita un QR real (2@...)
+ * o que complete la vinculación cuando el usuario escanea desde WhatsApp Business.
+ */
+async function ensureWhatsAppQrOrConnected({ waitMs = 6500, keepAlive = false } = {}) {
+  if (waState.status === 'connected' && waState.sock) {
+    return getWhatsAppStatus();
+  }
+
+  // Si no hay socket activo o el QR tiene más de 55 segundos sin renovarse, iniciar socket
+  const qrAgeMs = waState.qrGeneratedAt ? (Date.now() - waState.qrGeneratedAt) : Infinity;
+  if (!waState.sock || waState.status === 'disconnected' || (waState.status !== 'connected' && qrAgeMs > 55000)) {
+    startWhatsAppSocket().catch(err => {
+      console.warn('[WhatsApp Service] Error al iniciar socket en ensureWhatsAppQrOrConnected:', err.message);
+    });
+  }
+
+  // Si aún no tenemos un QR real (2@...) ni está conectado, esperar hasta waitMs
+  if (waState.status !== 'connected' && (!waState.qrDataUrl || !waState.qrRaw)) {
+    await new Promise(resolve => {
+      const timer = setTimeout(() => {
+        statusWaiters.delete(onEvent);
+        resolve();
+      }, waitMs);
+      function onEvent() {
+        clearTimeout(timer);
+        statusWaiters.delete(onEvent);
+        resolve();
+      }
+      statusWaiters.add(onEvent);
+    });
+  } else if (keepAlive && waState.status === 'waiting') {
+    // Mantener vivo el Event Loop de Node.js en Vercel Serverless durante 5.2s mientras el usuario escanea el QR
+    // Si el usuario escanea el QR en su teléfono, el evento 'connection === open' resuelve de inmediato
+    await new Promise(resolve => {
+      const timer = setTimeout(() => {
+        statusWaiters.delete(onEvent);
+        resolve();
+      }, 5200);
+      function onEvent() {
+        clearTimeout(timer);
+        statusWaiters.delete(onEvent);
+        resolve();
+      }
+      statusWaiters.add(onEvent);
+    });
+  }
+
+  return getWhatsAppStatus();
+}
+
+/**
+ * Reinicia la sesión para regenerar el código QR oficial de Baileys
  */
 async function restartWhatsAppSession() {
   await disconnectWhatsApp();
-  return { success: true, message: "Sesión reiniciada. Esperando nuevo código QR..." };
+  const statusObj = await ensureWhatsAppQrOrConnected({ waitMs: 7000, keepAlive: false });
+  return {
+    success: true,
+    status: statusObj.status,
+    qr: statusObj.qr,
+    qrRaw: statusObj.qrRaw,
+    message: statusObj.qr
+      ? "Nuevo código QR oficial de WhatsApp Web generado con éxito."
+      : "Sesión reiniciada. Generando código QR oficial..."
+  };
 }
 
 /**
@@ -471,6 +561,8 @@ function getWhatsAppStatus() {
   return {
     status: waState.status,
     qr: waState.qrDataUrl,
+    qrRaw: waState.qrRaw,
+    qrGeneratedAt: waState.qrGeneratedAt,
     pairingCode: waState.pairingCode,
     connectedPhone: waState.connectedPhone,
     connectedName: waState.connectedName,
@@ -496,7 +588,9 @@ async function sendMessage(phoneNumber, text) {
 }
 
 module.exports = {
+  configureWhatsAppService,
   startWhatsAppSocket,
+  ensureWhatsAppQrOrConnected,
   getWhatsAppStatus,
   getLiveStatus: getWhatsAppStatus,
   sendMessage,

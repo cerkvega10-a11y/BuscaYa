@@ -2029,24 +2029,10 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   if (req.method === 'GET' && pathname === '/api/whatsapp/qr-status') {
     (async () => {
       try {
-        let statusObj = waService
-          ? waService.getWhatsAppStatus()
-          : { status: 'waiting', qr: null };
-
-        // Si el socket Baileys no tiene un QR en memoria (ej. en entorno Serverless Vercel),
-        // emitir siempre un QR válido en formato Base64 (data:image/png;base64,...) junto con el estado de Meta Cloud API
-        if (statusObj.status !== 'connected' && (!statusObj.qr || !statusObj.qr.startsWith('data:image/'))) {
-          const qrPayload = `https://wa.me/qr/BUSCAYA-OFFICIAL-${Math.floor(Date.now() / 30000)}`;
-          if (QRCodeLib && typeof QRCodeLib.toDataURL === 'function') {
-            statusObj.qr = await QRCodeLib.toDataURL(qrPayload, {
-              errorCorrectionLevel: 'M',
-              margin: 2,
-              width: 300,
-              color: { dark: '#075E54', light: '#FFFFFF' }
-            });
-            statusObj.status = 'waiting';
-          }
-        }
+        const keepAlive = parsedUrl.searchParams.get('keepAlive') === '1';
+        let statusObj = waService && typeof waService.ensureWhatsAppQrOrConnected === 'function'
+          ? await waService.ensureWhatsAppQrOrConnected({ waitMs: 6500, keepAlive })
+          : (waService ? waService.getWhatsAppStatus() : { status: 'waiting', qr: null });
 
         statusObj.metaCloudApi = {
           connected: true,
@@ -2073,24 +2059,15 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   if (req.method === 'POST' && pathname === '/api/whatsapp/restart-session') {
     (async () => {
       try {
-        let result = { success: true, message: 'Sesión QR regenerada con éxito' };
-        if (waService && !process.env.VERCEL) {
+        let result = { success: true, status: 'waiting', qr: null, message: 'Generando código QR oficial de WhatsApp Web...' };
+        if (waService && typeof waService.restartWhatsAppSession === 'function') {
           result = await waService.restartWhatsAppSession();
-        }
-        const qrPayload = `https://wa.me/qr/BUSCAYA-REFRESH-${Date.now()}`;
-        if (QRCodeLib && typeof QRCodeLib.toDataURL === 'function') {
-          result.qr = await QRCodeLib.toDataURL(qrPayload, {
-            errorCorrectionLevel: 'M',
-            margin: 2,
-            width: 300,
-            color: { dark: '#075E54', light: '#FFFFFF' }
-          });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: true, message: 'Nuevo QR generado localmente' }));
+        res.end(JSON.stringify({ success: false, status: 'waiting', qr: null, message: err.message }));
       }
     })();
     return;
@@ -2538,6 +2515,17 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   });
 });
 
+if (waService && typeof waService.configureWhatsAppService === 'function') {
+  waService.configureWhatsAppService({
+    callGeminiApi,
+    getBusinesses: () => SERVER_BUSINESSES,
+    getSystemPrompt: () => {
+      return CURRENT_SYSTEM_PROMPT || "Eres BuscaYa, el asistente virtual oficial en WhatsApp para encontrar los mejores negocios locales en México. Siempre saluda con amabilidad y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞, 🕒, ✨, 🔧). Recomienda negocios verificados con su nombre, colonia, municipio, horario y teléfono.";
+    },
+    messagesLog: WHATSAPP_MESSAGES_LOG
+  });
+}
+
 if (require.main === module && !process.env.VERCEL) {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n======================================================`);
@@ -2552,14 +2540,7 @@ if (require.main === module && !process.env.VERCEL) {
 
     // Iniciar servicio Baileys Multi-Device para vinculación real de WhatsApp
     if (waService) {
-      waService.startWhatsAppSocket({
-        callGeminiApi,
-        getBusinesses: () => SERVER_BUSINESSES,
-        getSystemPrompt: () => {
-          return CURRENT_SYSTEM_PROMPT || "Eres BuscaYa, el asistente virtual oficial en WhatsApp para encontrar los mejores negocios locales en México. Siempre saluda con amabilidad y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞, 🕒, ✨, 🔧). Recomienda negocios verificados con su nombre, colonia, municipio, horario y teléfono.";
-        },
-        messagesLog: WHATSAPP_MESSAGES_LOG
-      }).catch(err => {
+      waService.startWhatsAppSocket().catch(err => {
         console.warn('[WhatsApp Socket Startup Warning]:', err.message);
       });
     }

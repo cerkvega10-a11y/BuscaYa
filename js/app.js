@@ -2352,6 +2352,9 @@ function switchWaPairingMethod(method) {
   }
 }
 
+let waStatusFetchInFlight = false;
+let waHasRenderedOfficialQr = false;
+
 function setWhatsAppQrImageSafe(qrDataUrl) {
   const qrImg = document.getElementById("waMasterQrImg");
   const loadingState = document.getElementById("waQrLoadingState");
@@ -2359,19 +2362,23 @@ function setWhatsAppQrImageSafe(qrDataUrl) {
 
   const validSrc = (qrDataUrl && typeof qrDataUrl === "string" && qrDataUrl.startsWith("data:image/"))
     ? qrDataUrl
-    : (typeof generateWhatsAppWebQrUrl === "function" ? generateWhatsAppWebQrUrl() : "");
+    : "";
 
-  if (validSrc && validSrc.startsWith("data:image/")) {
+  if (validSrc) {
     qrImg.src = validSrc;
     qrImg.classList.remove("hidden");
     if (loadingState) loadingState.classList.add("hidden");
+    waHasRenderedOfficialQr = true;
   } else {
     qrImg.classList.add("hidden");
     if (loadingState) loadingState.classList.remove("hidden");
+    waHasRenderedOfficialQr = false;
   }
 }
 
 async function fetchWhatsAppLiveStatus() {
+  if (waStatusFetchInFlight) return;
+
   const qrImg = document.getElementById("waMasterQrImg");
   const qrOverlay = document.getElementById("waConnectedOverlay");
   const qrLaser = document.getElementById("qrLaserLine");
@@ -2392,10 +2399,14 @@ async function fetchWhatsAppLiveStatus() {
     setWhatsAppQrImageSafe(null);
   }
 
+  waStatusFetchInFlight = true;
   try {
-    const res = await fetch("/api/whatsapp/qr-status");
+    const endpoint = waHasRenderedOfficialQr
+      ? "/api/whatsapp/qr-status?keepAlive=1"
+      : "/api/whatsapp/qr-status";
+    const res = await fetch(endpoint);
     if (!res.ok) {
-      setWhatsAppQrImageSafe(null);
+      if (!waHasRenderedOfficialQr) setWhatsAppQrImageSafe(null);
       return;
     }
     const data = await res.json();
@@ -2408,7 +2419,7 @@ async function fetchWhatsAppLiveStatus() {
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
       if (phoneDisplay) phoneDisplay.textContent = data.connectedPhone || "Teléfono Oficial Vinculado";
 
-      if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "WhatsApp Bot";
+      if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "WhatsApp Business Bot";
       if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-battery-full text-emerald-500"></i> <span>${data.batteryLevel || 95}%</span>`;
       if (telemetryLatency) telemetryLatency.textContent = `${data.latencyMs || 35} ms`;
       if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100%";
@@ -2417,23 +2428,25 @@ async function fetchWhatsAppLiveStatus() {
       if (qrOverlay) qrOverlay.classList.add("hidden");
       if (qrLaser) qrLaser.classList.remove("hidden");
 
-      if (statusPill) statusPill.textContent = "Listo para Escanear (QR Base64 Oficial)";
+      if (statusPill) statusPill.textContent = "Listo para Escanear con WhatsApp Business";
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-ping";
 
-      if (telemetryDevice) telemetryDevice.textContent = "Meta Cloud API + QR Activo";
+      if (telemetryDevice) telemetryDevice.textContent = "WhatsApp Multi-Device Activo";
       if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-battery-full text-emerald-500"></i> <span>98%</span>`;
       if (telemetryLatency) telemetryLatency.textContent = `28 ms`;
       if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100%";
     } else {
-      setWhatsAppQrImageSafe(null);
-      if (statusPill) statusPill.textContent = "Listo para Escanear (QR Oficial)";
-      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse";
+      if (!waHasRenderedOfficialQr) setWhatsAppQrImageSafe(null);
+      if (statusPill) statusPill.textContent = "Generando QR Oficial de WhatsApp...";
+      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-amber-400 animate-pulse";
       if (qrOverlay) qrOverlay.classList.add("hidden");
       if (qrLaser) qrLaser.classList.remove("hidden");
     }
   } catch (err) {
-    setWhatsAppQrImageSafe(null);
+    if (!waHasRenderedOfficialQr) setWhatsAppQrImageSafe(null);
     console.warn("[WhatsApp Status Fetch Warning]", err);
+  } finally {
+    waStatusFetchInFlight = false;
   }
 }
 
@@ -2441,30 +2454,32 @@ function updateWhatsAppMasterUI(session) {
   setWhatsAppQrImageSafe(null);
   fetchWhatsAppLiveStatus();
   if (!waStatusPollingTimer) {
-    waStatusPollingTimer = setInterval(fetchWhatsAppLiveStatus, 4000);
+    waStatusPollingTimer = setInterval(fetchWhatsAppLiveStatus, 2500);
   }
 }
 
 async function generateNewMasterQr() {
   const loadingState = document.getElementById("waQrLoadingState");
   const qrImg = document.getElementById("waMasterQrImg");
+  waHasRenderedOfficialQr = false;
   if (qrImg) qrImg.classList.add("hidden");
   if (loadingState) loadingState.classList.remove("hidden");
 
-  showToast("Solicitando nuevo Código QR oficial a WhatsApp...", "info");
+  showToast("Conectando con WhatsApp Web para generar nuevo QR oficial...", "info");
   try {
     const res = await fetch("/api/whatsapp/restart-session", { method: "POST" });
     const data = await res.json();
     if (data.qr && data.qr.startsWith("data:image/")) {
       setWhatsAppQrImageSafe(data.qr);
+      showToast("¡Nuevo código QR oficial de WhatsApp listo para escanear!", "success");
     } else {
       setWhatsAppQrImageSafe(null);
+      showToast("Generando código QR oficial de WhatsApp...", "info");
     }
-    showToast("¡Nuevo código QR oficial en Base64 listo para escanear!", "success");
-    setTimeout(fetchWhatsAppLiveStatus, 800);
+    setTimeout(fetchWhatsAppLiveStatus, 600);
   } catch (err) {
     setWhatsAppQrImageSafe(null);
-    showToast("Código QR regenerado localmente.", "info");
+    showToast("Reintentando conexión con WhatsApp Web...", "warning");
   }
 }
 
