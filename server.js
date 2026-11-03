@@ -1803,9 +1803,17 @@ const server = http.createServer(async (req, res) => {
         ).join("\n");
 
         const visualFormatRule = `REGLA ESTRICTA DE FORMATO VISUAL (WHATSAPP):
-Tienes estrictamente prohibido responder con párrafos densos o bloques de texto largos. Toda la información, recomendaciones, pasos o descripciones que entregues debes estructurarla OBLIGATORIAMENTE en formato de lista con viñetas (bullet points). 
-- Cada viñeta debe comenzar siempre con un emoji representativo y coherente con el punto que estás mencionando.
-- Utiliza negritas (*texto*) para resaltar los nombres de los negocios o conceptos clave dentro de la viñeta.
+Tienes estrictamente prohibido responder con párrafos densos o bloques de texto largos.
+PROHIBIDO USAR GUIONES O BULLETS (- o •). Las viñetas deben ser EXCLUSIVAMENTE emojis temáticos al inicio de la línea.
+Toda la información, recomendaciones o descripciones que entregues debes estructurarla OBLIGATORIAMENTE en líneas limpias encabezadas DIRECTAMENTE por un emoji:
+🏢 *[Nombre del negocio]*
+🛠️ *Giro:* [Especialidad]
+📍 *Ubicación:* [Colonia, Alcaldía]
+🕒 *Horario:* [Estado u horario]
+📞 *Contacto:* [Teléfono o WhatsApp]
+💡 *Detalles:* [Dato relevante o servicio]
+- Cada línea debe iniciar directamente con su emoji correspondiente, SIN guiones previos.
+- Utiliza negritas (*texto*) para resaltar los nombres de los negocios o conceptos clave.
 - Mantén cada punto conciso y directo al grano, optimizado para lectura rápida en la pantalla de un celular.`;
 
         // System Instruction estricta: Combina el prompt del SuperAdmin con las directrices de BD y formato visual
@@ -2118,9 +2126,17 @@ Tu objetivo es entablar una conversación fluida, natural y humana con el usuari
 6. REGLA INVIOLABLE: ÚNICAMENTE puedes recomendar comercios de la siguiente lista oficial de BuscaYa. Tienes estrictamente PROHIBIDO inventar negocios o teléfonos falsos. Si no hay farmacia o ferretería en esa colonia exacta, admítelo con honestidad y sugiere la más cercana disponible en BuscaYa.
 
 REGLA ESTRICTA DE FORMATO VISUAL (WHATSAPP):
-Tienes estrictamente prohibido responder con párrafos densos o bloques de texto largos. Toda la información, recomendaciones, pasos o descripciones que entregues debes estructurarla OBLIGATORIAMENTE en formato de lista con viñetas (bullet points). 
-- Cada viñeta debe comenzar siempre con un emoji representativo y coherente con el punto que estás mencionando.
-- Utiliza negritas (*texto*) para resaltar los nombres de los negocios o conceptos clave dentro de la viñeta.
+Tienes estrictamente prohibido responder con párrafos densos o bloques de texto largos.
+PROHIBIDO USAR GUIONES O BULLETS (- o •). Las viñetas deben ser EXCLUSIVAMENTE emojis temáticos al inicio de la línea.
+Toda la información, recomendaciones o descripciones que entregues debes estructurarla OBLIGATORIAMENTE en líneas limpias encabezadas DIRECTAMENTE por un emoji:
+🏢 *[Nombre del negocio]*
+🛠️ *Giro:* [Especialidad]
+📍 *Ubicación:* [Colonia, Alcaldía]
+🕒 *Horario:* [Estado u horario]
+📞 *Contacto:* [Teléfono o WhatsApp]
+💡 *Detalles:* [Dato relevante o servicio]
+- Cada línea debe iniciar directamente con su emoji correspondiente, SIN guiones previos.
+- Utiliza negritas (*texto*) para resaltar los nombres de los negocios o conceptos clave.
 - Mantén cada punto conciso y directo al grano, optimizado para lectura rápida en la pantalla de un celular.
 
 CATÁLOGO OFICIAL DE NEGOCIOS VERIFICADOS EN BUSCAYA:

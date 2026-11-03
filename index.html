@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuscaYa | El Directorio con Inteligencia Artificial en tu WhatsApp</title>
   
+  <!-- Favicon y Logos Oficiales BuscaYa -->
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="shortcut icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -47,17 +52,8 @@
       <div class="flex items-center justify-between h-16 sm:h-20">
         
         <!-- Brand Logo -->
-        <a href="javascript:void(0)" onclick="navigateTo('landing')" class="flex items-center space-x-3 group">
-          <div class="w-10 h-10 rounded-full bg-[#25D366] flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-105 transition-transform">
-            <i class="fa-brands fa-whatsapp"></i>
-          </div>
-          <div class="flex flex-col">
-            <div class="flex items-center space-x-1">
-              <span class="text-2xl font-black tracking-tight text-white">Busca<span class="text-[#25D366]">Ya</span></span>
-              <span class="bg-[#25D366]/20 text-[#25D366] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#25D366]/40 uppercase tracking-wider">AI</span>
-            </div>
-            <span class="text-[10px] text-gray-200 tracking-wider -mt-1 font-medium">Directorio Inteligente</span>
-          </div>
+        <a href="javascript:void(0)" onclick="navigateTo('landing')" class="flex items-center space-x-3 group py-1">
+          <img src="assets/logo.png" alt="BuscaYa Directorio en WhatsApp" class="h-9 sm:h-11 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform">
         </a>
 
         <!-- Desktop Navigation Links (Landing View) -->
@@ -454,15 +450,48 @@
 
         </div>
 
-        <!-- Banner CTA -->
-        <div class="mt-16 bg-gradient-to-r from-[#075E54] to-[#128C7E] rounded-3xl p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div class="space-y-2 text-center md:text-left">
-            <h3 class="text-2xl sm:text-3xl font-extrabold">¿Tienes un negocio y quieres recibir clientes de WhatsApp hoy?</h3>
-            <p class="text-sm text-gray-200">Activa tu periodo de prueba de 7 días. No requiere tarjeta de crédito.</p>
+        <!-- Banner Promoción 7 Días Gratis con Imagen Oficial -->
+        <div class="mt-16 bg-gradient-to-br from-[#075E54] via-[#0d7367] to-[#128C7E] rounded-3xl p-6 sm:p-10 text-white shadow-2xl border border-[#25D366]/30 overflow-hidden relative">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            <div class="md:col-span-5 flex justify-center">
+              <div class="relative group max-w-[320px] sm:max-w-[360px]">
+                <div class="absolute -inset-1 bg-gradient-to-r from-[#25D366] to-amber-400 rounded-3xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
+                <img src="assets/promo-7dias.jpg" alt="¡Prueba la Plataforma! 7 Días Gratis en BuscaYa" class="relative rounded-2xl shadow-2xl w-full h-auto object-cover transform group-hover:scale-[1.02] transition-transform duration-300 border-2 border-white/20">
+              </div>
+            </div>
+            <div class="md:col-span-7 space-y-4 text-center md:text-left">
+              <div class="inline-flex items-center space-x-2 bg-amber-400/20 border border-amber-300/40 px-3.5 py-1 rounded-full text-xs font-black text-amber-300 uppercase tracking-wider">
+                <i class="fa-solid fa-fire text-amber-400"></i>
+                <span>Promoción Especial de Lanzamiento</span>
+              </div>
+              <h3 class="text-3xl sm:text-4xl font-black leading-tight text-white">
+                ¡Prueba la Plataforma <span class="text-[#25D366]">7 Días GRATIS!</span>
+              </h3>
+              <p class="text-sm sm:text-base text-gray-200 leading-relaxed">
+                ¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.
+              </p>
+              <div class="pt-2 flex flex-col sm:flex-row items-center gap-3 justify-center md:justify-start">
+                <button type="button" onclick="navigateTo('register')" class="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-[#25D366] text-[#075E54] font-black text-sm shadow-xl hover:bg-[#20bd5a] hover:scale-105 transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                  <i class="fa-solid fa-circle-check text-base"></i>
+                  <span>¡Regístrate Hoy!</span>
+                </button>
+                <a href="https://wa.me/message/V7Z3CCNFKGV5C1" target="_blank" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-all flex items-center justify-center space-x-2">
+                  <i class="fa-brands fa-whatsapp text-[#25D366] text-base"></i>
+                  <span>Probar Concierge en WhatsApp</span>
+                </a>
+              </div>
+              <div class="pt-2 border-t border-white/10 flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-gray-300">
+                <span class="flex items-center space-x-1.5">
+                  <i class="fa-solid fa-shield-halved text-emerald-300"></i>
+                  <span>Activación inmediata</span>
+                </span>
+                <span class="flex items-center space-x-1.5">
+                  <i class="fa-solid fa-code text-[#25D366]"></i>
+                  <span>Desarrollado y bajo licencia de <b>Neural Media House</b></span>
+                </span>
+              </div>
+            </div>
           </div>
-          <button onclick="navigateTo('register')" class="px-8 py-4 rounded-xl bg-[#25D366] text-[#075E54] font-black hover:bg-[#20bd5a] hover:scale-105 transition-all shadow-lg whitespace-nowrap">
-            Comenzar Demo de 7 Días
-          </button>
         </div>
 
       </div>
@@ -3786,22 +3815,24 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
         
         <div class="space-y-3">
           <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white text-base">
-              <i class="fa-brands fa-whatsapp"></i>
-            </div>
-            <span class="text-2xl font-black">Busca<span class="text-[#25D366]">Ya</span></span>
+            <img src="assets/logo.png" alt="BuscaYa Directorio en WhatsApp" class="h-9 w-auto object-contain drop-shadow-sm">
           </div>
           <p class="text-xs text-gray-300 leading-relaxed">
-            El primer directorio de negocios en México operado 100% a través de Inteligencia Artificial en WhatsApp.
+            El primer directorio inteligente en México operado 100% con IA en WhatsApp. Conectando clientes con negocios locales al instante.
           </p>
+          <div class="pt-1 text-[11px] text-emerald-300 font-semibold flex items-center space-x-1">
+            <i class="fa-solid fa-code"></i>
+            <span>Desarrollo y Licencia: <b>Neural Media House</b></span>
+          </div>
         </div>
 
         <div>
           <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Navegación</h4>
           <ul class="text-xs space-y-2 text-gray-300">
             <li><a href="javascript:void(0)" onclick="navigateTo('landing')" class="hover:text-[#25D366]">Inicio</a></li>
-            <li><a href="javascript:void(0)" onclick="navigateTo('register')" class="hover:text-[#25D366]">Prueba 7 Días</a></li>
+            <li><a href="javascript:void(0)" onclick="navigateTo('register')" class="hover:text-[#25D366]">Prueba 7 Días Gratis</a></li>
             <li><a href="javascript:void(0)" onclick="openLoginModal()" class="hover:text-[#25D366]">Iniciar Sesión</a></li>
+            <li><a href="aviso-de-privacidad.html" target="_blank" class="text-emerald-300 hover:text-white font-bold flex items-center space-x-1"><i class="fa-solid fa-shield-halved text-[10px]"></i><span>Aviso de Privacidad</span></a></li>
           </ul>
         </div>
 
@@ -3822,8 +3853,15 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
 
       </div>
 
-      <div class="mt-8 pt-6 border-t border-white/10 text-center text-xs text-gray-400">
-        © 2026 BuscaYa SaaS Inc. Todos los derechos reservados. Desarrollado con tecnología de IA Conversacional.
+      <div class="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-3">
+        <div>
+          © 2026 BuscaYa. Plataforma desarrollada, operada y bajo licencia oficial de <b class="text-white">Neural Media House</b>. Todos los derechos reservados.
+        </div>
+        <div class="flex items-center space-x-4">
+          <a href="aviso-de-privacidad.html" target="_blank" class="text-gray-300 hover:text-[#25D366] transition-colors underline">Aviso de Privacidad</a>
+          <span>•</span>
+          <span class="text-gray-400">LPU IA & Meta WhatsApp Cloud API</span>
+        </div>
       </div>
     </div>
   </footer>
