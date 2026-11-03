@@ -31,73 +31,168 @@ function getMercadoPagoInstance() {
 }
 
 // ==========================================================
-// INICIALIZACIÓN AL CARGAR LA PÁGINA
+// INICIALIZACIÓN AL CARGAR LA PÁGINA (CON AISLAMIENTO DE ERRORES)
 // ==========================================================
-document.addEventListener("DOMContentLoaded", () => {
-  // Inicializar base de datos con datos semilla si está vacía
-  initDatabase();
+function bindCoreUiEventListeners() {
+  const btnLogin = document.getElementById("btnLogin");
+  if (btnLogin && !btnLogin.dataset.bound) {
+    btnLogin.dataset.bound = "true";
+    btnLogin.addEventListener("click", (e) => {
+      e.preventDefault();
+      openLoginModal();
+    });
+  }
 
-  // Inicializar selectores en cascada para Registro Público (Restringido a Zonas Activas)
-  initCascadingGeo(
-    "regState",
-    "regMunicipality",
-    "regNeighborhood",
-    "regCustomNeighborhoodContainer",
-    "regCustomNeighborhood",
-    { restrictByCoverage: true }
-  );
+  const btnFooterLogin = document.getElementById("btnFooterLogin");
+  if (btnFooterLogin && !btnFooterLogin.dataset.bound) {
+    btnFooterLogin.dataset.bound = "true";
+    btnFooterLogin.addEventListener("click", (e) => {
+      e.preventDefault();
+      openLoginModal();
+    });
+  }
 
-  // Inicializar selectores en cascada para Panel de Negocio (Cliente)
-  initCascadingGeo(
-    "clientEditState",
-    "clientEditMunicipality",
-    "clientEditNeighborhood",
-    "clientCustomColContainer",
-    "clientCustomColInput"
-  );
+  const btnNavFreeTrial = document.getElementById("btnNavFreeTrial");
+  if (btnNavFreeTrial && !btnNavFreeTrial.dataset.bound) {
+    btnNavFreeTrial.dataset.bound = "true";
+    btnNavFreeTrial.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateTo("register");
+    });
+  }
 
-  // Inicializar selectores en cascada para Modal Alta Admin
-  initCascadingGeo(
-    "adminAddState",
-    "adminAddMun",
-    "adminAddCol",
-    "adminAddCustomColContainer",
-    "adminAddCustomColInput"
-  );
+  const btnHeroFreeTrial = document.getElementById("btnHeroFreeTrial");
+  if (btnHeroFreeTrial && !btnHeroFreeTrial.dataset.bound) {
+    btnHeroFreeTrial.dataset.bound = "true";
+    btnHeroFreeTrial.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateTo("register");
+    });
+  }
 
-  // Inicializar selectores en cascada para Modal Edición Admin
-  initCascadingGeo(
-    "adminEditState",
-    "adminEditMun",
-    "adminEditCol",
-    "adminEditCustomColContainer",
-    "adminEditCustomColInput"
-  );
+  const btnHeroLiveChat = document.getElementById("btnHeroLiveChat");
+  if (btnHeroLiveChat && !btnHeroLiveChat.dataset.bound) {
+    btnHeroLiveChat.dataset.bound = "true";
+    btnHeroLiveChat.addEventListener("click", (e) => {
+      e.preventDefault();
+      openInteractiveSimulator();
+    });
+  }
 
-  // Poblar selectores de filtro en Control Maestro
-  populateAdminFilters();
+  const btnHeroSimulatorSend = document.getElementById("btnHeroSimulatorSend");
+  if (btnHeroSimulatorSend && !btnHeroSimulatorSend.dataset.bound) {
+    btnHeroSimulatorSend.dataset.bound = "true";
+    btnHeroSimulatorSend.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleSimulatorSend();
+    });
+  }
 
-  // Inicializar módulo WhatsApp Maestro
-  initWhatsAppMasterModule();
-
-  // Inicializar SDK de Mercado Pago
-  getMercadoPagoInstance();
-
-  // Inicializar Módulo de Entrenamiento de IA y Health Check
-  initAiTrainingModule();
-
-  // Verificar si hay sesión activa previa
-  checkSessionState();
-
-  // Si no hay sesión o ruta específica, ir a landing
-  const currentUser = getCurrentUser();
-  if (currentUser) {
-    if (currentUser.role === "admin") {
-      navigateTo("admin-dashboard");
-    } else {
-      navigateTo("business-panel");
+  // Permitir cerrar modales con tecla Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeLoginModal();
+      closeInteractiveSimulator();
+      if (typeof closeShareLocationModal === "function") closeShareLocationModal();
     }
-  } else {
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // 0. Enlazar listeners de botones principales de inmediato con validación de DOM
+  try {
+    bindCoreUiEventListeners();
+  } catch (e) {
+    console.error("[Init UI Listeners Error]", e);
+  }
+
+  // 1. Inicializar base de datos con datos semilla si está vacía
+  try {
+    if (typeof initDatabase === "function") initDatabase();
+  } catch (e) {
+    console.error("[Init Database Error]", e);
+  }
+
+  // 2. Inicializar selectores geográficos en cascada
+  try {
+    if (typeof initCascadingGeo === "function") {
+      initCascadingGeo(
+        "regState",
+        "regMunicipality",
+        "regNeighborhood",
+        "regCustomNeighborhoodContainer",
+        "regCustomNeighborhood",
+        { restrictByCoverage: true }
+      );
+      initCascadingGeo(
+        "clientEditState",
+        "clientEditMunicipality",
+        "clientEditNeighborhood",
+        "clientCustomColContainer",
+        "clientCustomColInput"
+      );
+      initCascadingGeo(
+        "adminAddState",
+        "adminAddMun",
+        "adminAddCol",
+        "adminAddCustomColContainer",
+        "adminAddCustomColInput"
+      );
+      initCascadingGeo(
+        "adminEditState",
+        "adminEditMun",
+        "adminEditCol",
+        "adminEditCustomColContainer",
+        "adminEditCustomColInput"
+      );
+    }
+  } catch (e) {
+    console.error("[Init Cascading Geo Error]", e);
+  }
+
+  // 3. Poblar selectores de filtro en Control Maestro
+  try {
+    populateAdminFilters();
+  } catch (e) {
+    console.error("[Init Admin Filters Error]", e);
+  }
+
+  // 4. Inicializar módulo WhatsApp Maestro
+  try {
+    initWhatsAppMasterModule();
+  } catch (e) {
+    console.error("[Init WhatsApp Module Error]", e);
+  }
+
+  // 5. Inicializar SDK de Mercado Pago
+  try {
+    getMercadoPagoInstance();
+  } catch (e) {
+    console.error("[Init MercadoPago Error]", e);
+  }
+
+  // 6. Inicializar Módulo de Entrenamiento de IA y Health Check
+  try {
+    initAiTrainingModule();
+  } catch (e) {
+    console.error("[Init AI Training Error]", e);
+  }
+
+  // 7. Verificar si hay sesión activa previa y enrutar
+  try {
+    checkSessionState();
+    const currentUser = typeof getCurrentUser === "function" ? getCurrentUser() : null;
+    if (currentUser) {
+      if (currentUser.role === "admin") {
+        navigateTo("admin-dashboard");
+      } else {
+        navigateTo("business-panel");
+      }
+    } else {
+      navigateTo("landing");
+    }
+  } catch (e) {
+    console.error("[Init Session Routing Error]", e);
     navigateTo("landing");
   }
 });
@@ -4950,4 +5045,21 @@ async function handleSandboxVoiceNote() {
     }
   }, 900);
 }
+
+// Exponer funciones principales en el ámbito global (window) para garantizar interactividad total
+window.navigateTo = navigateTo;
+window.openLoginModal = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.handleLoginSubmit = handleLoginSubmit;
+window.openInteractiveSimulator = openInteractiveSimulator;
+window.closeInteractiveSimulator = closeInteractiveSimulator;
+window.handleSimulatorSend = handleSimulatorSend;
+window.handleModalChatSend = handleModalChatSend;
+window.handleSandboxSend = handleSandboxSend;
+window.clearSandboxChat = clearSandboxChat;
+window.openShareLocationModal = openShareLocationModal;
+window.closeShareLocationModal = closeShareLocationModal;
+
+console.log("App Inicializada");
+
 

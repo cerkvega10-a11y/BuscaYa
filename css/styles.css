@@ -185,3 +185,16 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.25s ease-out forwards;
 }
+
+/* Protección estricta contra capas invisibles, modales ocultos y loaders fantasma (Z-Index & Pointer Events) */
+.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+#toastNotification.translate-y-32 {
+  pointer-events: none !important;
+  visibility: hidden;
+}
+

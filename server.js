@@ -356,6 +356,23 @@ const MIME_TYPES = {
 };
 
 // ==============================================================
+// PRE-CARGA EXPLÍCITA DE ACTIVOS ESTÁTICOS (SOPORTE VERCEL NFT)
+// ==============================================================
+const BUNDLED_STATIC_FILES = {};
+try {
+  BUNDLED_STATIC_FILES['/index.html'] = fs.readFileSync(path.join(__dirname, 'index.html'));
+  BUNDLED_STATIC_FILES['/css/styles.css'] = fs.readFileSync(path.join(__dirname, 'css', 'styles.css'));
+  BUNDLED_STATIC_FILES['/js/geo-data.js'] = fs.readFileSync(path.join(__dirname, 'js', 'geo-data.js'));
+  BUNDLED_STATIC_FILES['/js/seed-data.js'] = fs.readFileSync(path.join(__dirname, 'js', 'seed-data.js'));
+  BUNDLED_STATIC_FILES['/js/google-sheets.js'] = fs.readFileSync(path.join(__dirname, 'js', 'google-sheets.js'));
+  BUNDLED_STATIC_FILES['/js/whatsapp-qr.js'] = fs.readFileSync(path.join(__dirname, 'js', 'whatsapp-qr.js'));
+  BUNDLED_STATIC_FILES['/js/auth-logic.js'] = fs.readFileSync(path.join(__dirname, 'js', 'auth-logic.js'));
+  BUNDLED_STATIC_FILES['/js/app.js'] = fs.readFileSync(path.join(__dirname, 'js', 'app.js'));
+} catch (staticPreloadErr) {
+  console.warn('[Server Static Preload Warning]', staticPreloadErr.message);
+}
+
+// ==============================================================
 // BASE DE DATOS EN SERVIDOR Y WORKER EN SEGUNDO PLANO (CRON JOB)
 // ==============================================================
 let SERVER_BUSINESSES = [];
@@ -2357,21 +2374,31 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
     return;
   }
 
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
+      if (BUNDLED_STATIC_FILES[reqPath]) {
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(BUNDLED_STATIC_FILES[reqPath]);
+        return;
+      }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found');
       return;
     }
-
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
     res.writeHead(200, { 'Content-Type': contentType });
     const stream = fs.createReadStream(filePath);
     stream.on('error', (streamErr) => {
       console.error('[Static Stream Error]', streamErr.message);
       if (!res.headersSent) {
+        if (BUNDLED_STATIC_FILES[reqPath]) {
+          res.writeHead(200, { 'Content-Type': contentType });
+          res.end(BUNDLED_STATIC_FILES[reqPath]);
+          return;
+        }
         res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
       }
       res.end();
