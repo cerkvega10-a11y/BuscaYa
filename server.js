@@ -25,9 +25,13 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Conexión WhatsApp Oficial vía Meta Cloud API (Webhook - Phone Number ID: 1455001214355994 | Tel: +52 56 5606 5182)
-// Módulo de vinculación por Código QR (Baileys) deshabilitado para arquitectura Serverless Vercel
-const waService = null;
+// Conexión WhatsApp Oficial (Baileys Multi-Device + Meta Cloud API Webhook | Tel: +52 56 5606 5182)
+let waService = null;
+try {
+  waService = require('./whatsapp-service.js');
+} catch (e) {
+  console.warn('[Server] WhatsApp Service no disponible aún:', e.message);
+}
 const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1455001214355994";
 const META_OFFICIAL_PHONE_DISPLAY = "+52 56 5606 5182";
 const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
@@ -2203,68 +2207,96 @@ ${JSON.stringify(activeBusinessesForAi, null, 2)}`;
   }
 
   // ==============================================================
-  // 9. ENDPOINTS DE CONEXIÓN OFICIAL META CLOUD API (WEBHOOK SIN QR)
+  // 9. ENDPOINTS DE VINCULACIÓN OFICIAL WHATSAPP BUSINESS (+52 56 5606 5182)
   // ==============================================================
   if (req.method === 'GET' && pathname === '/api/whatsapp/qr-status') {
-    const metaStatus = {
-      status: 'connected',
-      mode: 'meta_cloud_api',
-      qrDisabled: true,
-      qr: null,
-      qrRaw: null,
-      phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
-      connectedPhone: META_OFFICIAL_PHONE_DISPLAY,
-      connectedName: "Agente Oficial BuscaYa (+52 56 5606 5182)",
-      batteryLevel: 100,
-      latencyMs: 24,
-      lastUpdate: new Date().toISOString(),
-      metaCloudApi: {
-        connected: true,
-        phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
-        phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
-        status: "active",
-        webhookPath: "/api/whatsapp/webhook",
-        label: "Conexión Activa vía Meta Cloud API (Webhook)"
+    (async () => {
+      try {
+        const keepAlive = parsedUrl.searchParams.get('keepAlive') === '1';
+        let statusObj = waService && typeof waService.ensureWhatsAppQrOrConnected === 'function'
+          ? await waService.ensureWhatsAppQrOrConnected({ waitMs: 6500, keepAlive })
+          : (waService ? waService.getWhatsAppStatus() : { status: 'waiting', qr: null });
+
+        statusObj.metaCloudApi = {
+          connected: true,
+          phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
+          phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
+          status: "active",
+          webhookPath: "/api/whatsapp/webhook",
+          label: "Conexión Activa vía Meta Cloud API (Webhook)"
+        };
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(statusObj));
+      } catch (qrErr) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          status: 'waiting',
+          qr: null,
+          metaCloudApi: { connected: true, phoneNumberId: META_CLOUD_PHONE_NUMBER_ID, phoneNumber: META_OFFICIAL_PHONE_DISPLAY, status: "active" },
+          error: qrErr.message
+        }));
       }
-    };
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(metaStatus));
+    })();
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/whatsapp/restart-session') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      success: true,
-      status: 'connected',
-      mode: 'meta_cloud_api',
-      qrDisabled: true,
-      qr: null,
-      phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
-      message: 'Conexión Activa vía Meta Cloud API (Webhook). El módulo por Código QR está deshabilitado en producción Serverless.'
-    }));
+    (async () => {
+      try {
+        let result = { success: true, status: 'waiting', qr: null, message: 'Generando código QR oficial de WhatsApp Web...' };
+        if (waService && typeof waService.restartWhatsAppSession === 'function') {
+          result = await waService.restartWhatsAppSession();
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, status: 'waiting', qr: null, message: err.message }));
+      }
+    })();
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/whatsapp/request-pair-code') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      success: false,
-      mode: 'meta_cloud_api',
-      qrDisabled: true,
-      error: 'La plataforma opera exclusivamente mediante Meta Cloud API (Webhook - ID: 1455001214355994). No requiere vinculación por código ni QR.'
-    }));
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { phoneNumber } = JSON.parse(body || '{}');
+        const targetPhone = phoneNumber || '5215656065182';
+
+        if (!waService) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: 'Servicio no disponible' }));
+          return;
+        }
+
+        const code = await waService.requestPairingCode(targetPhone);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, pairingCode: code, phoneNumber: targetPhone }));
+      } catch (err) {
+        console.error('[WhatsApp Pairing Code Error]', err);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/whatsapp/disconnect') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      success: true,
-      status: 'connected',
-      mode: 'meta_cloud_api',
-      message: 'Conexión permanente gestionada vía Meta Cloud API (Webhook).'
-    }));
+    if (waService) {
+      waService.disconnectWhatsApp().then(result => {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result));
+      }).catch(err => {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      });
+    } else {
+      res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Servicio no disponible' }));
+    }
     return;
   }
 

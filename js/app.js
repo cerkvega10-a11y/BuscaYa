@@ -2453,15 +2453,33 @@ function switchWaPairingMethod(method) {
 let waStatusFetchInFlight = false;
 let waHasRenderedOfficialQr = false;
 
-function setWhatsAppQrImageSafe() {
-  // Módulo QR deshabilitado en producción Serverless — Conexión exclusiva vía Meta Cloud API (Webhook)
+function setWhatsAppQrImageSafe(qrDataUrl) {
   const qrImg = document.getElementById("waMasterQrImg");
   const loadingState = document.getElementById("waQrLoadingState");
-  if (qrImg) qrImg.classList.add("hidden");
-  if (loadingState) loadingState.classList.add("hidden");
+  if (!qrImg) return;
+
+  const validSrc = (qrDataUrl && typeof qrDataUrl === "string" && qrDataUrl.startsWith("data:image/"))
+    ? qrDataUrl
+    : "";
+
+  if (validSrc) {
+    qrImg.src = validSrc;
+    qrImg.classList.remove("hidden");
+    if (loadingState) loadingState.classList.add("hidden");
+    waHasRenderedOfficialQr = true;
+  } else {
+    qrImg.classList.add("hidden");
+    if (loadingState) loadingState.classList.remove("hidden");
+    waHasRenderedOfficialQr = false;
+  }
 }
 
 async function fetchWhatsAppLiveStatus() {
+  if (waStatusFetchInFlight) return;
+
+  const qrImg = document.getElementById("waMasterQrImg");
+  const qrOverlay = document.getElementById("waConnectedOverlay");
+  const qrLaser = document.getElementById("qrLaserLine");
   const statusPill = document.getElementById("waStatusText");
   const statusDot = document.getElementById("waStatusIndicatorDot");
   const phoneDisplay = document.getElementById("waConnectedPhoneDisplay");
@@ -2470,27 +2488,65 @@ async function fetchWhatsAppLiveStatus() {
   const telemetryLatency = document.getElementById("telemetryLatency");
   const telemetryWebhook = document.getElementById("telemetryWebhook");
 
-  setWhatsAppQrImageSafe();
+  waStatusFetchInFlight = true;
+  try {
+    const endpoint = waHasRenderedOfficialQr
+      ? "/api/whatsapp/qr-status?keepAlive=1"
+      : "/api/whatsapp/qr-status";
+    const res = await fetch(endpoint);
+    if (!res.ok) return;
+    const data = await res.json();
 
-  if (statusPill) statusPill.textContent = "+52 56 5606 5182 (ID: 1455001214355994)";
-  if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
-  if (phoneDisplay) phoneDisplay.textContent = "+52 56 5606 5182";
-  if (telemetryDevice) telemetryDevice.textContent = "Meta Cloud API";
-  if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-signal text-emerald-500"></i> <span>100% Cloud</span>`;
-  if (telemetryLatency) telemetryLatency.textContent = "24 ms";
-  if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100%";
+    if (data.status === "connected") {
+      if (qrOverlay) qrOverlay.classList.remove("hidden");
+      if (qrLaser) qrLaser.classList.add("hidden");
+      if (statusPill) statusPill.textContent = `Conectado: ${data.connectedPhone || "+52 56 5606 5182"}`;
+      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400";
+      if (phoneDisplay) phoneDisplay.textContent = data.connectedPhone || "+52 56 5606 5182";
+      if (telemetryDevice) telemetryDevice.textContent = data.connectedName || "Agente BuscaYa Activo";
+      if (telemetryBattery) telemetryBattery.innerHTML = `<i class="fa-solid fa-battery-full text-emerald-500"></i> <span>${data.batteryLevel || 98}%</span>`;
+      if (telemetryLatency) telemetryLatency.textContent = `${data.latencyMs || 28} ms`;
+      if (telemetryWebhook) telemetryWebhook.textContent = "Activo 100%";
+    } else if (data.qr && data.qr.startsWith("data:image/")) {
+      setWhatsAppQrImageSafe(data.qr);
+      if (qrOverlay) qrOverlay.classList.add("hidden");
+      if (qrLaser) qrLaser.classList.remove("hidden");
+      if (statusPill) statusPill.textContent = "+52 56 5606 5182 (Listo para Vincular)";
+      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-ping";
+    }
+  } catch (err) {
+    console.warn("[WhatsApp Status Fetch Warning]", err);
+  } finally {
+    waStatusFetchInFlight = false;
+  }
 }
 
 function updateWhatsAppMasterUI() {
-  if (waStatusPollingTimer) {
-    clearInterval(waStatusPollingTimer);
-    waStatusPollingTimer = null;
-  }
   fetchWhatsAppLiveStatus();
+  if (!waStatusPollingTimer) {
+    waStatusPollingTimer = setInterval(fetchWhatsAppLiveStatus, 2500);
+  }
 }
 
 async function generateNewMasterQr() {
-  showToast("🟢 Conexión Activa vía Meta Cloud API (+52 56 5606 5182 | ID: 1455001214355994). No requiere Código QR.", "success");
+  const loadingState = document.getElementById("waQrLoadingState");
+  const qrImg = document.getElementById("waMasterQrImg");
+  waHasRenderedOfficialQr = false;
+  if (qrImg) qrImg.classList.add("hidden");
+  if (loadingState) loadingState.classList.remove("hidden");
+
+  showToast("Generando nuevo Código QR oficial de WhatsApp...", "info");
+  try {
+    const res = await fetch("/api/whatsapp/restart-session", { method: "POST" });
+    const data = await res.json();
+    if (data.qr && data.qr.startsWith("data:image/")) {
+      setWhatsAppQrImageSafe(data.qr);
+      showToast("¡Código QR oficial listo para escanear!", "success");
+    }
+    setTimeout(fetchWhatsAppLiveStatus, 600);
+  } catch (err) {
+    showToast("Reintentando conexión con WhatsApp...", "warning");
+  }
 }
 
 async function requestWhatsAppPairingCode() {

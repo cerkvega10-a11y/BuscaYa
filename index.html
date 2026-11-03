@@ -1617,14 +1617,65 @@
                 <span>Probar Chat Directo (+52 56 5606 5182)</span>
               </a>
 
-              <!-- Elementos ocultos de compatibilidad DOM (Nunca visibles) -->
-              <div id="waQrBoxView" class="hidden">
-                <img id="waMasterQrImg" alt="Deshabilitado" class="hidden">
-                <div id="waQrLoadingState" class="hidden"></div>
-                <div id="waConnectedOverlay" class="hidden"></div>
-                <div id="qrLaserLine" class="hidden"></div>
+              <!-- Tabs de Vinculación Directa de Celular (Código de 8 Dígitos o QR Oficial) -->
+              <div class="w-full pt-2 border-t border-gray-200 space-y-3">
+                <div class="w-full flex rounded-xl bg-gray-200/80 p-1 text-xs font-bold">
+                  <button type="button" id="tabWaCodeBtn" onclick="switchWaPairingMethod('code')" class="flex-1 py-1.5 px-2 rounded-lg bg-white text-[#075E54] shadow-sm flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-hashtag text-xs"></i>
+                    <span>Código de 8 Dígitos</span>
+                  </button>
+                  <button type="button" id="tabWaQrBtn" onclick="switchWaPairingMethod('qr')" class="flex-1 py-1.5 px-2 rounded-lg text-gray-600 hover:text-gray-900 flex items-center justify-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-qrcode text-xs"></i>
+                    <span>Código QR Oficial</span>
+                  </button>
+                </div>
+
+                <!-- Vista 1 (Por defecto): Vincular mediante Código de 8 Dígitos para 56 5606 5182 -->
+                <div id="waCodeBoxView" class="w-full flex flex-col items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-200 text-center space-y-3">
+                  <div class="text-left w-full space-y-1">
+                    <label class="block text-[11px] font-bold text-gray-700">Número de WhatsApp Business a vincular:</label>
+                    <input type="tel" id="waPairingPhoneInput" value="5215656065182" placeholder="5215656065182" class="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#075E54] focus:outline-none">
+                    <span class="text-[10px] text-gray-500 block">Preconfigurado con tu número oficial: <b>+52 56 5606 5182</b></span>
+                  </div>
+
+                  <button type="button" onclick="requestWhatsAppPairingCode()" id="btnRequestPairCode" class="w-full py-2.5 px-4 rounded-xl bg-[#075E54] hover:bg-[#064e46] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-key"></i>
+                    <span>Generar Código de 8 Dígitos Ahora</span>
+                  </button>
+
+                  <div id="waPairingCodeResultBox" class="hidden w-full bg-emerald-50 border-2 border-emerald-500 rounded-xl p-3.5 text-center space-y-1.5">
+                    <span class="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">Introduce este código en tu celular:</span>
+                    <div id="waPairingCodeDisplay" class="text-2xl font-mono font-black tracking-widest text-[#075E54] select-all py-1 bg-white rounded-lg border border-emerald-200">
+                      ---- ----
+                    </div>
+                    <p class="text-[11px] text-gray-700 font-medium">
+                      Abre <b>WhatsApp Business &gt; Dispositivos vinculados &gt; Vincular con el número de teléfono</b> e ingresa este código.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Vista 2: Código QR Oficial Baileys -->
+                <div id="waQrBoxView" class="hidden w-full flex flex-col items-center space-y-3">
+                  <div class="relative bg-white p-3 rounded-2xl shadow-md border border-gray-300 overflow-hidden w-56 h-56 flex items-center justify-center">
+                    <div id="qrLaserLine" class="qr-scan-line"></div>
+                    <div id="waQrLoadingState" class="flex flex-col items-center justify-center space-y-2 text-[#075E54] p-4 text-center">
+                      <i class="fa-solid fa-spinner fa-spin text-2xl text-[#25D366]"></i>
+                      <span class="text-xs font-extrabold">Generando QR Oficial...</span>
+                    </div>
+                    <img id="waMasterQrImg" alt="WhatsApp Web QR Oficial" class="hidden w-full h-full object-contain">
+                    <div id="waConnectedOverlay" class="hidden absolute inset-0 bg-[#075E54]/95 text-white flex flex-col items-center justify-center p-4 text-center space-y-2">
+                      <div class="w-12 h-12 rounded-full bg-[#25D366] text-[#075E54] flex items-center justify-center text-2xl font-black shadow-lg">
+                        <i class="fa-solid fa-check"></i>
+                      </div>
+                      <h4 class="font-extrabold text-sm">¡Celular Vinculado!</h4>
+                    </div>
+                  </div>
+                  <button type="button" onclick="generateNewMasterQr()" class="w-full px-3 py-2 rounded-xl bg-[#25D366] text-[#075E54] text-xs font-black hover:bg-[#20bd5a] transition-all shadow-sm flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Actualizar Código QR Oficial</span>
+                  </button>
+                </div>
               </div>
-              <div id="waCodeBoxView" class="hidden"></div>
             </div>
 
             <!-- Right: Instructions & Telemetry & AI Config -->

@@ -449,7 +449,7 @@ INSTRUCCIONES:
 async function requestPairingCode(phoneNumber) {
   if (!phoneNumber) throw new Error("Número de teléfono requerido");
   
-  // Limpiar número: solo dígitos (ej: 5215512345678)
+  // Limpiar número: solo dígitos (ej: 5215656065182)
   let cleaned = phoneNumber.replace(/\D/g, '');
   if (cleaned.length === 10) {
     // Si el usuario ingresó 10 dígitos nacionales de México, anteponer lada internacional 521
@@ -457,29 +457,23 @@ async function requestPairingCode(phoneNumber) {
   } else if (cleaned.length === 12 && cleaned.startsWith('52') && !cleaned.startsWith('521')) {
     cleaned = '521' + cleaned.slice(2);
   }
-  if (cleaned.length < 10) throw new Error("Número de teléfono inválido (debe incluir 10 dígitos o lada internacional, ej: 52155...)");
+  if (cleaned.length < 10) throw new Error("Número de teléfono inválido (debe incluir 10 dígitos o lada internacional, ej: 5215656065182)");
+
+  await ensureWhatsAppQrOrConnected({ waitMs: 6500, keepAlive: false });
 
   if (!waState.sock) {
-    await startWhatsAppSocket();
+    throw new Error("El servicio de WhatsApp se está iniciando. Por favor intenta en 2 segundos.");
   }
-
-  // Esperar un momento a que el socket esté listo
-  let attempts = 0;
-  while ((!waState.sock || waState.status === 'connecting') && attempts < 25) {
-    await new Promise(r => setTimeout(r, 250));
-    attempts++;
-  }
-
-  if (!waState.sock) throw new Error("El servicio de WhatsApp se está iniciando. Por favor intenta en 3 segundos.");
 
   console.log(`[WhatsApp Service] Solicitando Pairing Code para: ${cleaned}...`);
   const code = await waState.sock.requestPairingCode(cleaned);
-  waState.pairingCode = code;
-  waState.status = 'pairing_code';
+  const formattedCode = (code && code.length === 8) ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+  waState.pairingCode = formattedCode;
+  waState.status = 'waiting';
   waState.lastUpdate = new Date().toISOString();
-  console.log(`[WhatsApp Service] ¡Pairing Code Generado con Éxito!: ${code}`);
+  console.log(`[WhatsApp Service] ¡Pairing Code Generado con Éxito!: ${formattedCode}`);
 
-  return code;
+  return formattedCode;
 }
 
 /**
