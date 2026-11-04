@@ -1766,6 +1766,7 @@ function saveServerDatabase() {
       viewSimulation: SERVER_VIEW_SIMULATION,
       marketDemand: SERVER_MARKET_DEMAND,
       biweeklyReports: SERVER_BIWEEKLY_REPORTS_CONFIG,
+      processedMessageIds: Array.from(PROCESSED_WEBHOOK_MESSAGE_IDS.keys()).slice(-5000),
       sessionMemory: serializedSessions
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
@@ -1897,6 +1898,11 @@ function loadServerDatabase() {
             role: "admin",
             createdAt: "2026-01-01T00:00:00.000Z"
           });
+        }
+        if (Array.isArray(parsed.processedMessageIds)) {
+          for (const id of parsed.processedMessageIds) {
+            PROCESSED_WEBHOOK_MESSAGE_IDS.set(id, Date.now());
+          }
         }
         if (parsed.sessionMemory && typeof parsed.sessionMemory === 'object') {
           for (const [phoneKey, sessVal] of Object.entries(parsed.sessionMemory)) {
@@ -3577,7 +3583,7 @@ async function processBuscaYaMessage({
   const incomingMsgId = (rawMsg && rawMsg.id) || (rawPayload && (rawPayload.id || rawPayload.messageId)) || null;
   if (!isSandbox && incomingMsgId) {
     if (PROCESSED_WEBHOOK_MESSAGE_IDS.has(incomingMsgId)) {
-      console.log(`[Webhook Deduplication] Mensaje ${incomingMsgId} ya procesado.`);
+      console.log(`[Webhook Deduplication] Mensaje ${incomingMsgId} ya procesado. Ignorando para evitar duplicidad.`);
       return {
         duplicate: true,
         replyText: "",
@@ -3586,6 +3592,39 @@ async function processBuscaYaMessage({
       };
     }
     PROCESSED_WEBHOOK_MESSAGE_IDS.set(incomingMsgId, Date.now());
+    if (PROCESSED_WEBHOOK_MESSAGE_IDS.size > 5000) {
+      const firstKey = PROCESSED_WEBHOOK_MESSAGE_IDS.keys().next().value;
+      if (firstKey) PROCESSED_WEBHOOK_MESSAGE_IDS.delete(firstKey);
+    }
+    try { saveServerDatabase(); } catch (_) {}
+  }
+
+  // 1.b. FILTRO ANTI-STALE: Descartar mensajes con más de 90 segundos de antigüedad (Reintentos retrasados de Meta)
+  const rawMsgTs = (rawMsg && Number(rawMsg.timestamp)) || (rawPayload && Number(rawPayload.timestamp)) || null;
+  if (!isSandbox && rawMsgTs) {
+    const ageSec = Math.floor(Date.now() / 1000) - rawMsgTs;
+    if (ageSec > 90) {
+      console.log(`[Anti-Stale Guard] Mensaje ${incomingMsgId || 'anon'} descartado por antigüedad (${ageSec}s > 90s). Cero mensajes automáticos sin petición.`);
+      return {
+        duplicate: true,
+        stale: true,
+        replyText: "",
+        bubbles: [],
+        debugState: { stale: true, ageSec }
+      };
+    }
+  }
+
+  // 1.c. GUARDIA DE CONTENIDO: SI NO HAY TEXTO, NI AUDIO, NI GPS, NI MEDIA -> CERO MENSAJES AUTOMÁTICOS
+  const isGpsCoords = (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) || (location && typeof location.latitude === 'number');
+  const hasContent = !!(messageText || isAudio || isGpsCoords || type === 'media' || rawMsg?.location || rawMsg?.audio || rawPayload?.location);
+  if (!isSandbox && !hasContent) {
+    console.log(`[Anti-Spam Guard] Entrada vacía o no interactiva de ${senderPhone}. Cero mensajes automáticos sin solicitud explícita.`);
+    return {
+      replyText: "",
+      bubbles: [],
+      debugState: { ignoredEmpty: true }
+    };
   }
 
   // 2. RECUPERAR / CREAR SESIÓN DE MEMORIA PERSISTENTE
@@ -7507,21 +7546,71 @@ ${visualFormatRule}`;
 
         const entry = payload.entry && payload.entry[0];
         const changes = entry && entry.changes && entry.changes[0];
-        const messages = changes && changes.value && changes.value.messages;
 
-        // Si es una notificación de estado de entrega de Meta (sent/delivered/read), confirmar HTTP 200 inmediatamente
-        if (changes && changes.value && changes.value.statuses && (!messages || !messages[0])) {
+        // 1. Si no hay cambios o si es recibo de entrega (sent/delivered/read), confirmar HTTP 200 inmediatamente
+        if (!changes || !changes.value) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "ignored_empty_event" }));
+          return;
+        }
+
+        if (changes.value.statuses) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ success: true, status: "status_receipt_acknowledged" }));
           return;
         }
 
-        const msg = (messages && messages[0]) ? messages[0] : null;
-        let senderPhone = (msg && msg.from) || payload.from || payload.phone || "+52 55 1234 5678";
+        const messages = changes.value.messages;
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "ignored_no_messages" }));
+          return;
+        }
+
+        const msg = messages[0];
+        if (!msg) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "ignored_null_message" }));
+          return;
+        }
+
+        // 2. Descartar reacciones, mensajes de sistema, protocolos o tipos no interactivos
+        if (['reaction', 'ephemeral', 'system', 'unknown', 'order'].includes(msg.type)) {
+          console.log(`[WhatsApp Webhook] Evento no interactivo (${msg.type}) de ${msg.from}. Descartado.`);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "ignored_non_interactive_type", type: msg.type }));
+          return;
+        }
+
+        // 3. Filtro Anti-Stale / Anti-Retry (Mensajes con más de 90 segundos de antigüedad)
+        const msgTimestamp = Number(msg.timestamp) || null;
+        if (msgTimestamp) {
+          const ageSec = Math.floor(Date.now() / 1000) - msgTimestamp;
+          if (ageSec > 90) {
+            console.log(`[WhatsApp Webhook Anti-Stale] Mensaje ${msg.id} ignorado por antigüedad (${ageSec}s > 90s). Cero envíos automáticos.`);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: true, status: "ignored_stale_retry", ageSec }));
+            return;
+          }
+        }
+
+        let senderPhone = msg.from || payload.from || payload.phone || "+52 55 1234 5678";
         let senderName = (changes?.value?.contacts && changes?.value?.contacts[0]?.profile?.name) || payload.name || "Usuario WhatsApp";
-        let messageText = (msg && msg.text && msg.text.body) || payload.query || payload.text || "";
-        let latitude = (msg && msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
-        let longitude = (msg && msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
+        let messageText = (msg.text && msg.text.body) || (msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title) || payload.query || payload.text || "";
+        let latitude = (msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
+        let longitude = (msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
+
+        const isLocation = !!(msg.location || payload.location || (latitude && longitude));
+        const isAudio = (msg.type === 'audio' || payload.isAudio);
+        const isMedia = (['image', 'video', 'document', 'sticker'].includes(msg.type) || payload.isMedia);
+
+        // 4. Si no tiene texto, ubicación, audio ni multimedia, NO PROCESAR
+        if (!messageText && !isLocation && !isAudio && !isMedia) {
+          console.log(`[WhatsApp Webhook Guard] Mensaje vacío sin texto ni multimedia de ${senderPhone}. Descartado para prevenir mensajes automáticos.`);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, status: "ignored_empty_content" }));
+          return;
+        }
 
         const result = await processBuscaYaMessage({
           phone: senderPhone,
@@ -7530,7 +7619,7 @@ ${visualFormatRule}`;
           latitude: latitude,
           longitude: longitude,
           location: payload.location,
-          isAudio: payload.isAudio || (msg && msg.type === 'audio'),
+          isAudio: isAudio,
           audioTranscription: payload.audioTranscription,
           audioBase64: payload.audioBase64 || payload.audio,
           isSandbox: false,
@@ -7568,7 +7657,7 @@ ${visualFormatRule}`;
 
               // Si esta burbuja contiene la ficha del negocio, despachar inmediatamente el botón interactivo de ubicación nativa (GPS Pin)
               if (result.businessLocation && bubbleText.includes("🏢")) {
-                await new Promise(r => setTimeout(r, 600));
+                await new Promise(r => setTimeout(r, 150));
                 try {
                   await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
                     method: "POST",
@@ -7595,7 +7684,7 @@ ${visualFormatRule}`;
               }
 
               if (i < result.bubbles.length - 1) {
-                await new Promise(r => setTimeout(r, 700));
+                await new Promise(r => setTimeout(r, 200));
               }
             }
           } catch (metaSendErr) {

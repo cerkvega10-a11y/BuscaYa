@@ -79,22 +79,78 @@ module.exports = async (req, res) => {
 
     const entry = payload.entry && payload.entry[0];
     const changes = entry && entry.changes && entry.changes[0];
-    const messages = changes && changes.value && changes.value.messages;
 
-    // Si es recibo de entrega (sent/delivered/read), confirmar 200 inmediatamente
-    if (changes && changes.value && changes.value.statuses && (!messages || !messages[0])) {
+    // 1. Descartar si es recibo de entrega (sent/delivered/read) o evento sin valor
+    if (!changes || !changes.value) {
+      const resp = { success: true, status: "ignored_empty_event" };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
+
+    if (changes.value.statuses) {
       const resp = { success: true, status: "status_receipt_acknowledged" };
       if (typeof res.status === 'function') return res.status(200).json(resp);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       return res.end(JSON.stringify(resp));
     }
 
-    const msg = (messages && messages[0]) ? messages[0] : null;
-    let senderPhone = (msg && msg.from) || payload.from || payload.phone || "+52 55 1234 5678";
+    const messages = changes.value.messages;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      const resp = { success: true, status: "ignored_no_messages" };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
+
+    const msg = messages[0];
+    if (!msg) {
+      const resp = { success: true, status: "ignored_null_message" };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
+
+    // 2. Descartar reacciones, mensajes de sistema, protocolos o tipos no interactivos
+    if (['reaction', 'ephemeral', 'system', 'unknown', 'order'].includes(msg.type)) {
+      console.log(`[Meta Cloud Webhook] Evento no interactivo (${msg.type}) de ${msg.from}. Descartado.`);
+      const resp = { success: true, status: "ignored_non_interactive_type", type: msg.type };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
+
+    // 3. Filtro Anti-Stale / Anti-Retry (Mensajes con más de 90 segundos de antigüedad)
+    const msgTimestamp = Number(msg.timestamp) || null;
+    if (msgTimestamp) {
+      const ageSec = Math.floor(Date.now() / 1000) - msgTimestamp;
+      if (ageSec > 90) {
+        console.log(`[Meta Cloud Webhook Anti-Stale] Mensaje ${msg.id} ignorado por antigüedad (${ageSec}s > 90s). Cero envíos automáticos no solicitados.`);
+        const resp = { success: true, status: "ignored_stale_retry", ageSec };
+        if (typeof res.status === 'function') return res.status(200).json(resp);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        return res.end(JSON.stringify(resp));
+      }
+    }
+
+    let senderPhone = msg.from || payload.from || payload.phone || "+52 55 1234 5678";
     let senderName = (changes?.value?.contacts && changes?.value?.contacts[0]?.profile?.name) || payload.name || "Usuario WhatsApp";
-    let messageText = (msg && msg.text && msg.text.body) || payload.query || payload.text || "";
-    let latitude = (msg && msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
-    let longitude = (msg && msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
+    let messageText = (msg.text && msg.text.body) || (msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title) || payload.query || payload.text || "";
+    let latitude = (msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
+    let longitude = (msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
+
+    const isLocation = !!(msg.location || payload.location || (latitude && longitude));
+    const isAudio = (msg.type === 'audio' || payload.isAudio);
+    const isMedia = (['image', 'video', 'document', 'sticker'].includes(msg.type) || payload.isMedia);
+
+    // 4. Si no tiene texto, ubicación, audio ni multimedia, NO PROCESAR
+    if (!messageText && !isLocation && !isAudio && !isMedia) {
+      console.log(`[Meta Cloud Webhook Guard] Mensaje vacío sin texto ni multimedia de ${senderPhone}. Descartado para prevenir mensajes automáticos.`);
+      const resp = { success: true, status: "ignored_empty_content" };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
 
     console.log(`[Meta Cloud Webhook Inbound] From: ${senderPhone} (${senderName}) Text: "${messageText}" Location: ${latitude ? `${latitude},${longitude}` : 'None'}`);
 
@@ -105,7 +161,7 @@ module.exports = async (req, res) => {
       latitude,
       longitude,
       location: payload.location,
-      isAudio: payload.isAudio || (msg && msg.type === 'audio'),
+      isAudio: isAudio,
       audioTranscription: payload.audioTranscription,
       audioBase64: payload.audioBase64 || payload.audio,
       isSandbox: false,
@@ -113,8 +169,8 @@ module.exports = async (req, res) => {
       rawPayload: payload
     });
 
-    if (result.duplicate) {
-      const resp = { success: true, duplicate: true, status: "duplicate_ignored" };
+    if (result.duplicate || result.stale) {
+      const resp = { success: true, duplicate: true, status: "duplicate_or_stale_ignored" };
       if (typeof res.status === 'function') return res.status(200).json(resp);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       return res.end(JSON.stringify(resp));
@@ -170,7 +226,7 @@ module.exports = async (req, res) => {
 
           // Pin de ubicación GPS nativo si la burbuja contiene datos de ficha
           if (result.businessLocation && bubbleText.includes("🏢")) {
-            await new Promise(r => setTimeout(r, 600));
+            await new Promise(r => setTimeout(r, 150));
             try {
               await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
                 method: "POST",
@@ -195,7 +251,7 @@ module.exports = async (req, res) => {
           }
 
           if (i < result.bubbles.length - 1) {
-            await new Promise(r => setTimeout(r, 700));
+            await new Promise(r => setTimeout(r, 200));
           }
         }
       } catch (err) {

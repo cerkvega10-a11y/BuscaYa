@@ -298,6 +298,9 @@ async function startWhatsAppSocket() {
       sock.ev.on('messages.upsert', async ({ messages, type }) => {
         for (const msg of messages) {
           if (!msg.message) continue;
+          // 1. Ignorar mensajes salientes enviados por el bot o desde el teléfono del negocio
+          if (msg.key?.fromMe) continue;
+
           const msgId = msg.key?.id;
           // Ignorar mensajes que el propio bot envió para evitar bucles
           if (msgId && sentBotMessageIds.has(msgId)) continue;
@@ -305,6 +308,21 @@ async function startWhatsAppSocket() {
           const jid = msg.key.remoteJid || '';
           if (!jid || jid === 'status@broadcast' || jid.endsWith('@g.us') || jid.endsWith('@newsletter') || jid.endsWith('@broadcast')) {
             continue;
+          }
+
+          // 2. Ignorar reacciones, protocolos de cifrado y eventos no interactivos
+          if (msg.message?.reactionMessage || msg.message?.protocolMessage || msg.message?.senderKeyDistributionMessage) {
+            continue;
+          }
+
+          // 3. Anti-Stale: Ignorar mensajes con más de 90 segundos de antigüedad (ej. sincronizaciones)
+          const ts = Number(msg.messageTimestamp) || null;
+          if (ts) {
+            const ageSec = Math.floor(Date.now() / 1000) - ts;
+            if (ageSec > 90) {
+              console.log(`[Baileys Anti-Stale] Mensaje ${msgId || 'anon'} descartado por antigüedad (${ageSec}s > 90s). Cero envíos automáticos no solicitados.`);
+              continue;
+            }
           }
 
           try {
