@@ -3876,7 +3876,13 @@ const server = http.createServer(async (req, res) => {
 
   // Desempaquetar ruta original en Vercel Serverless Rewrites
   const vercelPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.headers['x-vercel-matched-path'];
-  if (vercelPath && !vercelPath.includes('[...all]')) {
+  if (
+    vercelPath &&
+    !vercelPath.includes('[...all]') &&
+    vercelPath !== '/api/serverless-backend' &&
+    vercelPath !== '/api/index' &&
+    vercelPath !== '/api'
+  ) {
     pathname = vercelPath;
   } else if (pathname.includes('[...all]')) {
     const allParam = parsedUrl.searchParams.get('all');
