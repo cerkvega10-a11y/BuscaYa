@@ -1392,9 +1392,9 @@ Eres el asistente virtual oficial de BuscaYa, desarrollado exclusivamente por el
   (Queda estrictamente prohibido pedir que toque botones o comparta pines de ubicación).
 - ESTADO 3 (Recepción de Colonia o Referencia escrita):
   - En cuanto recibas el nombre de la colonia o referencia, NUNCA vuelvas a pedir la ubicación ni vuelvas a saludar.
-  - Cruza la referencia con Google Maps contra los negocios registrados en esa colonia o en un radio <= 2 km.
-  - Si existen negocios del giro solicitado a menos de 2 km, entrega la ficha compacta con su enlace de Google Maps y detente preguntando qué le parece la opción.
-  - Si NO existen negocios de ese giro a menos de 2 km, pero hay opciones a más de 2 km, avísale con total honestidad a qué distancia y colonia está el más cercano y pregúntale si quiere que se lo mandes.
+  - Cruza la referencia con Google Maps contra los negocios registrados en esa colonia o en un radio <= 4 km.
+  - Si existen negocios del giro solicitado a menos de 4 km, entrega la ficha compacta con su enlace de Google Maps y detente preguntando qué le parece la opción.
+  - Si NO existen negocios de ese giro a menos de 4 km, pero hay opciones a más de 4 km, avísale con total honestidad a qué distancia y colonia está el más cercano y pregúntale si quiere que se lo mandes.
   - Si no existe ningún negocio en el sistema, informa amablemente que por ahora no hay en esa zona sin inventar negocios falsos.
 - ESTADO 4 (Confirmación de más opciones): Si el usuario dice "Sí" o "Dame otra opción", muéstrale únicamente otro negocio del MISMO GIRO o MISMA FAMILIA (jamás mezcles comida con herrerías o plomerías). Nunca repitas un negocio ya mostrado.
 - ESTADO 5 (Agradecimiento o Despedida): Si el usuario dice "Gracias", "Muchas gracias", "Ok perfecto", "Adiós" o "Sale bye", TIENES ESTRICTAMENTE PROHIBIDO volver a enviar negocios o repetir el VIP. Despídete con mucha alegría y calidez.
@@ -2426,9 +2426,10 @@ async function runAutomatedSubscriptionCharges() {
 }
 
 // 1. Monitoreo recurrente cada hora
-setInterval(() => {
+const hourlyCron = setInterval(() => {
   runAutomatedSubscriptionCharges().catch(err => console.error("[Cron Interval Error]", err.message));
 }, 60 * 60 * 1000);
+if (hourlyCron && hourlyCron.unref) hourlyCron.unref();
 
 // 2. Programar ejecución exacta a la medianoche diaria (00:00:00)
 function scheduleMidnightCron() {
@@ -2436,11 +2437,12 @@ function scheduleMidnightCron() {
   const nextMidnight = getNextMidnight();
   const msUntilMidnight = Math.max(1000, nextMidnight.getTime() - now.getTime());
   
-  setTimeout(() => {
+  const midnightTimer = setTimeout(() => {
     runAutomatedSubscriptionCharges()
       .catch(err => console.error("[Midnight Cron Error]", err.message))
       .finally(() => scheduleMidnightCron());
   }, msUntilMidnight);
+  if (midnightTimer && midnightTimer.unref) midnightTimer.unref();
 }
 scheduleMidnightCron();
 
@@ -2504,52 +2506,268 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
 
   const unshown = activeBusinesses.filter(b => !shownBusinessIds.includes(b.id));
 
-  // Matriz de Subsegmentación Estricta de Alimentos (Para evitar devolver tacos o pizzas ante mariscos o comida saludable)
-  const FOOD_SUBSEGMENTS = {
+  // MATRIZ MAESTRA DE SUBSEGMENTACIÓN PARA TODOS LOS SERVICIOS Y GIROS DE BUSCAYA
+  const ALL_SERVICE_SUBSEGMENTS = {
+    // 1. ALIMENTOS Y BEBIDAS
     MARISCOS: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Mariscos y Pescados",
       tokens: ["marisco", "mariscos", "pescado", "pescados", "ceviche", "ceviches", "aguachile", "camaron", "camarones", "pulpo", "ostion", "ostiones", "marisqueria", "marisquerias"]
     },
     SALUDABLE: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Comida Saludable y Ensaladas",
       tokens: ["saludable", "sano", "sana", "ensalada", "ensaladas", "bowl", "bowls", "fit", "fitness", "vegano", "vegetariano", "nutritivo", "jugos", "organico", "diet"]
     },
     DESAYUNO_CAFE: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Desayunos y Cafeterías",
       tokens: ["desayun", "desayuno", "desayunos", "desayunar", "cafe", "cafeteria", "bistro", "brunch", "panaderia", "pan", "chilaquiles", "hot cakes", "huevos", "pan dulce", "reposteria"]
     },
     TACOS: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Taquerías y Antojitos",
       tokens: ["taco", "tacos", "taqueria", "taquerias", "pastor", "carnitas", "suadero", "birria", "barbacoa", "gringa", "gringas", "alambre"]
     },
     PIZZA: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Pizzerías y Comida Italiana",
       tokens: ["pizza", "pizzas", "pizzeria", "pizzerias", "pasta", "pastas", "italiana", "lasagna", "trattoria"]
     },
     SUSHI: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Sushi y Comida Asiática",
       tokens: ["sushi", "roll", "rolls", "ramen", "japonesa", "asiatica", "oriental"]
     },
     HAMBURGUESAS: {
+      family: "ALIMENTOS_Y_BEBIDAS",
       name: "Hamburguesas y Alitas",
       tokens: ["hamburguesa", "hamburguesas", "burger", "burgers", "alita", "alitas", "boneless"]
+    },
+    FONDA_MEXICANA: {
+      family: "ALIMENTOS_Y_BEBIDAS",
+      name: "Fondas y Comida Tradicional",
+      tokens: ["fonda", "comida corrida", "cocina economica", "antojitos", "gorditas", "quesadillas", "mole", "oaxaquena", "tamales", "mexicana"]
+    },
+    POSTRES_PAN: {
+      family: "ALIMENTOS_Y_BEBIDAS",
+      name: "Postres y Panaderías",
+      tokens: ["postre", "postres", "pastel", "pasteles", "reposteria", "pan dulce", "crepas", "helado", "helados", "nieves"]
+    },
+    BARES: {
+      family: "ALIMENTOS_Y_BEBIDAS",
+      name: "Bares y Cervecerías",
+      tokens: ["bar", "bares", "cerveceria", "cervezas", "chelas", "cantina", "cocteleria", "pub"]
+    },
+
+    // 2. OFICIOS DEL HOGAR Y MANTENIMIENTO
+    PLOMERIA: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Plomería y Fontanería",
+      tokens: ["plomero", "plomeros", "plomeria", "fuga", "tubo", "tuberia", "tinaco", "bomba", "drenaje", "boiler", "lavabo", "wc", "inodoro", "destapar"]
+    },
+    ELECTRICIDAD: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Electricidad e Instalaciones",
+      tokens: ["electricista", "electricistas", "corto", "luz", "cableado", "centro de carga", "fusibles", "pastillas", "contactos", "apagadores", "instalacion electrica"]
+    },
+    CERRAJERIA: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Cerrajería y Seguridad",
+      tokens: ["cerrajero", "cerrajeros", "cerrajeria", "chapa", "chapas", "llave", "llaves", "cerradura", "abrir puerta", "duplicado", "candado"]
+    },
+    HERRERIA: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Herrería y Estructuras Metálicas",
+      tokens: ["herrero", "herreros", "herreria", "reja", "rejas", "protecciones", "barandal", "puerta de herreria", "techumbre", "estructura metalica"]
+    },
+    CARPINTERIA: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Carpintería y Muebles",
+      tokens: ["carpintero", "carpinteros", "carpinteria", "closet", "cocina integral", "puertas de madera", "muebles", "madera", "barniz"]
+    },
+    PINTURA_IMPERMEABILIZACION: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Pintura e Impermeabilización",
+      tokens: ["pintor", "pintores", "pintura", "impermeabilizante", "impermeabilizar", "goteras", "humedad", "resanar", "pintar"]
+    },
+    ALBANILERIA: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Albañilería y Construcción",
+      tokens: ["albanil", "albaniles", "albanileria", "construccion", "remodelacion", "loseta", "azulejo", "piso", "aplanado", "muro", "tabique"]
+    },
+    ELECTRODOMESTICOS: {
+      family: "OFICIOS_DEL_HOGAR",
+      name: "Reparación de Electrodomésticos y Climas",
+      tokens: ["reparacion de lavadoras", "lavadora", "refrigerador", "refrigeradores", "estufa", "secadora", "aire acondicionado", "clima"]
+    },
+
+    // 3. SALUD Y BIENESTAR
+    MEDICOS: {
+      family: "SALUD",
+      name: "Médicos y Consultorios",
+      tokens: ["medico", "medicos", "doctor", "doctores", "consulta medica", "pediatra", "ginecologo", "cardiologo", "medicina general", "consultorio"]
+    },
+    DENTISTAS: {
+      family: "SALUD",
+      name: "Odontología y Dentistas",
+      tokens: ["dentista", "dentistas", "odontologo", "odontologia", "muela", "dientes", "caries", "brackets", "limpieza dental", "endodoncia", "ortodoncia"]
+    },
+    FARMACIAS: {
+      family: "SALUD",
+      name: "Farmacias y Medicamentos",
+      tokens: ["farmacia", "farmacias", "medicinas", "medicamentos", "pastillas", "jarabe", "receta", "farmacia 24 horas", "patente", "genericos"]
+    },
+    LABORATORIOS: {
+      family: "SALUD",
+      name: "Laboratorios y Análisis Clínicos",
+      tokens: ["laboratorio", "analisis clinicos", "sangre", "estudios", "ultrasonido", "rayos x", "clinica", "hospital"]
+    },
+    PSICOLOGIA: {
+      family: "SALUD",
+      name: "Psicología y Terapia",
+      tokens: ["psicologo", "psicologa", "psicologia", "terapia", "psicoterapia", "salud mental", "ansiedad", "depresion"]
+    },
+    OPTICAS: {
+      family: "SALUD",
+      name: "Ópticas y Cuidado Visual",
+      tokens: ["optica", "opticas", "lentes", "anteojos", "armazones", "graduacion", "examen de la vista", "oftalmologo"]
+    },
+    FISIOTERAPIA: {
+      family: "SALUD",
+      name: "Fisioterapia y Rehabilitación",
+      tokens: ["fisioterapia", "fisioterapeuta", "rehabilitacion", "masaje terapeutico", "quiropractico", "lesion"]
+    },
+
+    // 4. AUTOMOTRIZ
+    MECANICA_AUTOMOTRIZ: {
+      family: "AUTOMOTRIZ",
+      name: "Mecánica y Talleres Automotrices",
+      tokens: ["mecanico", "mecanicos", "taller mecanico", "afinacion", "frenos", "clutch", "suspension", "motor", "escaner", "cambio de aceite"]
+    },
+    VULCANIZADORA: {
+      family: "AUTOMOTRIZ",
+      name: "Vulcanizadoras y Llantas",
+      tokens: ["vulcanizadora", "vulca", "talachera", "llantas", "llanta", "ponchadura", "parche", "balanceo"]
+    },
+    GRUAS: {
+      family: "AUTOMOTRIZ",
+      name: "Grúas y Auxilio Vial",
+      tokens: ["grua", "gruas", "arrastre", "remolque", "auxilio vial", "paso de corriente", "bateria"]
+    },
+    HOJALATERIA: {
+      family: "AUTOMOTRIZ",
+      name: "Hojalatería y Pintura Automotriz",
+      tokens: ["hojalatero", "hojalateria", "pintura automotriz", "golpe", "choque", "facia", "enderezado"]
+    },
+    AUTOLAVADO: {
+      family: "AUTOMOTRIZ",
+      name: "Autolavados y Detailing",
+      tokens: ["autolavado", "car wash", "lavado de autos", "detailing", "vestiduras", "lavado y engrasado"]
+    },
+    REFACCIONES: {
+      family: "AUTOMOTRIZ",
+      name: "Refaccionarias y Autopartes",
+      tokens: ["refaccionaria", "refacciones", "autopartes", "balatas", "bujias", "filtros", "amortiguadores"]
+    },
+
+    // 5. MASCOTAS
+    VETERINARIA: {
+      family: "MASCOTAS",
+      name: "Clínicas Veterinarias",
+      tokens: ["veterinario", "veterinaria", "veterinarios", "clinica veterinaria", "consulta veterinaria", "vacunas perro", "esterilizacion"]
+    },
+    ESTETICA_CANINA: {
+      family: "MASCOTAS",
+      name: "Estética Canina y Spa de Mascotas",
+      tokens: ["estetica canina", "bano de perro", "corte de pelo perro", "corte canino", "grooming", "spa de mascotas"]
+    },
+    TIENDA_MASCOTAS: {
+      family: "MASCOTAS",
+      name: "Tiendas de Mascotas y Alimento",
+      tokens: ["tienda de mascotas", "pet shop", "croquetas", "alimento de perro", "alimento de gato", "accesorios mascotas"]
+    },
+
+    // 6. ENTRETENIMIENTO Y ARTE
+    MUSICA_GRUPOS_DJ: {
+      family: "ENTRETENIMIENTO_Y_ARTE",
+      name: "Música en Vivo, Grupos y DJs",
+      tokens: ["musica", "grupo musical", "musico", "dj", "djs", "mariachi", "banda", "cantante", "sonido", "caramelo media music", "caramelo"]
+    },
+    AUDIO_FOTO_VIDEO: {
+      family: "ENTRETENIMIENTO_Y_ARTE",
+      name: "Fotografía, Video y Producción",
+      tokens: ["fotografo", "fotografia", "sesion de fotos", "video profesional", "estudio de grabacion", "produccion audiovisual", "iluminacion"]
+    },
+    FIESTAS_EVENTOS: {
+      family: "ENTRETENIMIENTO_Y_ARTE",
+      name: "Salones de Fiestas y Mobiliario",
+      tokens: ["salon de fiestas", "salon de eventos", "banquetes", "inflables", "brincolin", "renta de mesas", "mobiliario para fiestas"]
+    },
+
+    // 7. SERVICIOS PROFESIONALES
+    ABOGADOS: {
+      family: "SERVICIOS_PROFESIONALES",
+      name: "Abogados y Despachos Jurídicos",
+      tokens: ["abogado", "abogados", "despacho juridico", "asesoria legal", "divorcios", "laboral", "penal", "mercantil", "demandas"]
+    },
+    CONTADORES: {
+      family: "SERVICIOS_PROFESIONALES",
+      name: "Contadores y Asesoría Fiscal",
+      tokens: ["contador", "contadores", "despacho contable", "asesoria fiscal", "declaracion sat", "impuestos", "facturas", "contabilidad"]
+    },
+    NOTARIAS_INMOBILIARIAS: {
+      family: "SERVICIOS_PROFESIONALES",
+      name: "Notarías y Bienes Raíces",
+      tokens: ["notaria", "notario", "escrituras", "inmobiliaria", "bienes raices", "renta de casas", "venta de casas"]
+    },
+
+    // 8. BELLEZA Y CUIDADO PERSONAL
+    BARBERIAS_ESTETICAS: {
+      family: "BELLEZA",
+      name: "Barberías y Estéticas",
+      tokens: ["barberia", "barbero", "barber shop", "estetica", "salon de belleza", "corte de cabello", "corte de pelo", "tinte", "peinado"]
+    },
+    UNAS_SPAS: {
+      family: "BELLEZA",
+      name: "Uñas, Spas y Cuidado Facial",
+      tokens: ["unas", "unas de acrilico", "manicure", "pedicure", "pestanas", "cejas", "spa", "faciales", "depilacion"]
+    },
+
+    // 9. EDUCACION
+    CLASES_CURSOS: {
+      family: "EDUCACION",
+      name: "Clases Particulares y Cursos",
+      tokens: ["clases particulares", "regularizacion", "profesor", "idiomas", "ingles", "matematicas", "cursos", "escuela"]
     }
   };
 
-  let detectedFoodSubsegment = null;
-  if (isFoodFamily && lockedTerm) {
+  // Detección del subsegmento objetivo
+  let detectedSubsegment = null;
+  let detectedSubsegmentKey = null;
+
+  if (lockedTerm) {
     const termClean = lockedTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    for (const [subKey, subData] of Object.entries(FOOD_SUBSEGMENTS)) {
-      if (subData.tokens.some(tok => termClean.includes(tok) || tok.includes(termClean))) {
-        detectedFoodSubsegment = subKey;
+    const allTokens = [];
+    for (const [subKey, subData] of Object.entries(ALL_SERVICE_SUBSEGMENTS)) {
+      for (const tok of subData.tokens) {
+        allTokens.push({ subKey, subData, tok, len: tok.length });
+      }
+    }
+    allTokens.sort((a, b) => b.len - a.len);
+
+    for (const item of allTokens) {
+      if (new RegExp('(?:^|\\b)' + item.tok + '(?:\\b|$)', 'i').test(termClean)) {
+        detectedSubsegment = item.subData;
+        detectedSubsegmentKey = item.subKey;
         break;
       }
     }
   }
 
-  const bizMatchesSubsegment = (b, subKey) => {
-    if (!subKey || !FOOD_SUBSEGMENTS[subKey]) return true;
-    const tokens = FOOD_SUBSEGMENTS[subKey].tokens;
+  const bizMatchesSubsegment = (b, subData) => {
+    if (!subData) return true;
+    const tokens = subData.tokens;
     const bCat = (b.category || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const bName = (b.businessName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const bServ = (b.services || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -2558,7 +2776,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     return tokens.some(tok => new RegExp('(?:^|\\b)' + tok + '(?:\\b|$)', 'i').test(combined));
   };
 
-  const familyFiltered = unshown.filter(b => {
+  let familyFiltered = unshown.filter(b => {
     const bCat = (b.category || '').toLowerCase();
     const bName = (b.businessName || '').toLowerCase();
     const bServ = (b.services || '').toLowerCase();
@@ -2581,13 +2799,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
       if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
       const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
       const isFoodKw = familyDef ? familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ) || new RegExp(`\\b${kw}\\b`, 'i').test(bTags)) : false;
-      if (!isFoodCat && !isFoodKw) return false;
-
-      // Segmentación estricta de alimentos
-      if (detectedFoodSubsegment) {
-        return bizMatchesSubsegment(b, detectedFoodSubsegment);
-      }
-      return true;
+      return isFoodCat || isFoodKw;
     }
 
     if (familyDef) {
@@ -2599,11 +2811,19 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     return false;
   });
 
+  // Si se detectó un subsegmento estricto, priorizar y filtrar solo comercios de ese subsegmento
+  if (detectedSubsegment) {
+    const strictMatches = familyFiltered.filter(b => bizMatchesSubsegment(b, detectedSubsegment));
+    if (strictMatches.length > 0) {
+      familyFiltered = strictMatches;
+    }
+  }
+
   if (familyFiltered.length === 0) {
     return { status: "EMPTY", business: null };
   }
 
-  // Coordenadas del usuario según colonia de referencia (cotejo exhaustivo de 224 colonias de Álvaro Obregón)
+  // Coordenadas del usuario según colonia de referencia (cotejo exhaustivo de 242 colonias de Álvaro Obregón)
   let userLat = 19.3496;
   let userLng = -99.1915;
   let userGoogleMapsUrl = null;
@@ -2646,7 +2866,6 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
   const scored = familyFiltered.map(b => {
     let bLat = b.latitude ? Number(b.latitude) : null;
     let bLng = b.longitude ? Number(b.longitude) : null;
-    // Si el negocio no tiene lat/lng explícita o tiene la genérica, cotejar con su colonia registrada en Álvaro Obregón
     if ((!bLat || !bLng || (bLat === 19.3496 && bLng === -99.1915 && b.neighborhood && !b.neighborhood.toLowerCase().includes("san angel"))) && (b.neighborhood || b.colonia)) {
       const bColGeo = getColoniaCoordinates(b.neighborhood || b.colonia);
       if (bColGeo) {
@@ -2660,21 +2879,9 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     const distKm = haversineDistanceKm(userLat, userLng, bLat, bLng);
     let score = 0;
 
-    // Priorización categórica estricta por subsegmento (Taquería para Tacos, Marisquería para Mariscos, etc.)
-    if (detectedFoodSubsegment) {
-      const bCat = (b.category || '').toLowerCase();
-      const bName = (b.businessName || '').toLowerCase();
-      if (detectedFoodSubsegment === 'TACOS' && (bCat.includes('taqu') || bName.includes('taqu') || bName.includes('taco') || bName.includes('pastor'))) {
-        score += 800;
-      } else if (detectedFoodSubsegment === 'MARISCOS' && (bCat.includes('marisc') || bCat.includes('pescad') || bName.includes('marisc') || bName.includes('arcos') || bName.includes('puerto'))) {
-        score += 800;
-      } else if (detectedFoodSubsegment === 'SALUDABLE' && (bCat.includes('saludable') || bCat.includes('ensalada') || bName.includes('verde') || bName.includes('sano') || bName.includes('green'))) {
-        score += 800;
-      } else if (detectedFoodSubsegment === 'DESAYUNO_CAFE' && (bCat.includes('cafe') || bCat.includes('bistro') || bName.includes('bistro') || bName.includes('cafe'))) {
-        score += 800;
-      } else if (detectedFoodSubsegment === 'PIZZA' && (bCat.includes('pizza') || bName.includes('pizza') || bName.includes('trattoria'))) {
-        score += 800;
-      }
+    // Máxima afinidad categórica por subsegmento (+800 puntos)
+    if (detectedSubsegment && bizMatchesSubsegment(b, detectedSubsegment)) {
+      score += 800;
     }
 
     if (directNameMatch(b)) score += 400;
@@ -2683,20 +2890,23 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     return { ...b, latitude: bLat, longitude: bLng, distanceKm: distKm, matchScore: score };
   });
 
-  const cercanos_2km = scored
-    .filter(b => b.distanceKm <= 2.0 || isSameColonia(b) || directNameMatch(b))
+  // RADIO DE BÚSQUEDA AGRANDADO A 4.0 KM
+  const SEARCH_RADIUS_KM = 4.0;
+
+  const cercanos_4km = scored
+    .filter(b => b.distanceKm <= SEARCH_RADIUS_KM || isSameColonia(b) || directNameMatch(b))
     .sort((a, b) => b.matchScore - a.matchScore);
 
-  const lejanos_mas_2km = scored
-    .filter(b => b.distanceKm > 2.0 && !isSameColonia(b) && !directNameMatch(b))
+  const lejanos_mas_4km = scored
+    .filter(b => b.distanceKm > SEARCH_RADIUS_KM && !isSameColonia(b) && !directNameMatch(b))
     .sort((a, b) => a.distanceKm - b.distanceKm);
 
-  if (cercanos_2km.length > 0) {
-    return { status: "FOUND_NEARBY", business: cercanos_2km[0] };
-  } else if (lejanos_mas_2km.length > 0) {
-    return { status: "FOUND_FAR", business: lejanos_mas_2km[0] };
+  if (cercanos_4km.length > 0) {
+    return { status: "FOUND_NEARBY", business: cercanos_4km[0], radiusKm: SEARCH_RADIUS_KM };
+  } else if (lejanos_mas_4km.length > 0) {
+    return { status: "FOUND_FAR", business: lejanos_mas_4km[0], radiusKm: SEARCH_RADIUS_KM };
   } else {
-    return { status: "EMPTY", business: null };
+    return { status: "EMPTY", business: null, radiusKm: SEARCH_RADIUS_KM };
   }
 }
 
@@ -3845,7 +4055,7 @@ Usa viñetas con emojis (cero guiones ni asteriscos).`;
         userSession.negocio_lejano_pendiente = selectedBiz;
         userSession.esperando_confirmacion_expansion_2km = true;
         const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
-        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
+        finalBotReplyText = `Fíjate que revisé a 4 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
       } else {
         const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
         finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
@@ -3900,7 +4110,7 @@ Usa viñetas con emojis (cero guiones ni asteriscos).`;
         userSession.negocio_lejano_pendiente = selectedBiz;
         userSession.esperando_confirmacion_expansion_2km = true;
         const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
-        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
+        finalBotReplyText = `Fíjate que revisé a 4 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
       } else {
         const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
         finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
@@ -6415,11 +6625,11 @@ const server = http.createServer(async (req, res) => {
         {
           id: "agente-1",
           name: "Agente 1 - Arquitecto y Diseñador de IA",
-          mission: "System Prompt modular, saludo horario CDMX, Haversine 2 km, modismos mexicanos y Gemini/Groq.",
+          mission: "System Prompt modular, saludo horario CDMX, Haversine 4 km, modismos mexicanos y Gemini/Groq.",
           status: "🟢 ACTIVO",
           checks: {
             clockCdmx: `Sincronizado (${mexTime.greeting} ${mexTime.icon})`,
-            haversineFilter: "2.0 km Activo",
+            haversineFilter: "4.0 km Activo",
             mexicanIdioms: "8 reglas de modismos cargadas",
             temperature: 0.75
           }
