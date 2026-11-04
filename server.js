@@ -546,6 +546,22 @@ let SERVER_BUSINESSES = [];
 let CURRENT_SYSTEM_PROMPT = null;
 let SERVER_COUPONS = [];
 let AUDIENCIA_WHATSAPP = [];
+
+// Configuración Oficial de Promociones y Banner de Lanzamiento (Personalizable desde Control Maestro)
+const DEFAULT_PROMOTIONS_CONFIG = {
+  bannerImage: "assets/promo-7dias.jpg",
+  badge: "Promoción Especial de Lanzamiento",
+  title: "¡Prueba la Plataforma 7 Días GRATIS!",
+  description: "¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.",
+  buttonText: "¡Regístrate Hoy!",
+  buttonLink: "register",
+  whatsappText: "Probar Concierge en WhatsApp",
+  whatsappLink: "https://wa.me/5215563266526",
+  isVisible: true,
+  updatedAt: new Date().toISOString()
+};
+let SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
+
 const USER_SESSION_MEMORY = new Map(); // phone -> { name, lastLocation, lastBusinesses, history, lastSeen }
 
 // Cupones Semilla Oficiales (Descuentos y Días Gratuitos)
@@ -805,7 +821,8 @@ function saveServerDatabase() {
       currentSystemPrompt: CURRENT_SYSTEM_PROMPT,
       businesses: SERVER_BUSINESSES,
       coupons: SERVER_COUPONS,
-      audiencia: AUDIENCIA_WHATSAPP
+      audiencia: AUDIENCIA_WHATSAPP,
+      promotions: SERVER_PROMOTIONS
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
   } catch (e) {
@@ -831,6 +848,11 @@ function loadServerDatabase() {
         } else {
           AUDIENCIA_WHATSAPP = [...DEFAULT_SEED_AUDIENCE];
         }
+        if (parsed.promotions && typeof parsed.promotions === 'object') {
+          SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG, ...parsed.promotions };
+        } else {
+          SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
+        }
         console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde ${DB_FILE_PATH}`);
         return;
       }
@@ -847,6 +869,7 @@ function loadServerDatabase() {
       SERVER_BUSINESSES = vm.runInNewContext(match[1], { Date, Math });
       SERVER_COUPONS = [...DEFAULT_SEED_COUPONS];
       AUDIENCIA_WHATSAPP = [...DEFAULT_SEED_AUDIENCE];
+      SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
       saveServerDatabase();
     }
   } catch (e) {
@@ -1745,6 +1768,53 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({
           success: true,
           coupons: SERVER_COUPONS
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // GESTIÓN DE PROMOCIONES Y BANNER DE LANZAMIENTO (CONTROL MAESTRO)
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/promotions/banner') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      promotion: SERVER_PROMOTIONS
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/promotions/banner') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        SERVER_PROMOTIONS = {
+          ...SERVER_PROMOTIONS,
+          bannerImage: payload.bannerImage !== undefined && payload.bannerImage !== null ? String(payload.bannerImage) : SERVER_PROMOTIONS.bannerImage,
+          badge: payload.badge !== undefined ? String(payload.badge) : SERVER_PROMOTIONS.badge,
+          title: payload.title !== undefined ? String(payload.title) : SERVER_PROMOTIONS.title,
+          description: payload.description !== undefined ? String(payload.description) : SERVER_PROMOTIONS.description,
+          buttonText: payload.buttonText !== undefined ? String(payload.buttonText) : SERVER_PROMOTIONS.buttonText,
+          buttonLink: payload.buttonLink !== undefined ? String(payload.buttonLink) : SERVER_PROMOTIONS.buttonLink,
+          whatsappText: payload.whatsappText !== undefined ? String(payload.whatsappText) : SERVER_PROMOTIONS.whatsappText,
+          whatsappLink: payload.whatsappLink !== undefined ? String(payload.whatsappLink) : SERVER_PROMOTIONS.whatsappLink,
+          isVisible: payload.isVisible !== undefined ? Boolean(payload.isVisible) : SERVER_PROMOTIONS.isVisible,
+          updatedAt: new Date().toISOString()
+        };
+        saveServerDatabase();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Promoción actualizada exitosamente",
+          promotion: SERVER_PROMOTIONS
         }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });

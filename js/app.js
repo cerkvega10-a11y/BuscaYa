@@ -178,6 +178,13 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("[Init AI Training Error]", e);
   }
 
+  // 6.5. Cargar Configuración de Promociones y Banner Principal
+  try {
+    loadPromoBannerConfig();
+  } catch (e) {
+    console.warn("[Init Promo Banner Notice]", e);
+  }
+
   // 7. Verificar si hay sesión activa previa y enrutar
   try {
     checkSessionState();
@@ -726,12 +733,12 @@ async function handleRegisterSubmit(event) {
   // 2. Procesamiento seguro en Backend con Access Token (Protegido en Servidor)
   let mpSubscriptionId = null;
   try {
+    const enteredCoupon = ACTIVE_REGISTRATION_COUPON?.code || document.getElementById("regCouponCode")?.value?.trim() || null;
+    const trialDaysToApply = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
+
     const backendResp = await fetch("/api/mercadopago/process-trial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      const enteredCoupon = ACTIVE_REGISTRATION_COUPON?.code || document.getElementById("regCouponCode")?.value?.trim() || null;
-      const trialDaysToApply = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
-
       body: JSON.stringify({
         businessId: newBizId,
         cardToken: mpCardToken || `tok-mp-${Date.now()}`,
@@ -2357,6 +2364,83 @@ function handleExportCsvBackup() {
   }
 }
 
+function getGoogleSheetsConfig() {
+  try {
+    const raw = localStorage.getItem("BUSCAYA_GSHEETS_CONFIG");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    spreadsheetId: "Directorio_Oficial",
+    sheetName: "Directorio_BuscaYa_Oficial",
+    webhookUrl: ""
+  };
+}
+
+function saveGoogleSheetsConfig(config) {
+  try {
+    localStorage.setItem("BUSCAYA_GSHEETS_CONFIG", JSON.stringify(config));
+    const idEl = document.getElementById("gsSpreadsheetId");
+    if (idEl) {
+      idEl.textContent = config.spreadsheetId ? config.spreadsheetId : "Sin vincular (Clic para configurar)";
+    }
+    const sheetEl = document.getElementById("gsActiveSheetName");
+    if (sheetEl && config.sheetName) {
+      sheetEl.textContent = config.sheetName;
+    }
+  } catch (e) {}
+}
+
+function openGoogleSheetsConfigModal() {
+  const modal = document.getElementById("gsConfigModal");
+  if (!modal) return;
+  const config = getGoogleSheetsConfig();
+  const idInput = document.getElementById("modalGsSpreadsheetIdInput");
+  const sheetInput = document.getElementById("modalGsSheetNameInput");
+  const whInput = document.getElementById("modalGsWebhookUrlInput");
+  if (idInput) idInput.value = config.spreadsheetId || "";
+  if (sheetInput) sheetInput.value = config.sheetName || "Directorio_BuscaYa_Oficial";
+  if (whInput) whInput.value = config.webhookUrl || "";
+  modal.classList.remove("hidden");
+}
+
+function closeGoogleSheetsConfigModal() {
+  const modal = document.getElementById("gsConfigModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function handleSaveGoogleSheetsConfigModal(event) {
+  if (event) event.preventDefault();
+  const idInput = document.getElementById("modalGsSpreadsheetIdInput");
+  const sheetInput = document.getElementById("modalGsSheetNameInput");
+  const whInput = document.getElementById("modalGsWebhookUrlInput");
+  
+  let sheetId = (idInput ? idInput.value.trim() : "");
+  const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (match) sheetId = match[1];
+
+  const config = {
+    spreadsheetId: sheetId,
+    sheetName: (sheetInput ? sheetInput.value.trim() : "Directorio_BuscaYa_Oficial"),
+    webhookUrl: (whInput ? whInput.value.trim() : "")
+  };
+  saveGoogleSheetsConfig(config);
+  showToast("Configuración de Google Sheets guardada correctamente", "success");
+  closeGoogleSheetsConfigModal();
+}
+
+function handleOpenGoogleSheetsDirect() {
+  const config = getGoogleSheetsConfig();
+  if (config.spreadsheetId && !config.spreadsheetId.startsWith("Sin vincular")) {
+    const url = config.spreadsheetId.startsWith("http") 
+      ? config.spreadsheetId 
+      : `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit`;
+    window.open(url, "_blank");
+  } else {
+    showToast("Por favor configura primero el enlace o ID de tu Google Sheet", "info");
+    openGoogleSheetsConfigModal();
+  }
+}
+
 function openAppsScriptModal() {
   const modal = document.getElementById("appsScriptModal");
   const codeBlock = document.getElementById("appsScriptCodeBlock");
@@ -3533,6 +3617,7 @@ function switchAdminSubTab(tabName) {
     if (contentCoupons) contentCoupons.classList.remove("hidden");
     if (tabBtnCoupons) tabBtnCoupons.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-amber-600 text-white shadow-md";
     loadCouponsUI();
+    loadPromoBannerConfig();
   } else if (tabName === "crm-broadcast") {
     if (contentCrm) contentCrm.classList.remove("hidden");
     if (tabBtnCrm) tabBtnCrm.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-emerald-700 text-white shadow-md";
@@ -5644,6 +5729,234 @@ async function submitExtendDaysForm() {
 }
 
 // ==============================================================
+// GESTIÓN DE PROMOCIÓN VISUAL & BANNER DE LANZAMIENTO (FRONTEND)
+// ==============================================================
+const DEFAULT_PROMO_DATA = {
+  bannerImage: "assets/promo-7dias.jpg",
+  badge: "Promoción Especial de Lanzamiento",
+  title: "¡Prueba la Plataforma 7 Días GRATIS!",
+  description: "¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.",
+  buttonText: "¡Regístrate Hoy!",
+  buttonLink: "register",
+  whatsappText: "Probar Concierge en WhatsApp",
+  whatsappLink: "https://wa.me/5215563266526",
+  isVisible: true
+};
+
+let CURRENT_PROMO_CONFIG = { ...DEFAULT_PROMO_DATA };
+
+async function loadPromoBannerConfig() {
+  try {
+    const res = await fetch("/api/promotions/banner");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.promotion) {
+        CURRENT_PROMO_CONFIG = { ...DEFAULT_PROMO_DATA, ...data.promotion };
+        localStorage.setItem("BUSCAYA_PROMO_CONFIG", JSON.stringify(CURRENT_PROMO_CONFIG));
+      }
+    } else {
+      const cached = localStorage.getItem("BUSCAYA_PROMO_CONFIG");
+      if (cached) CURRENT_PROMO_CONFIG = { ...DEFAULT_PROMO_DATA, ...JSON.parse(cached) };
+    }
+  } catch (err) {
+    const cached = localStorage.getItem("BUSCAYA_PROMO_CONFIG");
+    if (cached) {
+      try { CURRENT_PROMO_CONFIG = { ...DEFAULT_PROMO_DATA, ...JSON.parse(cached) }; } catch(e){}
+    }
+  }
+
+  // 1. Aplicar en la Landing Page
+  applyPromoToLanding(CURRENT_PROMO_CONFIG);
+
+  // 2. Sincronizar inputs en Control Maestro
+  syncPromoAdminInputs(CURRENT_PROMO_CONFIG);
+}
+
+function applyPromoToLanding(cfg) {
+  if (!cfg) return;
+  const section = document.getElementById("promoBannerSection");
+  if (section) {
+    if (cfg.isVisible === false) {
+      section.classList.add("hidden");
+    } else {
+      section.classList.remove("hidden");
+    }
+  }
+
+  const img = document.getElementById("promoBannerImg");
+  if (img && cfg.bannerImage) {
+    img.src = cfg.bannerImage;
+  }
+
+  const badge = document.getElementById("promoBannerBadgeText");
+  if (badge && cfg.badge) badge.textContent = cfg.badge;
+
+  const title = document.getElementById("promoBannerTitle");
+  if (title && cfg.title) {
+    if (cfg.title.includes("<span")) {
+      title.innerHTML = cfg.title;
+    } else {
+      // Si contiene "7 Días GRATIS!" resaltarlo en verde oficial
+      if (cfg.title.includes("7 Días GRATIS!")) {
+        title.innerHTML = cfg.title.replace("7 Días GRATIS!", '<span class="text-[#25D366]">7 Días GRATIS!</span>');
+      } else {
+        title.textContent = cfg.title;
+      }
+    }
+  }
+
+  const desc = document.getElementById("promoBannerDescription");
+  if (desc && cfg.description) desc.textContent = cfg.description;
+
+  const btnText = document.getElementById("promoBannerCtaBtnText");
+  if (btnText && cfg.buttonText) btnText.textContent = cfg.buttonText;
+
+  const waBtnText = document.getElementById("promoBannerWaBtnText");
+  if (waBtnText && cfg.whatsappText) waBtnText.textContent = cfg.whatsappText;
+
+  const waBtn = document.getElementById("promoBannerWaBtn");
+  if (waBtn && cfg.whatsappLink) waBtn.href = cfg.whatsappLink;
+}
+
+function syncPromoAdminInputs(cfg) {
+  if (!cfg) return;
+  const urlInput = document.getElementById("promoImageUrlInput");
+  const badgeInput = document.getElementById("promoBadgeInput");
+  const titleInput = document.getElementById("promoTitleInput");
+  const descInput = document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoBtnTextInput");
+  const waInput = document.getElementById("promoWaTextInput");
+  const visibleInput = document.getElementById("promoIsVisibleInput");
+
+  if (urlInput) urlInput.value = cfg.bannerImage || "";
+  if (badgeInput) badgeInput.value = cfg.badge || "";
+  if (titleInput) titleInput.value = (cfg.title || "").replace(/<[^>]*>/g, '');
+  if (descInput) descInput.value = cfg.description || "";
+  if (btnInput) btnInput.value = cfg.buttonText || "";
+  if (waInput) waInput.value = cfg.whatsappText || "";
+  if (visibleInput) visibleInput.checked = cfg.isVisible !== false;
+
+  updatePromoLivePreview();
+}
+
+function handlePromoImageFileSelect(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("Por favor selecciona un archivo de imagen válido (JPG, PNG o WEBP)", "warning");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const urlInput = document.getElementById("promoImageUrlInput");
+    if (urlInput) urlInput.value = dataUrl;
+    
+    // Actualizar preview en vivo
+    const prevImg = document.getElementById("promoPreviewImg");
+    if (prevImg) prevImg.src = dataUrl;
+
+    showToast("Imagen cargada en el editor. Haz clic en 'Guardar y Publicar Promoción' para aplicarla.", "info");
+  };
+  reader.readAsDataURL(file);
+}
+
+function handlePromoImageUrlInput() {
+  updatePromoLivePreview();
+}
+
+function updatePromoLivePreview() {
+  const urlInput = document.getElementById("promoImageUrlInput");
+  const badgeInput = document.getElementById("promoBadgeInput");
+  const titleInput = document.getElementById("promoTitleInput");
+  const descInput = document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoBtnTextInput");
+  const waInput = document.getElementById("promoWaTextInput");
+
+  const prevImg = document.getElementById("promoPreviewImg");
+  const prevBadge = document.getElementById("promoPreviewBadge");
+  const prevTitle = document.getElementById("promoPreviewTitle");
+  const prevDesc = document.getElementById("promoPreviewDesc");
+  const prevBtn = document.getElementById("promoPreviewBtnText");
+  const prevWa = document.getElementById("promoPreviewWaText");
+
+  if (prevImg) {
+    prevImg.src = (urlInput && urlInput.value.trim()) ? urlInput.value.trim() : "assets/promo-7dias.jpg";
+  }
+  if (prevBadge && badgeInput) prevBadge.textContent = badgeInput.value || "Promoción Especial de Lanzamiento";
+  if (prevTitle && titleInput) prevTitle.textContent = titleInput.value || "¡Prueba la Plataforma 7 Días GRATIS!";
+  if (prevDesc && descInput) prevDesc.textContent = descInput.value || "";
+  if (prevBtn && btnInput) prevBtn.textContent = btnInput.value || "¡Regístrate Hoy!";
+  if (prevWa && waInput) prevWa.textContent = waInput.value || "Probar Concierge en WhatsApp";
+}
+
+async function handleSavePromoBanner(event) {
+  if (event) event.preventDefault();
+
+  const urlInput = document.getElementById("promoImageUrlInput");
+  const badgeInput = document.getElementById("promoBadgeInput");
+  const titleInput = document.getElementById("promoTitleInput");
+  const descInput = document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoBtnTextInput");
+  const waInput = document.getElementById("promoWaTextInput");
+  const visibleInput = document.getElementById("promoIsVisibleInput");
+  const saveBtn = document.getElementById("btnSavePromoBanner");
+
+  const updatedConfig = {
+    bannerImage: (urlInput && urlInput.value.trim()) ? urlInput.value.trim() : "assets/promo-7dias.jpg",
+    badge: (badgeInput && badgeInput.value.trim()) ? badgeInput.value.trim() : "Promoción Especial de Lanzamiento",
+    title: (titleInput && titleInput.value.trim()) ? titleInput.value.trim() : "¡Prueba la Plataforma 7 Días GRATIS!",
+    description: (descInput && descInput.value.trim()) ? descInput.value.trim() : "",
+    buttonText: (btnInput && btnInput.value.trim()) ? btnInput.value.trim() : "¡Regístrate Hoy!",
+    whatsappText: (waInput && waInput.value.trim()) ? waInput.value.trim() : "Probar Concierge en WhatsApp",
+    isVisible: visibleInput ? visibleInput.checked : true
+  };
+
+  const origBtnContent = saveBtn ? saveBtn.innerHTML : null;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Guardando y publicando...</span>';
+  }
+
+  try {
+    const res = await fetch("/api/promotions/banner", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedConfig)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      CURRENT_PROMO_CONFIG = { ...CURRENT_PROMO_CONFIG, ...updatedConfig };
+      localStorage.setItem("BUSCAYA_PROMO_CONFIG", JSON.stringify(CURRENT_PROMO_CONFIG));
+      applyPromoToLanding(CURRENT_PROMO_CONFIG);
+      showToast("¡Promoción y banner actualizados exitosamente en la plataforma!", "success");
+    } else {
+      showToast(data.error || "No se pudo actualizar la promoción en el servidor.", "error");
+    }
+  } catch (err) {
+    CURRENT_PROMO_CONFIG = { ...CURRENT_PROMO_CONFIG, ...updatedConfig };
+    localStorage.setItem("BUSCAYA_PROMO_CONFIG", JSON.stringify(CURRENT_PROMO_CONFIG));
+    applyPromoToLanding(CURRENT_PROMO_CONFIG);
+    showToast("Promoción guardada en navegador (modo offline).", "info");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = origBtnContent;
+    }
+  }
+}
+
+async function handleResetPromoBanner() {
+  if (!confirm("¿Deseas restablecer el banner a la imagen oficial y textos originales de BuscaYa?")) return;
+  
+  CURRENT_PROMO_CONFIG = { ...DEFAULT_PROMO_DATA };
+  syncPromoAdminInputs(CURRENT_PROMO_CONFIG);
+  await handleSavePromoBanner(null);
+}
+
+// ==============================================================
 // MÓDULO 2: MOTOR DE CÓDIGOS PROMOCIONALES (FRONTEND)
 // ==============================================================
 async function loadCouponsUI() {
@@ -6319,6 +6632,13 @@ async function runSwarmDiagnostics() {
 }
 
 // Exponer funciones principales en el ámbito global (window) para garantizar interactividad total
+window.loadPromoBannerConfig = loadPromoBannerConfig;
+window.handlePromoImageFileSelect = handlePromoImageFileSelect;
+window.handlePromoImageUrlInput = handlePromoImageUrlInput;
+window.updatePromoLivePreview = updatePromoLivePreview;
+window.handleSavePromoBanner = handleSavePromoBanner;
+window.handleResetPromoBanner = handleResetPromoBanner;
+
 window.openExtendDaysModal = openExtendDaysModal;
 window.closeExtendDaysModal = closeExtendDaysModal;
 window.applyQuickExtendDays = applyQuickExtendDays;
