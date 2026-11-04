@@ -2347,7 +2347,7 @@ function renderBuscaYaBusinessCard(b, distanceKm = null) {
     `📅 Días: ${daysStr}\n` +
     `📍 Zona: Col. ${zonaStr}\n` +
     `📞 Número de contacto: ${cleanPhone10}\n` +
-    `🗺️ Ubicación en Google Maps: ${mapsLink}`;
+    `🗺️ Ubicación: Toca el botón interactivo de abajo para ver el mapa 📍👇`;
 }
 
 /**
@@ -2932,6 +2932,16 @@ async function processBuscaYaMessage({
     if (nluResult.colonia_o_referencia) userSession.coloniaActual = nluResult.colonia_o_referencia;
     userSession.saludo_enviado = true;
 
+    // Si busca directamente un negocio por su nombre comercial específico (ej. Caramelo Media Music)
+    const termClean = (userSession.lockedTerm || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const directNameBiz = activeBusinesses.find(b => {
+      const bName = (b.businessName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      return (termClean.length >= 4 && (bName.includes(termClean) || termClean.includes(bName)));
+    });
+    if (directNameBiz && !userSession.coloniaActual) {
+      userSession.coloniaActual = directNameBiz.neighborhood || "San Ángel";
+    }
+
     if (userSession.coloniaActual) {
       currentPhase = 3;
       userSession.intencion_actual = "buscar_negocio";
@@ -3015,6 +3025,20 @@ async function processBuscaYaMessage({
   if (userSession.history.length > 20) userSession.history = userSession.history.slice(-20);
   saveServerDatabase();
 
+  let businessLocation = null;
+  if (selectedBiz && finalBotReplyText.includes("🏢")) {
+    const bLat = Number(selectedBiz.latitude) || 19.3496;
+    const bLng = Number(selectedBiz.longitude) || -99.1915;
+    const mapsLink = selectedBiz.mapsUrl || selectedBiz.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((selectedBiz.businessName || '') + ', ' + (selectedBiz.neighborhood || selectedBiz.colonia || '') + ', Álvaro Obregón, CDMX')}`;
+    businessLocation = {
+      latitude: bLat,
+      longitude: bLng,
+      name: selectedBiz.businessName,
+      address: `Col. ${selectedBiz.neighborhood || selectedBiz.colonia || 'Álvaro Obregón'}, CDMX`,
+      url: mapsLink
+    };
+  }
+
   const botReply = {
     recipient: senderPhone,
     agentPhone: META_OFFICIAL_PHONE_DISPLAY,
@@ -3026,6 +3050,7 @@ async function processBuscaYaMessage({
       neighborhood: userSession.coloniaActual,
       municipality: "Álvaro Obregón"
     },
+    businessLocation: businessLocation,
     responseMessage: finalBotReplyText,
     timestamp: timestamp
   };
@@ -3034,6 +3059,7 @@ async function processBuscaYaMessage({
     replyText: finalBotReplyText,
     bubbles: bubbles,
     emoji_reaccion: nluResult.emoji_reaccion,
+    businessLocation: businessLocation,
     debugState: {
       intencion: nluResult.intencion,
       familia_giro: nluResult.familia_giro,
@@ -3045,6 +3071,7 @@ async function processBuscaYaMessage({
       detectedNeighborhood: userSession.coloniaActual,
       matchingBusinessesCount: userSession.shownBusinessIds.length,
       selectedBusiness: selectedBiz ? selectedBiz.businessName : null,
+      businessLocation: businessLocation,
       currentPhase: currentPhase,
       activeIntention: userSession.intencion_actual
     },
@@ -4284,7 +4311,9 @@ const server = http.createServer(async (req, res) => {
           reply: result.replyText,
           bubbles: result.bubbles,
           debugState: result.debugState,
-          botReply: result.botReply
+          botReply: result.botReply,
+          businessLocation: result.businessLocation,
+          emoji_reaccion: result.emoji_reaccion
         }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -5805,6 +5834,35 @@ ${visualFormatRule}`;
                   text: { preview_url: true, body: bubbleText }
                 })
               });
+
+              // Si esta burbuja contiene la ficha del negocio, despachar inmediatamente el botón interactivo de ubicación nativa (GPS Pin)
+              if (result.businessLocation && bubbleText.includes("🏢")) {
+                await new Promise(r => setTimeout(r, 600));
+                try {
+                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: cleanTo,
+                      type: "location",
+                      location: {
+                        latitude: result.businessLocation.latitude,
+                        longitude: result.businessLocation.longitude,
+                        name: result.businessLocation.name,
+                        address: result.businessLocation.address
+                      }
+                    })
+                  });
+                } catch (locErr) {
+                  console.warn("[Meta Cloud API Location Pin Warning]:", locErr.message);
+                }
+              }
+
               if (i < result.bubbles.length - 1) {
                 await new Promise(r => setTimeout(r, 700));
               }
@@ -5832,7 +5890,8 @@ ${visualFormatRule}`;
           botReply: result.botReply,
           debugState: result.debugState,
           bubbles: result.bubbles,
-          emoji_reaccion: result.emoji_reaccion
+          emoji_reaccion: result.emoji_reaccion,
+          businessLocation: result.businessLocation
         }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

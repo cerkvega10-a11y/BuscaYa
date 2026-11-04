@@ -3908,6 +3908,29 @@ async function handleSandboxSend() {
       bubbles.forEach(bubbleText => {
         const formattedHtml = formatGeminiResponseToHtml(bubbleText);
         appendSandboxMessage("ai", formattedHtml, true);
+
+        // Si la burbuja contiene la ficha de negocio y tenemos businessLocation, renderizar botón de mapa interactivo
+        if (data.businessLocation && bubbleText.includes("🏢")) {
+          const locBtnHtml = `
+            <div class="mt-2.5 p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-300 shadow-sm space-y-2.5">
+              <div class="flex items-start space-x-2.5">
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 shadow-sm">
+                  <i class="fa-solid fa-location-dot text-base animate-bounce"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-bold text-gray-900 truncate">${escapeHtml(data.businessLocation.name)}</div>
+                  <div class="text-[11px] text-gray-600 truncate">${escapeHtml(data.businessLocation.address)}</div>
+                </div>
+              </div>
+              <a href="${data.businessLocation.url}" target="_blank" rel="noopener noreferrer"
+                 class="flex items-center justify-center w-full py-2.5 px-4 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-extrabold rounded-xl shadow-md transition-all transform active:scale-95 space-x-2 no-underline cursor-pointer">
+                <i class="fa-solid fa-map-location-dot text-sm"></i>
+                <span>📍 Toca aquí para ver la Ubicación en Google Maps</span>
+              </a>
+            </div>
+          `;
+          appendSandboxMessage("ai", locBtnHtml, true);
+        }
       });
 
       // Actualizar Barra de Telemetría y Debug Bar (1:1 con WhatsApp)
@@ -4080,6 +4103,12 @@ function formatGeminiResponseToHtml(text) {
   clean = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
   clean = clean.replace(/\*([^\*\n]+)\*/g, '<b>$1</b>');
   clean = clean.replace(/_([^_\n]+)_/g, '<i>$1</i>');
+
+  // Transformar enlaces a Google Maps o leyendas de ubicación en botones visuales interactivos
+  clean = clean.replace(/🗺️?\s*(?:Ubicación en Google Maps|Ver en Google Maps|Ubicación):\s*(https?:\/\/[^\s<]+)/gi, (match, url) => {
+    return `<div class="my-2.5"><a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-4 py-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold rounded-xl shadow-sm transition-all transform active:scale-95 no-underline cursor-pointer"><i class="fa-solid fa-map-location-dot mr-2 text-sm"></i><span>📍 Toca aquí para ver Ubicación en Google Maps</span></a></div>`;
+  });
+
   clean = clean.replace(/\n/g, '<br>');
   return clean;
 }

@@ -549,6 +549,27 @@ async function handleIncomingMessage(sock, msg) {
             sentBotMessageIds.add(sentMsg.key.id);
             if (sentBotMessageIds.size > 2000) sentBotMessageIds.clear();
           }
+
+          // Si esta burbuja contiene la ficha del negocio, despachar inmediatamente el botón interactivo de ubicación nativa (GPS Pin)
+          if (data.businessLocation && bubbleText.includes("🏢")) {
+            await new Promise(r => setTimeout(r, 600));
+            try {
+              const locMsg = await sock.sendMessage(remoteJid, {
+                location: {
+                  degreesLatitude: Number(data.businessLocation.latitude),
+                  degreesLongitude: Number(data.businessLocation.longitude),
+                  name: data.businessLocation.name,
+                  address: data.businessLocation.address
+                }
+              });
+              if (locMsg?.key?.id) {
+                sentBotMessageIds.add(locMsg.key.id);
+              }
+            } catch (locErr) {
+              console.warn("[Baileys Location Pin Warning]:", locErr.message);
+            }
+          }
+
           if (i < bubbles.length - 1) {
             await new Promise(r => setTimeout(r, 700));
           }
