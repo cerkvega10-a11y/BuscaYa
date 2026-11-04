@@ -1,11 +1,47 @@
 /**
  * AGENTE 3 - DESARROLLADOR DE LÓGICA DE NEGOCIO Y AUTENTICACIÓN (CORE JS LOGIC)
- * Manejo de sesiones, autenticación dual, cálculos de suscripción y operaciones CRUD.
+ * Manejo de sesiones seguras validadas en servidor, cálculos de suscripción y operaciones CRUD.
+ * SEGURIDAD: Cero credenciales en código público (validación 100% en backend con hash bcrypt).
  */
 
 const SESSION_KEY = "buscaya_current_user";
-const ADMIN_USERNAME = "Cerkvega92";
-const ADMIN_PASSWORD = "Tutusito1*";
+const AUTH_TOKEN_KEY = "buscaya_auth_token";
+
+/**
+ * Obtener token de sesión activo
+ */
+function getAuthToken() {
+  return sessionStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+// Interceptor global de seguridad: Adjunta automáticamente el token Bearer en solicitudes /api/
+(function() {
+  if (typeof window !== "undefined" && window.fetch) {
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      if (typeof url === "string" && url.startsWith("/api/")) {
+        const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+        if (token) {
+          options = options || {};
+          options.headers = options.headers || {};
+          if (options.headers instanceof Headers) {
+            if (!options.headers.has("Authorization")) {
+              options.headers.set("Authorization", `Bearer ${token}`);
+            }
+          } else if (Array.isArray(options.headers)) {
+            const hasAuth = options.headers.some(([k]) => k.toLowerCase() === "authorization");
+            if (!hasAuth) options.headers.push(["Authorization", `Bearer ${token}`]);
+          } else {
+            if (!options.headers["Authorization"] && !options.headers["authorization"]) {
+              options.headers["Authorization"] = `Bearer ${token}`;
+            }
+          }
+        }
+      }
+      return originalFetch.call(this, url, options);
+    };
+  }
+})();
 
 /**
  * Obtener todos los negocios del localStorage
@@ -17,6 +53,18 @@ function getBusinesses(options = {}) {
   try {
     list = JSON.parse(data);
     if (!Array.isArray(list)) return [];
+    // Sanitización proactiva de seguridad: remover contraseñas y datos bancarios del almacenamiento local
+    list = list.map(b => {
+      if (b.password || b.passwordHash || b.cardholderName || b.cardLast4) {
+        const safe = { ...b };
+        delete safe.password;
+        delete safe.passwordHash;
+        delete safe.cardholderName;
+        delete safe.cardLast4;
+        return safe;
+      }
+      return b;
+    });
   } catch (e) {
     console.warn("[getBusinesses Parse Error]", e);
     return [];
@@ -109,11 +157,19 @@ function toggleBusinessSponsored(id) {
 }
 
 /**
- * Guardar lista de negocios en localStorage con Respaldo de Snapshot Seguro
+ * Guardar lista de negocios en localStorage sanitizada (Sin contraseñas ni datos sensibles)
  */
 function saveBusinesses(list) {
-  localStorage.setItem("buscaya_businesses", JSON.stringify(list));
-  localStorage.setItem("buscaya_backup_snapshot", JSON.stringify(list));
+  const sanitized = list.map(b => {
+    const safe = { ...b };
+    delete safe.password;
+    delete safe.passwordHash;
+    delete safe.cardholderName;
+    delete safe.cardLast4;
+    return safe;
+  });
+  localStorage.setItem("buscaya_businesses", JSON.stringify(sanitized));
+  localStorage.setItem("buscaya_backup_snapshot", JSON.stringify(sanitized));
 }
 
 /**
@@ -157,51 +213,52 @@ function setCurrentUser(user) {
 }
 
 /**
- * Iniciar sesión: Valida Super Admin o Negocio Registrado
+ * Iniciar sesión: Validación 100% en Servidor (POST /api/auth/login)
+ * Previene bypass y protege credenciales mediante bcrypt en backend
  */
-function authenticateUser(identifier, password) {
+async function authenticateUser(identifier, password) {
   const cleanId = (identifier || "").trim();
   const cleanPass = (password || "").trim();
 
-  // Validación exacta de Super Admin
-  if (cleanId === ADMIN_USERNAME && cleanPass === ADMIN_PASSWORD) {
-    const adminUser = {
-      role: "admin",
-      username: ADMIN_USERNAME,
-      name: "Super Administrador (Control Maestro)",
-      email: "admin@buscaya.com"
-    };
-    setCurrentUser(adminUser);
-    return { success: true, role: "admin", user: adminUser };
+  if (!cleanId || !cleanPass) {
+    return { success: false, message: "Ingresa tu usuario y contraseña." };
   }
 
-  // Validación de Dueño de Negocio (por correo, usuario o teléfono)
-  const businesses = getBusinesses();
-  const found = businesses.find(b => 
-    (b.email.toLowerCase() === cleanId.toLowerCase() || 
-     (b.phone && b.phone.replace(/\D/g, "") === cleanId.replace(/\D/g, ""))) && 
-    b.password === cleanPass
-  );
+  try {
+    const resp = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: cleanId, password: cleanPass })
+    });
+    const data = await resp.json();
 
-  if (found) {
-    const clientUser = {
-      role: "client",
-      businessId: found.id,
-      name: found.ownerName,
-      businessName: found.businessName,
-      email: found.email
-    };
-    setCurrentUser(clientUser);
-    return { success: true, role: "client", user: clientUser, business: found };
+    if (resp.ok && data.success) {
+      if (data.token) {
+        sessionStorage.setItem(AUTH_TOKEN_KEY, data.token);
+      }
+      setCurrentUser({ ...data.user, token: data.token });
+      return data;
+    } else {
+      return { success: false, message: data.message || "Credenciales incorrectas. Verifica tus datos." };
+    }
+  } catch (err) {
+    console.error("[Auth Server Error]", err);
+    return { success: false, message: "Error al comunicar con el servidor de autenticación." };
   }
-
-  return { success: false, message: "Credenciales incorrectas. Verifica tu usuario/correo y contraseña." };
 }
 
 /**
- * Cerrar sesión
+ * Cerrar sesión e invalidar token en backend
  */
 function logoutUser() {
+  const token = getAuthToken();
+  if (token) {
+    fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    }).catch(() => {});
+  }
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
   setCurrentUser(null);
 }
 
@@ -229,7 +286,6 @@ function registerBusiness(data, isPaid = false, customDays = 7) {
     id: data.id || ("by-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6)),
     ownerName: (data.ownerName || "").trim(),
     email: (data.email || "").trim(),
-    password: data.password || "123456",
     businessName: (data.businessName || "").trim(),
     category: data.category,
     phone: (data.phone || "").trim(),
@@ -275,10 +331,14 @@ function registerBusiness(data, isPaid = false, customDays = 7) {
     syncBusinessToGoogleSheets(newBusiness).catch(e => console.warn("Google Sheets background sync:", e));
   }
 
-  // Sincronizar con la base de datos del servidor backend
+  // Sincronizar con la base de datos del servidor backend con token
+  const syncHeaders = { "Content-Type": "application/json" };
+  const authToken = getAuthToken();
+  if (authToken) syncHeaders["Authorization"] = `Bearer ${authToken}`;
+
   fetch("/api/businesses/sync", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: syncHeaders,
     body: JSON.stringify({ businesses: [newBusiness] })
   }).catch(() => {});
 
@@ -319,9 +379,13 @@ function updateBusiness(id, updateData) {
     syncBusinessToGoogleSheets(updated).catch(e => console.warn("Google Sheets update sync:", e));
   }
 
+  const syncHeaders = { "Content-Type": "application/json" };
+  const authToken = getAuthToken();
+  if (authToken) syncHeaders["Authorization"] = `Bearer ${authToken}`;
+
   fetch("/api/businesses/sync", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: syncHeaders,
     body: JSON.stringify({ businesses: [updated] })
   }).catch(() => {});
 
@@ -343,9 +407,13 @@ function deleteBusiness(id) {
   }
 
   // Sincronizar reemplazo completo con el servidor backend
+  const syncHeaders = { "Content-Type": "application/json" };
+  const authToken = getAuthToken();
+  if (authToken) syncHeaders["Authorization"] = `Bearer ${authToken}`;
+
   fetch("/api/businesses/sync", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: syncHeaders,
     body: JSON.stringify({ businesses: filtered, replaceAll: true })
   }).catch(() => {});
 
@@ -377,9 +445,13 @@ function extendSubscriptionDays(id, daysToAdd) {
     syncBusinessToGoogleSheets(business).catch(() => {});
   }
 
+  const syncHeaders = { "Content-Type": "application/json" };
+  const authToken = getAuthToken();
+  if (authToken) syncHeaders["Authorization"] = `Bearer ${authToken}`;
+
   fetch("/api/businesses/sync", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: syncHeaders,
     body: JSON.stringify({ businesses: [business] })
   }).catch(() => {});
 
@@ -412,9 +484,13 @@ function toggleSubscriptionStatus(id, newStatus) {
     syncBusinessToGoogleSheets(business).catch(() => {});
   }
 
+  const syncHeaders2 = { "Content-Type": "application/json" };
+  const authToken2 = getAuthToken();
+  if (authToken2) syncHeaders2["Authorization"] = `Bearer ${authToken2}`;
+
   fetch("/api/businesses/sync", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: syncHeaders2,
     body: JSON.stringify({ businesses: [business] })
   }).catch(() => {});
 

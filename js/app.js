@@ -330,23 +330,23 @@ function closeLoginModal() {
   if (modal) modal.classList.add("hidden");
 }
 
-function handleLoginSubmit(event) {
+async function handleLoginSubmit(event) {
   event.preventDefault();
   const identifier = document.getElementById("loginIdentifier").value;
   const password = document.getElementById("loginPassword").value;
   const errorAlert = document.getElementById("loginErrorAlert");
 
-  const result = authenticateUser(identifier, password);
+  const result = await authenticateUser(identifier, password);
 
   if (result.success) {
     closeLoginModal();
     document.getElementById("loginForm").reset();
 
     if (result.role === "admin") {
-      showToast("¡Bienvenido al Control Maestro, Cerkvega92!", "success");
+      showToast("¡Bienvenido al Control Maestro de BuscaYa!", "success");
       navigateTo("admin-dashboard");
     } else {
-      showToast(`¡Bienvenido de nuevo, ${result.user.name}!`, "success");
+      showToast(`¡Bienvenido de nuevo, ${result.user?.name || 'Cliente'}!`, "success");
       navigateTo("business-panel");
     }
   } else {
@@ -740,6 +740,19 @@ async function handleRegisterSubmit(event) {
     }
   }
 
+  // REGLA DE ORO DE SEGURIDAD: Si falla la tokenización oficial de Mercado Pago,
+  // el registro se detiene de forma obligatoria con un mensaje claro; NUNCA continuar con tokens inventados.
+  if (!mpCardToken) {
+    resetRegisterSubmitBtn();
+    const tokenErrMsg = "No se pudo verificar la tarjeta con Mercado Pago. Por favor revisa el número de tarjeta, fecha de vencimiento y código de seguridad (CVV), o intenta con otra tarjeta bancaria.";
+    if (mpErrorAlert && mpErrorText) {
+      mpErrorText.textContent = tokenErrMsg;
+      mpErrorAlert.classList.remove("hidden");
+    }
+    showToast(tokenErrMsg, "error");
+    return;
+  }
+
   // 2. Procesamiento seguro en Backend con Access Token (Protegido en Servidor)
   let mpSubscriptionId = null;
   try {
@@ -751,7 +764,7 @@ async function handleRegisterSubmit(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         businessId: newBizId,
-        cardToken: mpCardToken || `tok-mp-${Date.now()}`,
+        cardToken: mpCardToken,
         email: document.getElementById("regEmail").value.trim(),
         cardholderName: cardholderName,
         businessName: document.getElementById("regBusinessName").value.trim(),
@@ -2133,7 +2146,6 @@ function handleAdminAddSubmit(event) {
   const businessData = {
     ownerName: document.getElementById("adminAddOwner").value,
     email: document.getElementById("adminAddEmail").value,
-    password: "password123",
     businessName: document.getElementById("adminAddName").value,
     category: document.getElementById("adminAddCategory").value,
     phone: document.getElementById("adminAddPhone").value,
@@ -2153,8 +2165,16 @@ function handleAdminAddSubmit(event) {
 
   const registered = registerBusiness(businessData, isPaid, days);
   
-  // Sincronizar inmediatamente con el backend
+  // Sincronizar inmediatamente con el backend con token de admin
+  const token = typeof getAuthToken === "function" ? getAuthToken() : "";
   fetch("/api/businesses/manual-register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ ...businessData, trialDays: days })
+  }).catch(() => {});
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -2903,7 +2923,7 @@ function appendChatMessage(sender, text, isHtml = false) {
     msgDiv.className = "flex justify-end";
     msgDiv.innerHTML = `
       <div class="bg-[#DCF8C6] text-[#111B21] px-3.5 py-2 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] wa-tail-out">
-        <p>${escapeHtml(text)}</p>
+        ${isHtml ? text : `<p>${escapeHtml(text)}</p>`}
         <span class="text-[10px] text-gray-500 float-right ml-2 mt-1">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} <i class="fa-solid fa-check-double text-blue-500"></i></span>
       </div>
     `;
@@ -3765,7 +3785,7 @@ function appendSandboxMessage(sender, content, isHtml = false) {
     msgDiv.className = "flex justify-end animate-fade-in";
     msgDiv.innerHTML = `
       <div class="bg-[#DCF8C6] text-[#111B21] px-3.5 py-2 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] wa-tail-out">
-        <p class="leading-relaxed">${escapeHtml(content)}</p>
+        ${isHtml ? content : `<p class="leading-relaxed">${escapeHtml(content)}</p>`}
         <span class="text-[10px] text-gray-500 float-right ml-2 mt-1">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} <i class="fa-solid fa-check-double text-blue-500"></i></span>
       </div>
     `;
@@ -4131,7 +4151,32 @@ async function processAiQuery(query, isSandbox = false) {
     }
 
     if (aiConfig.enableSponsored) {
-      sponsoredBiz = activeBusinesses.find(b => b.id !== best.id && b.isSponsored);
+      // Coincidencia estricta por categoría / giro: Jamás mezclar comida con plomería u oficios
+      const isCategoryMatch = (candidate, target) => {
+        if (!candidate || !target) return false;
+        const cCat = (candidate.category || "").toLowerCase();
+        const tCat = (target.category || "").toLowerCase();
+        const cServ = (candidate.services || "").toLowerCase();
+        const tServ = (target.services || "").toLowerCase();
+        const qClean = clean.toLowerCase();
+
+        // 1. Blindaje de Alimentos: Si target es restaurante/comida, candidate DEBE ser restaurante/comida
+        const isTargetFood = tCat.includes("restaurante") || tCat.includes("comida") || tCat.includes("alimento") || tCat.includes("pizza") || tCat.includes("taco") || tCat.includes("cafe");
+        const isCandFood = cCat.includes("restaurante") || cCat.includes("comida") || cCat.includes("alimento") || cCat.includes("pizza") || cCat.includes("taco") || cCat.includes("cafe");
+        if (isTargetFood !== isCandFood) return false;
+
+        // 2. Coincidencia de categoría directa
+        if (cCat === tCat || cCat.includes(tCat) || tCat.includes(cCat)) return true;
+
+        // 3. Coincidencia con la búsqueda del usuario
+        if (cCat.includes(qClean) || cServ.includes(qClean)) return true;
+
+        // 4. Coincidencia de tokens clave de servicios
+        const tWords = tCat.split(/[\s,]+/).concat(tServ.split(/[\s,]+/)).filter(w => w.length > 4);
+        return tWords.some(w => cCat.includes(w) || cServ.includes(w));
+      };
+
+      sponsoredBiz = activeBusinesses.find(b => b.id !== best.id && b.isSponsored && isCategoryMatch(b, best));
       if (sponsoredBiz) {
         if (typeof trackBusinessEvent === 'function') {
           trackBusinessEvent(sponsoredBiz.id, 'impression');
@@ -4651,7 +4696,27 @@ function processLocationQuery(coords, serviceQuery = "", isSandbox = false) {
       let sponsoredBiz = null;
 
       if (aiConfig.enableSponsored) {
-        const sponsoredCandidates = withDistance.filter(b => b.id !== best.id && b.isSponsored);
+        const isCategoryMatch = (candidate, target) => {
+          if (!candidate || !target) return false;
+          const cCat = (candidate.category || "").toLowerCase();
+          const tCat = (target.category || "").toLowerCase();
+          const cServ = (candidate.services || "").toLowerCase();
+          const tServ = (target.services || "").toLowerCase();
+          const qClean = (serviceQuery || "").toLowerCase();
+
+          // Blindaje estricto de alimentos vs oficios
+          const isTargetFood = tCat.includes("restaurante") || tCat.includes("comida") || tCat.includes("alimento") || tCat.includes("pizza") || tCat.includes("taco") || tCat.includes("cafe");
+          const isCandFood = cCat.includes("restaurante") || cCat.includes("comida") || cCat.includes("alimento") || cCat.includes("pizza") || cCat.includes("taco") || cCat.includes("cafe");
+          if (isTargetFood !== isCandFood) return false;
+
+          if (cCat === tCat || cCat.includes(tCat) || tCat.includes(cCat)) return true;
+          if (qClean && (cCat.includes(qClean) || cServ.includes(qClean))) return true;
+
+          const tWords = tCat.split(/[\s,]+/).concat(tServ.split(/[\s,]+/)).filter(w => w.length > 4);
+          return tWords.some(w => cCat.includes(w) || cServ.includes(w));
+        };
+
+        const sponsoredCandidates = withDistance.filter(b => b.id !== best.id && b.isSponsored && isCategoryMatch(b, best));
         if (sponsoredCandidates.length > 0) {
           sponsoredCandidates.sort((a, b) => a.distanceKm - b.distanceKm);
           sponsoredBiz = sponsoredCandidates[0];

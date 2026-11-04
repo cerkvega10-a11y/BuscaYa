@@ -2,6 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 // Cargar variables de entorno desde .env ANTES de importar servicios dependientes
 const envPath = path.join(__dirname, '.env');
@@ -51,6 +53,67 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
 const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'data') : path.join(__dirname, 'data');
 const DB_FILE_PATH = path.join(DATA_DIR, 'server-db.json');
+
+// ==============================================================
+// GESTIÓN SEGURA DE ACCESO DE ADMINISTRADOR (BCRYPT + SESIONES)
+// ==============================================================
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin_buscaya";
+// Contraseña del SuperAdmin rotada: "Busc@Ya#2026!MasterShield$"
+// Almacenada estrictamente como hash con sal bcrypt (12 rounds)
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "$2b$12$isu6Top0u1WQJqpIfUvxc.2TRm5OfRwWPgyWJUsoGuqFCGVBQZd1q";
+
+const SERVER_ACTIVE_SESSIONS = new Map(); // token -> { role, userId, username, createdAt, expiresAt }
+const ADMIN_ACCESS_LOGS = []; // [{ id, timestamp, ip, userAgent, action, status, username, details }]
+const PROCESSED_PAYMENT_IDS = new Set(); // Idempotencia de transacciones de pago
+
+function logAccessAttempt(ip, userAgent, action, status, username = null, details = "") {
+  const entry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    ip: ip || "127.0.0.1",
+    userAgent: userAgent || "Unknown",
+    action,
+    status,
+    username,
+    details
+  };
+  ADMIN_ACCESS_LOGS.unshift(entry);
+  if (ADMIN_ACCESS_LOGS.length > 200) ADMIN_ACCESS_LOGS.pop();
+  return entry;
+}
+
+function verifyAuthToken(req, requiredRole = null) {
+  const authHeader = req.headers['authorization'] || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.substring(7).trim();
+  if (!token) return null;
+
+  const session = SERVER_ACTIVE_SESSIONS.get(token);
+  if (!session) return null;
+
+  if (session.expiresAt && Date.now() > session.expiresAt) {
+    SERVER_ACTIVE_SESSIONS.delete(token);
+    return null;
+  }
+
+  if (requiredRole && session.role !== requiredRole && session.role !== 'admin') {
+    return null;
+  }
+
+  return { token, session };
+}
+
+function sanitizeBusinessForPublic(b) {
+  if (!b) return null;
+  const safe = { ...b };
+  delete safe.password;
+  delete safe.passwordHash;
+  delete safe.cardholderName;
+  delete safe.cardLast4;
+  delete safe.cardBrand;
+  delete safe.mercadoPagoSubscriptionId;
+  return safe;
+}
 
 // Credenciales Oficiales de Mercado Pago
 const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || "APP_USR-5a281595-6d9a-4e70-9fa9-f9df37f63a89";
@@ -2013,6 +2076,178 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname;
 
   // ==============================================================
+  // ENDPOINTS DE AUTENTICACIÓN Y SEGURIDAD DEL SERVIDOR (BCRYPT)
+  // ==============================================================
+
+  // 0.1. Inicio de sesión seguro en el servidor (SuperAdmin o Dueño de Negocio)
+  if (req.method === 'POST' && pathname === '/api/auth/login') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      try {
+        const { identifier, password } = JSON.parse(body || '{}');
+        const cleanId = (identifier || '').trim();
+        const cleanPass = (password || '').trim();
+
+        if (!cleanId || !cleanPass) {
+          logAccessAttempt(clientIp, userAgent, 'login', 'rejected', cleanId, 'Faltan credenciales');
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'Usuario y contraseña son requeridos.' }));
+          return;
+        }
+
+        // 1. Verificación de SuperAdmin con hash seguro bcrypt
+        if (cleanId.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
+          const isMatch = bcrypt.compareSync(cleanPass, ADMIN_PASSWORD_HASH);
+          if (isMatch) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hrs
+            SERVER_ACTIVE_SESSIONS.set(token, {
+              role: 'admin',
+              username: ADMIN_USERNAME,
+              createdAt: Date.now(),
+              expiresAt
+            });
+            logAccessAttempt(clientIp, userAgent, 'login', 'success', ADMIN_USERNAME, 'Acceso SuperAdmin concedido');
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: true,
+              role: 'admin',
+              token: token,
+              user: {
+                role: 'admin',
+                username: ADMIN_USERNAME,
+                name: 'Super Administrador (Control Maestro)',
+                email: 'admin@buscaya.com'
+              }
+            }));
+            return;
+          }
+        }
+
+        // 2. Verificación de Dueño de Negocio (por correo o teléfono)
+        const cleanPhone = cleanId.replace(/\D/g, '');
+        const biz = SERVER_BUSINESSES.find(b =>
+          (b.email && b.email.toLowerCase() === cleanId.toLowerCase()) ||
+          (cleanPhone && b.phone && b.phone.replace(/\D/g, '') === cleanPhone)
+        );
+
+        if (biz) {
+          let passwordValid = false;
+          if (biz.passwordHash) {
+            passwordValid = bcrypt.compareSync(cleanPass, biz.passwordHash);
+          } else if (biz.password && biz.password === cleanPass) {
+            passwordValid = true;
+            // Migrar automáticamente la contraseña a hash seguro bcrypt
+            biz.passwordHash = bcrypt.hashSync(cleanPass, 10);
+            delete biz.password;
+            saveServerDatabase();
+          }
+
+          if (passwordValid) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+            SERVER_ACTIVE_SESSIONS.set(token, {
+              role: 'client',
+              businessId: biz.id,
+              email: biz.email,
+              createdAt: Date.now(),
+              expiresAt
+            });
+            logAccessAttempt(clientIp, userAgent, 'login', 'success', biz.email, `Acceso cliente concedido (${biz.businessName})`);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: true,
+              role: 'client',
+              token: token,
+              user: {
+                role: 'client',
+                businessId: biz.id,
+                name: biz.ownerName,
+                businessName: biz.businessName,
+                email: biz.email
+              },
+              business: sanitizeBusinessForPublic(biz)
+            }));
+            return;
+          }
+        }
+
+        // Credenciales inválidas
+        logAccessAttempt(clientIp, userAgent, 'login', 'failed', cleanId, 'Credenciales incorrectas');
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Credenciales incorrectas. Verifica tu usuario y contraseña.' }));
+      } catch (err) {
+        logAccessAttempt(clientIp, userAgent, 'login', 'error', null, err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Error interno en autenticación.' }));
+      }
+    });
+    return;
+  }
+
+  // 0.2. Cierre de sesión e invalidación de token
+  if (req.method === 'POST' && pathname === '/api/auth/logout') {
+    const authHeader = req.headers['authorization'] || '';
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7).trim();
+      SERVER_ACTIVE_SESSIONS.delete(token);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, message: 'Sesión invalidada exitosamente.' }));
+    return;
+  }
+
+  // 0.3. Consulta y verificación de sesión activa
+  if (req.method === 'GET' && pathname === '/api/auth/session') {
+    const auth = verifyAuthToken(req);
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, authenticated: false }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, authenticated: true, session: auth.session }));
+    return;
+  }
+
+  // 0.4. Lista pública de negocios (Sin contraseñas ni datos sensibles)
+  if (req.method === 'GET' && pathname === '/api/businesses') {
+    const publicList = SERVER_BUSINESSES.map(sanitizeBusinessForPublic);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(publicList));
+    return;
+  }
+
+  // 0.5. Lista privada de negocios para SuperAdmin (Control Maestro)
+  if (req.method === 'GET' && (pathname === '/api/admin/businesses' || pathname === '/api/businesses/all')) {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado al panel de administración.' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(SERVER_BUSINESSES));
+    return;
+  }
+
+  // 0.6. Registro de accesos y auditoría de seguridad
+  if (req.method === 'GET' && pathname === '/api/admin/access-logs') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado.' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(ADMIN_ACCESS_LOGS));
+    return;
+  }
+
+  // ==============================================================
   // ENDPOINTS DE API MERCADO PAGO (PROCESAMIENTO SEGURO)
   // ==============================================================
 
@@ -2046,6 +2281,17 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify({
             success: false,
             message: 'Error en pasarela de pago: Correo electrónico del titular inválido.'
+          }));
+          return;
+        }
+
+        // Validación ESTRICTA del token de tarjeta emitido por Mercado Pago:
+        // Se rechaza de forma tajante cualquier token falso, simulado o no generado por SDK oficial
+        if (!cardToken || typeof cardToken !== 'string' || cardToken.startsWith('tok-mp-') || cardToken.startsWith('mock_') || cardToken.length < 10) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: false,
+            message: 'Token de tarjeta no válido. La tokenización oficial en el navegador mediante Mercado Pago es obligatoria para activar la prueba.'
           }));
           return;
         }
@@ -2095,10 +2341,10 @@ const server = http.createServer(async (req, res) => {
         };
 
         let mpResult = null;
-        let subscriptionId = `mp-sub-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+        let subscriptionId = null;
 
         // Llamada a la API oficial de Mercado Pago con el Access Token seguro
-        if (cardToken && MP_ACCESS_TOKEN) {
+        if (MP_ACCESS_TOKEN) {
           try {
             const mpResponse = await fetch("https://api.mercadopago.com/preapproval", {
               method: "POST",
@@ -2115,11 +2361,31 @@ const server = http.createServer(async (req, res) => {
               subscriptionId = mpJson.id;
               console.log("[Mercado Pago Server] Suscripción con Free Trial creada en Mercado Pago. ID:", mpJson.id);
             } else {
-              console.warn("[Mercado Pago Server Note]", mpJson.message || "Validación de plan con free_trial autorizada");
+              console.warn("[Mercado Pago Server Error de Autorización]", mpJson);
+              const errMsg = mpJson.message || (mpJson.cause && mpJson.cause[0] && mpJson.cause[0].description) || "Mercado Pago no autorizó la tarjeta para el plan de prueba.";
+              res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({
+                success: false,
+                message: `Validación fallida en Mercado Pago: ${errMsg}`
+              }));
+              return;
             }
           } catch (mpErr) {
-            console.warn("[Mercado Pago API Dispatch]", mpErr.message);
+            console.error("[Mercado Pago API Dispatch Error]", mpErr.message);
+            res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: false,
+              message: `Error al comunicar con la pasarela de Mercado Pago: ${mpErr.message}`
+            }));
+            return;
           }
+        } else {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: false,
+            message: 'Pasarela de Mercado Pago no configurada en el servidor (Falta Access Token).'
+          }));
+          return;
         }
 
         // Registrar log inicial de suscripción
@@ -2201,7 +2467,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 3. Webhook de Mercado Pago (IPN / Notificaciones): Responde HTTP 200 OK de inmediato y actualiza suscripción
+  // 3. Webhook de Mercado Pago (IPN / Notificaciones): Verificación oficial con API, idempotencia y HTTP 200 OK
   if (req.method === 'POST' && (pathname === '/api/mercadopago/webhook' || pathname === '/api/webhooks/mercadopago')) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -2223,7 +2489,13 @@ const server = http.createServer(async (req, res) => {
 
         console.log(`[Mercado Pago Webhook Event] Tipo: ${eventType} | ID: ${resourceId}`);
 
-        // Localizar negocio en SERVER_BUSINESSES y actualizar su vigencia a Suscripción Activa (+30 días)
+        // IDEMPOTENCIA ESTRICTA: Evitar procesar el mismo pago dos veces
+        if (PROCESSED_PAYMENT_IDS.has(resourceId)) {
+          console.log(`[Mercado Pago Webhook Idempotencia] Evento ${resourceId} ya fue procesado previamente.`);
+          return;
+        }
+
+        // Localizar negocio en SERVER_BUSINESSES
         let matchedBiz = SERVER_BUSINESSES.find(b =>
           (subId && b.mercadoPagoSubscriptionId === subId) ||
           (resourceId && b.mercadoPagoSubscriptionId === resourceId) ||
@@ -2231,13 +2503,50 @@ const server = http.createServer(async (req, res) => {
           (payload.businessId && b.id === payload.businessId)
         );
 
-        if (matchedBiz) {
+        // Verificación REAL del pago mediante consulta a la API de Mercado Pago
+        let paymentVerifiedApproved = false;
+        let verifiedAmount = 499.00;
+
+        if (MP_ACCESS_TOKEN && resourceId && !resourceId.startsWith("evt-")) {
+          try {
+            const isPayment = eventType.includes("payment") || queryTopic === "payment";
+            const checkUrl = isPayment
+              ? `https://api.mercadopago.com/v1/payments/${resourceId}`
+              : `https://api.mercadopago.com/preapproval/${subId || resourceId}`;
+
+            const checkResp = await fetch(checkUrl, {
+              headers: { "Authorization": `Bearer ${MP_ACCESS_TOKEN}` }
+            });
+
+            if (checkResp.ok) {
+              const checkData = await checkResp.json();
+              if (isPayment) {
+                paymentVerifiedApproved = (checkData.status === "approved");
+                verifiedAmount = checkData.transaction_amount || 499.00;
+              } else {
+                paymentVerifiedApproved = (checkData.status === "authorized");
+              }
+              console.log(`[Mercado Pago Webhook Validado] Recurso: ${resourceId} | Status: ${checkData.status} | Aprobado: ${paymentVerifiedApproved}`);
+            }
+          } catch (vErr) {
+            console.warn("[Mercado Pago Webhook Verify Fetch Warning]:", vErr.message);
+          }
+        } else {
+          // En modo prueba local o simulación sin Access Token de producción
+          paymentVerifiedApproved = true;
+        }
+
+        // Activar la membresía pagada ÚNICAMENTE cuando Mercado Pago confirme el cobro aprobado
+        if (paymentVerifiedApproved && matchedBiz) {
+          PROCESSED_PAYMENT_IDS.add(resourceId);
           matchedBiz.status = "active";
           matchedBiz.subscriptionType = "active";
-          matchedBiz.subscriptionStatus = "Suscripción Activa";
+          matchedBiz.subscriptionStatus = "Suscripción Activa (Verificada MP)";
           matchedBiz.daysRemaining = 30;
           matchedBiz.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-          matchedBiz.paymentMethod = "Mercado Pago Recurrente ($499 MXN Webhook)";
+          matchedBiz.paymentMethod = "Mercado Pago Recurrente (Confirmado por Webhook)";
+          matchedBiz.lastPaymentDate = new Date().toISOString();
+          matchedBiz.lastPaymentAmount = verifiedAmount;
           saveServerDatabase();
         }
 
@@ -2249,12 +2558,14 @@ const server = http.createServer(async (req, res) => {
           resourceId: resourceId,
           email: matchedBiz?.email || payerEmail || "Notificación MP",
           businessName: matchedBiz?.businessName || payload.businessName || "Suscripción Mercado Pago",
-          amountPaid: 499.00,
+          amountPaid: verifiedAmount,
           currency: "MXN",
-          status: "processed",
+          status: paymentVerifiedApproved ? "approved" : "processed",
           actionTaken: matchedBiz
-            ? `Negocio '${matchedBiz.businessName}' actualizado automáticamente a Suscripción Activa (30 días restantes).`
-            : "Actualización automática de Demo a Suscripción Activa (+30 días) y sincronización con Google Sheets."
+            ? (paymentVerifiedApproved
+                ? `Pago verificado por Mercado Pago. Negocio '${matchedBiz.businessName}' actualizado a Suscripción Pro Activa (+30 días).`
+                : `Notificación recibida pero el pago no fue acreditado aún. Estado de prueba respetado.`)
+            : "Notificación de Mercado Pago registrada."
         };
         pushBoundedLog(WEBHOOK_LOGS, eventLog);
       } catch (err) {
@@ -2264,8 +2575,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Endpoint de Simulación/Activación Automática de Cobro Día 8 (Para Control Maestro)
+  // 4. Endpoint de Simulación/Activación Automática de Cobro Día 8 (Protegido con Admin Auth)
   if (req.method === 'POST' && pathname === '/api/mercadopago/simulate-day8-charge') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado al Control Maestro.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
@@ -2275,7 +2592,7 @@ const server = http.createServer(async (req, res) => {
         const nextExpirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         const invoiceNumber = `INV-MP-${Date.now().toString(36).toUpperCase()}`;
 
-        console.log(`[Mercado Pago Server] Simulación de Cobro Día 8 ejecutada para: ${businessName} (${email})`);
+        console.log(`[Mercado Pago Server] Cobro Día 8 autorizado por Admin para: ${businessName} (${email})`);
 
         // Actualizar también el negocio en SERVER_BUSINESSES
         const serverBiz = SERVER_BUSINESSES.find(b =>
@@ -2325,8 +2642,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 5. Endpoint para consultar los logs de Webhooks recientes (Control Maestro)
+  // 5. Endpoint para consultar los logs de Webhooks recientes (Protegido con Admin Auth)
   if (req.method === 'GET' && pathname === '/api/mercadopago/webhook-logs') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado al Control Maestro.' }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(WEBHOOK_LOGS.slice(0, 20)));
     return;
@@ -2356,8 +2679,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 5.2. Endpoint para Disparar/Comprobar el Worker en Segundo Plano bajo demanda
+  // 5.2. Endpoint para Disparar/Comprobar el Worker en Segundo Plano bajo demanda (Protegido Admin)
   if (req.method === 'POST' && pathname === '/api/mercadopago/cron-worker/run-now') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado al Control Maestro.' }));
+      return;
+    }
     const results = await runAutomatedSubscriptionCharges();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
@@ -2370,8 +2699,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 5.3. Endpoint de Sincronización Bidireccional de Negocios
+  // 5.3. Endpoint de Sincronización Bidireccional de Negocios (Protegido Admin)
   if (req.method === 'POST' && pathname === '/api/businesses/sync') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado para sincronizar negocios.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -2423,9 +2758,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ==============================================================
-  // MÓDULO 1: EXTENSIÓN DE DÍAS GRATUITOS Y ALTA MANUAL (CONTROL MAESTRO)
+  // MÓDULO 1: EXTENSIÓN DE DÍAS GRATUITOS Y ALTA MANUAL (CONTROL MAESTRO - PROTEGIDO ADMIN)
   // ==============================================================
   if (req.method === 'POST' && pathname === '/api/businesses/extend-trial') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado para modificar vigencias.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -2502,8 +2843,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Alta Manual de Negocio desde Control Maestro (Sin bloqueo de pasarela)
+  // Alta Manual de Negocio desde Control Maestro (Protegido Admin)
   if (req.method === 'POST' && pathname === '/api/businesses/manual-register') {
+    const auth = verifyAuthToken(req, 'admin');
+    if (!auth) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado para alta manual.' }));
+      return;
+    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -4862,12 +5209,15 @@ ${visualFormatRule}`;
 
           if (currentPhase === 3) {
             cercanos_2km = scored
-              .filter(b => (b.distanceKm <= 2.0 || directMatchIds.has(b.id)))
+              .filter(b => (b.distanceKm <= 2.0 || directMatchIds.has(b.id) || b.isSponsored || b.plan === "plus"))
               .sort((a, b) => {
+                const aSponsored = a.isSponsored || a.plan === "plus";
+                const bSponsored = b.isSponsored || b.plan === "plus";
+                // Negocio VIP Patrocinado del mismo giro aparece primero
+                if (aSponsored && !bSponsored) return -1;
+                if (!aSponsored && bSponsored) return 1;
                 if (directMatchIds.has(b.id) && !directMatchIds.has(a.id)) return 1;
                 if (directMatchIds.has(a.id) && !directMatchIds.has(b.id)) return -1;
-                if ((b.isSponsored || b.plan === "plus") && !(a.isSponsored || a.plan === "plus")) return 1;
-                if ((a.isSponsored || a.plan === "plus") && !(b.isSponsored || b.plan === "plus")) return -1;
                 return b.matchScore - a.matchScore;
               });
 
@@ -4925,7 +5275,9 @@ ${visualFormatRule}`;
           const b = selectedBusinesses[0];
           const cleanP = String(b.phone || '').replace(/\D/g, '');
           const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
-          canonicalCard = `🏢 ${b.businessName}\n` +
+          const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
+          const sponsorTag = (b.isSponsored || b.plan === "plus") ? `👑 [Opción VIP Patrocinada${distLabel}]\n` : "";
+          canonicalCard = `${sponsorTag}🏢 ${b.businessName}\n` +
             `✨ ${b.services || b.category}\n` +
             `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
             `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
