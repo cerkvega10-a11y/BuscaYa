@@ -1,12 +1,11 @@
 const server = require('../server.js');
+const { Readable } = require('stream');
 
 module.exports = (req, res) => {
-  // Restaurar la ruta original desempaquetando los headers o params de Vercel
   const host = req.headers?.host || 'localhost';
   try {
     const origUrl = new URL(req.url, `http://${host}`);
     const vercelPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.headers['x-vercel-matched-path'];
-
     if (vercelPath && !vercelPath.includes('[...all]')) {
       origUrl.searchParams.delete('all');
       req.url = vercelPath + origUrl.search;
@@ -17,10 +16,26 @@ module.exports = (req, res) => {
         req.url = `/api/${allParam}` + origUrl.search;
       }
     }
-  } catch (err) {
-    console.warn('[Vercel Dispatcher] Error al desempaquetar ruta:', err.message);
+  } catch (_) {}
+
+  // Si Vercel ya consumió el stream y pre-parseó el body, re-inyectarlo como stream para server.js
+  if (req.body && typeof req.body === 'object' && req.method === 'POST') {
+    const bodyStr = JSON.stringify(req.body);
+    const stream = new Readable();
+    stream._read = () => {};
+    stream.push(bodyStr);
+    stream.push(null);
+
+    stream.headers = req.headers;
+    stream.method = req.method;
+    stream.url = req.url;
+    stream.connection = req.connection;
+    stream.socket = req.socket;
+    stream.httpVersion = req.httpVersion;
+
+    server.emit('request', stream, res);
+    return;
   }
 
-  // Canalizar cualquier petición de subruta /api/* a la instancia del servidor HTTP de BuscaYa
   server.emit('request', req, res);
 };
