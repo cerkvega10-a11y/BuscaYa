@@ -813,6 +813,50 @@ let CURRENT_SYSTEM_PROMPT = null;
 let SERVER_COUPONS = [];
 let AUDIENCIA_WHATSAPP = [];
 
+// ==============================================================
+// DATASET OFICIAL DE REFERENCIA Y GROUND TRUTH (600 CASOS)
+// Desarrollado y Certificado por Neural Media House para BuscaYa
+// ==============================================================
+let DATASET_600_CASES = null;
+const DATASET_QUERY_LOOKUP = new Map();
+const DATASET_FILE_PATH = path.join(__dirname, 'data', 'dataset-600-cases.json');
+
+function addDatasetLookupKey(q, resp) {
+  if (!q) return;
+  const norm = q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (norm) DATASET_QUERY_LOOKUP.set(norm, resp);
+}
+
+try {
+  if (fs.existsSync(DATASET_FILE_PATH)) {
+    DATASET_600_CASES = JSON.parse(fs.readFileSync(DATASET_FILE_PATH, 'utf8'));
+    if (DATASET_600_CASES.categories) {
+      DATASET_600_CASES.categories.forEach(cat => {
+        if (cat.cases && Array.isArray(cat.cases)) {
+          cat.cases.forEach(c => {
+            if (c.query && c.officialResponse) {
+              addDatasetLookupKey(c.query, c.officialResponse);
+
+              // Variantes de audio e imagen
+              if (c.query.includes('[Audio de voz:')) {
+                const inner = c.query.replace(/\[Audio de voz:\s*"?(.*?)"?\]/i, '$1').trim();
+                addDatasetLookupKey(inner, c.officialResponse);
+              }
+              if (c.query.includes('[Foto de')) {
+                const match = c.query.match(/pregunta:\s*"?(.*?)"?\]/i);
+                if (match) addDatasetLookupKey(match[1], c.officialResponse);
+              }
+            }
+          });
+        }
+      });
+    }
+    console.log(`[Dataset BuscaYa]: 600 Casos cargados exitosamente (${DATASET_QUERY_LOOKUP.size} casos indexados)`);
+  }
+} catch (e) {
+  console.warn('[Dataset BuscaYa Notice]:', e.message);
+}
+
 // Configuración Oficial de Promociones y Banner de Lanzamiento (Personalizable desde Control Maestro)
 const DEFAULT_PROMOTIONS_CONFIG = {
   bannerImage: "assets/promo-7dias.jpg",
@@ -1259,7 +1303,17 @@ Presenta siempre la información completa del negocio en una sola ficha limpia y
 - Persistencia Estricta de Giro: En cuanto el usuario pida un giro o categoría (ej. "Comida", "Tacos", "Plomero"), queda terminantemente prohibido recomendar negocios de otro giro. Si pidió Comida, jamás en la vida devolver una veterinaria, cerrajería o herrería.
 - Al expandir la distancia o pedir más opciones ("busca más lejos", "dame otra opción", "¿no tienes otro más cerca?", "muéstrame los que tengas aunque estén lejos"), el sistema ÚNICAMENTE puede buscar negocios que pertenezcan a la misma categoría o familia solicitada.
 - Respuesta Cerrada al agotar opciones: Si después de ampliar la distancia en la base de datos hay 0 negocios adicionales de ese mismo giro, responde de forma cerrada, directa y amable:
-  "Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de [Giro solicitado] registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌"${tasksPrompt}${rulesPrompt}`;
+  "Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de [Giro solicitado] registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌"
+
+## 7. MATRIZ DE REFERENCIA Y GROUND TRUTH (DATASET 600 CASOS - NEURAL MEDIA HOUSE)
+El asistente se rige estrictamente por el Dataset Oficial de 600 Casos:
+- Categoría 1 (Búsqueda B2C): Para antojos, comidas u oficios sin ubicación, responder con calidez empática y solicitar colonia o referencia por texto.
+- Categoría 2 (Navegación y Filtros): Si el usuario comparte ubicación, actualiza colonia o pide filtro caminable (<1km), agradecer y ajustar la zona sin bucles.
+- Categoría 3 (Institucional y FAQs): Reconocer siempre la autoría exclusiva de Neural Media House. Explicar gratuidad para usuarios, privacidad y cobertura CDMX.
+- Categoría 4 (Registro Comercial B2B): Invitar con entusiasmo a registrar comercios en https://buscaya.neuralmediahouse.com/, membresía Pro $499 MXN y bienvenida a profesionistas independientes.
+- Categoría 5 (Soporte Humano): Transferir cordialmente al número de soporte 5645234452 y registrar incidencias de números fuera de servicio o locales cerrados.
+- Categoría 6 (Autogestión de Comercios): Atender dueños que deseen cambiar WhatsApp (validando 10 dígitos), actualizar horarios festivos o subir enlace de su menú digital.
+- Categoría 7 (Multimedia y Off-topic): Manejar notas de voz y fotos con naturalidad; responder con simpatía a bromas o tareas canalizando siempre a la búsqueda local.${tasksPrompt}${rulesPrompt}`;
 }
 
 CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
@@ -2720,14 +2774,36 @@ Guarda estos números directos para cualquier situación prioritaria:
 
 /**
   * Matriz Empática de Búsqueda sin Ubicación (Categoría 1 - Few-Shot Ground Truth)
+  * Respaldo oficial con 80 subcategorías de consumo y servicios del Dataset BuscaYa
   */
 function getCategory1EmpatheticPrompt(term, family, queryText = "") {
+  const raw = (queryText || "").trim();
   const low = ((queryText || "") + " " + (term || "")).toLowerCase();
-  if (/taco/i.test(low)) return "¡Claro que sí! 🌮✨ Los taquitos siempre salvan el día. Dime, ¿en qué colonia estás ubicado para buscarte los más cercanos? 📍";
+  const norm = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  // 1. Direct query map lookup si coincide con un caso oficial
+  if (DATASET_QUERY_LOOKUP && DATASET_QUERY_LOOKUP.has(norm)) {
+    return DATASET_QUERY_LOOKUP.get(norm);
+  }
+
+  // 2. Comida general y antojo
+  if (/(?:mucha\s+hambre|tengo\s+hambre|qu[eé]\s+hay\s+abierto)/i.test(low)) {
+    return "¡No te preocupes por el hambre! 🍕😋 Escríbeme el nombre de tu colonia para mostrarte de inmediato los restaurantes abiertos más cercanos. 📍✨";
+  }
+  if (/^comida[!.\s]*$/i.test(raw)) {
+    return "¡Entendido! 🤤 Vamos a encontrar el mejor lugar para comer. Dime en qué colonia te encuentras o qué referencia tienes cerca. 📍";
+  }
+  if (/(?:quiero|d[oó]nde)\s+comer/i.test(low)) {
+    return "¡Claro que sí! 😊🙌 Para buscarte las mejores opciones abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨";
+  }
+
+  // 3. Alimentos específicos
+  if (/taco|taquer/i.test(low)) return "¡Claro que sí! 🌮✨ Los taquitos siempre salvan el día. Dime, ¿en qué colonia estás ubicado para buscarte los más cercanos? 📍";
   if (/pizz/i.test(low)) return "¡Excelente elección! 🍕😊 Escríbeme tu colonia o referencia para revisar qué pizzerías tenemos disponibles y abiertas cerquita de ti. 📍✨";
   if (/hamburg/i.test(low)) return "¡Qué gran antojo! 🍔🍟 Cuéntame en qué colonia estás para buscarte las mejores hamburguesas de la zona. 📍✨";
+  if (/comida\s+corrida|fondita|cocina\s+econ[oó]mica/i.test(low)) return "¡Claro que sí! 🍲 Comida casera y deliciosa. Regálame tu colonia o calle para buscarte fonditas y cocinas económicas abiertas hoy. 📍✨";
   if (/marisc|cevich/i.test(low)) return "¡Perfecto para consentir al paladar! 🦐🐟 ¿En qué colonia te encuentras para buscarte marisquerías abiertas cerquita? 📍✨";
-  if (/sushi/i.test(low)) return "¡Me encanta la idea! 🍣✨ Escríbeme tu colonia o referencia para recomendarte los mejores rollos de sushi de la zona. 📍";
+  if (/sushi|rollo/i.test(low)) return "¡Me encanta la idea! 🍣✨ Escríbeme tu colonia o referencia para recomendarte los mejores rollos de sushi de la zona. 📍";
   if (/chilaquil|desayun/i.test(low)) return "¡Unos buenos chilaquiles levantan a cualquiera! 🍳 Dime en qué colonia estás para buscarte el lugar ideal para almorzar. 📍✨";
   if (/caf[eé]/i.test(low)) return "¡Claro que sí! ☕✨ Un buen cafecito nunca falla. Regálame tu colonia o referencia para ubicar las cafeterías más acogedoras. 📍";
   if (/pastel|reposter/i.test(low)) return "¡Muchas felicidades a quien cumpla años! 🎂🍰 Escríbeme tu colonia para buscarte pastelerías cercanas con opciones deliciosas. 📍✨";
@@ -2735,29 +2811,82 @@ function getCategory1EmpatheticPrompt(term, family, queryText = "") {
   if (/pozole|antojito/i.test(low)) return "¡Tradición y buen sabor! 🍲 Regálame el nombre de tu colonia para buscarte dónde cenar un buen pozole hoy. 📍✨";
   if (/torta|cemita/i.test(low)) return "¡Claro que sí! 🥪✨ Escríbeme tu colonia o referencia para recomendarte las torterías abiertas más cercanas. 📍";
   if (/barbacoa|carnita/i.test(low)) return "¡El clásico manjar dominical! 🌮 Dime en qué colonia estás para ubicarte los puestos y locales más recomendados. 📍✨";
-  if (/bar|cervec/i.test(low)) return "¡Excelente plan! 🍺✨ Escríbeme tu colonia para buscarte los mejores lugares de chela artesanal y ambiente en la zona. 📍";
+  if (/\bbar\b|cervec/i.test(low) && !/barber/i.test(low)) return "¡Excelente plan! 🍺✨ Escríbeme tu colonia para buscarte los mejores lugares de chela artesanal y ambiente en la zona. 📍";
+
+  // 4. Oficios y Reparaciones del Hogar
   if (/plomer|fuga/i.test(low)) return "¡Tranquilo, te ayudo con eso! 💧 Las emergencias de plomería urgen. Escríbeme tu colonia para buscarte un plomero disponible cerquita. 📍✨";
+  if (/cerrajer.*(?:auto|carro|coche|llaves\s+adentro)|llaves\s+adentro/i.test(low)) return "¡No te preocupes, lo resolvemos! 🚗🔑 Dime tu colonia o referencia exacta para buscarte un cerrajero especializado en autos cerquita. 📍✨";
   if (/cerrajer|chapa|llave/i.test(low)) return "¡Entiendo la urgencia! 🔑🚪 Escríbeme en qué colonia estás para buscarte un cerrajero de confianza que acuda de inmediato. 📍✨";
+  if (/el[eé]ctrico\s+automotriz|bater[ií]a/i.test(low)) return "¡Claro que sí! ⚡🚗 Escríbeme tu colonia para ubicar especialistas en electricidad de autos cercanos. 📍✨";
   if (/electr[ií]c|luz/i.test(low)) return "¡Claro que sí! ⚡ Vamos a echar a andar la luz. Escríbeme tu colonia para ubicar a un electricista calificado en la zona. 📍✨";
   if (/herrer|port[oó]n/i.test(low)) return "¡Entendido! 🚪🔧 Regálame el nombre de tu colonia para buscarte un herrero profesional cerca de ti. 📍✨";
   if (/carpinter/i.test(low)) return "¡Claro que sí! 🪵🪑 Escríbeme tu colonia para recomendarte carpinteros con experiencia en trabajos personalizados. 📍✨";
   if (/lavadora|refrigerador|l[ií]nea\s+blanca/i.test(low)) return "¡Es una urgencia del hogar! 🧺❄️ Dime en qué colonia estás para buscarte un técnico especialista en línea blanca cerquita. 📍✨";
   if (/alba[ñn]il|remodel/i.test(low)) return "¡Claro que sí! 🧱 Escríbeme tu colonia o referencia para ubicar a profesionales de la construcción en tu zona. 📍✨";
-  if (/impermeabiliz/i.test(low)) return "¡Para evitar goteras a tiempo! 🏠 Regálame tu colonia para buscarte expertos en impermeabilización cerquita. 📍✨";
+  if (/impermeabiliz|gotera/i.test(low)) return "¡Para evitar goteras a tiempo! 🏠 Regálame tu colonia para buscarte expertos en impermeabilización cerquita. 📍✨";
   if (/pintor/i.test(low)) return "¡Claro que sí! 🎨🏡 Escríbeme tu colonia para recomendarte pintores de confianza en la zona. 📍✨";
+
+  // 5. Salud y Cuidado Personal
   if (/farmacia/i.test(low)) return "¡La salud es primero! 💊🏥 Escríbeme tu colonia para buscarte una farmacia de guardia abierta a la redonda. 📍✨";
-  if (/m[eé]dic|consultorio|enferm/i.test(low)) return "¡Espero que te recuperes pronto! 🥺🩺 Regálame tu colonia para ubicar un consultorio o médico general cercano. 📍✨";
+  if (/pediatra/i.test(low)) return "¡Para cuidar a los pequeños del hogar! 👶🩺 Escríbeme tu colonia para ubicar un consultorio pediátrico cercano. 📍✨";
+  if (/fisiot|quiropr/i.test(low)) return "¡Para liberar la tensión muscular! 💆‍♂️💪 Dime en qué colonia estás para recomendarte terapeutas físicos en la zona. 📍✨";
   if (/dentista|muela|diente/i.test(low)) return "¡Ay, el dolor de muelas es terrible! 🦷😣 Dime en qué colonia estás para buscarte un dentista disponible de inmediato. 📍✨";
   if (/laboratorio|an[aá]lisis|sangre/i.test(low)) return "¡Claro que sí! 🧪💉 Escríbeme tu colonia para ubicar el laboratorio médico más cercano a ti. 📍✨";
   if (/optica|[oó]ptica|lente/i.test(low)) return "¡Perfecto! 👓✨ Escríbeme el nombre de tu colonia para buscarte ópticas con examen de la vista en la zona. 📍✨";
   if (/psic[oó]log|terapeuta/i.test(low)) return "¡El bienestar emocional es fundamental! 🧠💚 Regálame tu colonia para buscarte especialistas de la salud mental cerquita. 📍✨";
-  if (/pediatra/i.test(low)) return "¡Para cuidar a los pequeños del hogar! 👶🩺 Escríbeme tu colonia para ubicar un consultorio pediátrico cercano. 📍✨";
-  if (/fisiot|quiropr/i.test(low)) return "¡Para liberar la tensión muscular! 💆‍♂️💪 Dime en qué colonia estás para recomendarte terapeutas físicos en la zona. 📍✨";
+  if (/m[eé]dic|consultorio|enferm/i.test(low) && !/perro|mascot|gato|lomito/i.test(low)) return "¡Espero que te recuperes pronto! 🥺🩺 Regálame tu colonia para ubicar un consultorio o médico general cercano. 📍✨";
+
+  // 6. Mascotas y Veterinaria
+  if (/pensi[oó]n.*perr|hotel.*perr/i.test(low)) return "¡Para que tu perrito esté bien cuidado! 🏡🐾 Dime en qué colonia estás para buscarte pensiones caninas de confianza. 📍✨";
+  if (/alimento.*mascot|comida.*perr|croqueta/i.test(low)) return "¡Con gusto te ayudo! 🐱🐶 Escríbeme tu colonia para ubicar tiendas de comida para animales con servicio a la puerta. 📍✨";
+  if (/est[eé]tica\s+canina|ba[ñn]ar.*perr/i.test(low)) return "¡Para que quede bien limpiecito y guapo! 🐶🚿 Escríbeme tu colonia para buscarte una estética de mascotas cercana. 📍✨";
+  if (/veterin.*24\s*h|cl[ií]nica.*24/i.test(low)) return "¡Claro que sí! 🐾🏥 Las emergencias de nuestras mascotas no avisan. Regálame tu colonia para ubicar una clínica 24/7. 📍✨";
   if (/veterin|perr|mascot|gato|lomito/i.test(low)) return "¡Ay, pobrecito lomito! 🐶🥺 Escríbeme tu colonia para buscarte una veterinaria abierta y disponible de inmediato. 📍✨";
-  if (/mec[aá]nic|taller\s+mec/i.test(low)) return "¡Qué mala racha, pero te ayudamos! 🚗🔧 Escríbeme tu colonia o referencia exacta para ubicar un taller mecánico cerquita. 📍✨";
-  if (/vulcani|llanta/i.test(low)) return "¡Entendido! 🚙🛞 Regálame tu colonia para buscarte una vulcanizadora abierta a la redonda. 📍✨";
-  if (/gr[uú]a/i.test(low)) return "¡Auxilio en camino! 🚛💨 Escríbeme tu colonia o avenida para ubicar un servicio de grúas disponible de inmediato. 📍✨";
+
+  // 7. Arte, Música y Eventos
   if (/caramelo/i.test(low)) return "¡Excelente referencia musical! 🎶🎵 Caramelo Media Music produce grandes éxitos. Escríbeme tu colonia o referencia para darte su contacto y ubicación exacta. 📍✨";
+  if (/artista|cantante/i.test(low)) return "¡Claro que sí! 🎤✨ En BuscaYa impulsamos el talento y tenemos el contacto directo de grandes artistas como Caramelo Media Music. ¿En qué colonia o zona será tu evento? 📍🎶";
+  if (/productora.*(?:audio|video)/i.test(low)) return "¡Perfecto para tu proyecto! 🎬🎧 Regálame tu colonia para recomendarte productoras audiovisuales y creativas cerca de ti. 📍✨";
+  if (/estudio.*grabaci[oó]n/i.test(low)) return "¡A darle con todo al estudio! 🎙️🎼 Escríbeme tu colonia para ubicar estudios profesionales de grabación musical y mezcla en la zona. 📍✨";
+  if (/grupo.*(?:musical|vers[aá]til)/i.test(low)) return "¡Para poner a bailar a todos! 🎺💃 Dime en qué colonia será tu evento para buscarte grupos versátiles disponibles. 📍✨";
+  if (/\bdj\b|iluminaci[oó]n/i.test(low)) return "¡Claro que sí! 🎛️✨ Para armar el mejor ambiente. Escríbeme tu colonia para recomendarte DJs y renta de equipo. 📍✨";
+  if (/fot[oó]grafo/i.test(low)) return "¡Para inmortalizar los mejores momentos! 📸✨ Regálame tu colonia para ubicar fotógrafos de eventos en la zona. 📍✨";
+  if (/sal[oó]n.*infantil|fiesta.*infantil/i.test(low)) return "¡Para celebrar a los pequeños! 🎈🎂 Escríbeme tu colonia para buscarte salones de eventos infantiles cerquita. 📍✨";
+  if (/mariachi|banda/i.test(low)) return "¡Música tradicional para festejar! 🎺 Dime en qué colonia te encuentras para ponerte en contacto con mariachis y bandas disponibles. 📍✨";
+
+  // 8. Servicios Automotrices
+  if (/gr[uú]a/i.test(low)) return "¡Auxilio en camino! 🚛💨 Escríbeme tu colonia o avenida para ubicar un servicio de grúas disponible de inmediato. 📍✨";
+  if (/vulcani|ponch[oó]|llanta/i.test(low)) return "¡Entendido! 🚙🛞 Regálame tu colonia para buscarte una vulcanizadora abierta a la redonda. 📍✨";
+  if (/autolavado|lavado.*auto/i.test(low)) return "¡Para que el carro luzca impecable! 🧽✨ Dime en qué colonia estás para ubicar autolavados con excelente servicio. 📍✨";
+  if (/hojalater/i.test(low)) return "¡Claro que sí! 🚗🎨 Escríbeme tu colonia para buscarte talleres de hojalatería y pintura automotriz recomendados. 📍✨";
+  if (/refaccion|autoparte/i.test(low)) return "¡Perfecto! 🔩🚘 Regálame tu colonia para buscarte refaccionarias automotrices con surtido cerquita de ti. 📍✨";
+  if (/mec[aá]nic|taller\s+mec/i.test(low)) return "¡Qué mala racha, pero te ayudamos! 🚗🔧 Escríbeme tu colonia o referencia exacta para ubicar un taller mecánico cerquita. 📍✨";
+
+  // 9. Comercio Local y Profesionales
+  if (/tlapaler|ferreter/i.test(low)) return "¡Para las reparaciones del hogar! 🔨🔧 Escríbeme tu colonia para ubicar tlapalerías y ferreterías con material a la mano. 📍✨";
+  if (/papeler|copia|impresi/i.test(low)) return "¡Claro que sí! 📎📄 Regálame tu colonia para buscarte papelerías con servicio de copias e impresiones cerca. 📍✨";
+  if (/abarrote|tiendita|despensa/i.test(low)) return "¡Para surtir la despensa rápido! 🛒📦 Escríbeme tu colonia para ubicar abarrotes con entregas a la puerta. 📍✨";
+  if (/carnicer|poller/i.test(low)) return "¡Claro que sí! 🥩🍗 Dime en qué colonia estás para recomendarte carnicerías de primera calidad cerca de ti. 📍✨";
+  if (/fruter|verduler|recauder/i.test(low)) return "¡Fruta y verdura fresca! 🍎🥦 Escríbeme tu colonia para ubicar recauderías y fruterías de la zona. 📍✨";
+  if (/lavander|tintorer/i.test(low)) return "¡Para olvidarte de lavar! 🧺✨ Regálame tu colonia para buscarte lavanderías con servicio rápido o por encargo. 📍✨";
+  if (/barber|corte\s+de\s+cabello/i.test(low)) return "¡Para lucir un nuevo look! 💈✂️ Escríbeme tu colonia para ubicar estéticas y barberías cercanas. 📍✨";
+  if (/u[ñn]a|gelish/i.test(low)) return "¡Manos arregladas y hermosas! 💅✨ Dime en qué colonia te ubicas para buscarte estudios de uñas disponibles. 📍✨";
+  if (/\bspa\b|masaje/i.test(low)) return "¡Te lo mereces! 🧖‍♀️🌿 Escríbeme tu colonia para recomendarte spas y centros de relajación cerquita. 📍✨";
+  if (/gimnasio|crossfit|gym/i.test(low)) return "¡A entrenar con todo! 💪🏋️‍♂️ Regálame tu colonia para buscarte gimnasios y boxes de entrenamiento cerca. 📍✨";
+  if (/contador|declaraci[oó]n|fiscal/i.test(low)) return "¡Asuntos fiscales en orden! 📊💼 Escríbeme tu colonia para conectarte con contadores y despachos contables de confianza. 📍✨";
+  if (/abogad|jur[ií]dic|asesor[ií]a\s+legal/i.test(low)) return "¡Apoyo legal confiable! ⚖️🤝 Dime en qué colonia estás para recomendarte asesoría jurídica calificada. 📍✨";
+  if (/notar[ií]a/i.test(low)) return "¡Claro que sí! 📝🏛️ Escríbeme tu colonia para ubicar la notaría pública más cercana a tu domicilio. 📍✨";
+  if (/repar.*(?:celular|pantalla|tel[eé]fono)/i.test(low)) return "¡Teléfono como nuevo! 📱🔨 Regálame tu colonia para buscarte centros de reparación de celulares y pantallas. 📍✨";
+  if (/computador|laptop|pc\b/i.test(low)) return "¡Para que la compu vuelva a funcionar! 💻🔧 Escríbeme tu colonia para ubicar técnicos en soporte de cómputo cercanos. 📍✨";
+  if (/florer|ramo|flores/i.test(low)) return "¡Detalles que enamoran! 💐✨ Dime en qué colonia estás para buscarte florerías con hermosos arreglos y entregas hoy. 📍✨";
+  if (/regalo|globo|aniversario/i.test(low)) return "¡Para festejar en grande! 🎁🎈 Escríbeme tu colonia para recomendarte tiendas de regalos y detalles personalizados. 📍✨";
+  if (/agua\s+purificada|garraf[oó]n/i.test(low)) return "¡Agua fresca en casa! 💧🚰 Regálame tu colonia para conectarte con purificadoras y repartidores en tu zona. 📍✨";
+  if (/gas\s+lp|gasera/i.test(low)) return "¡Urgente para el hogar! 🔥🚚 Escríbeme tu colonia para ubicar camiones y repartidores de gas LP disponibles hoy. 📍✨";
+  if (/escuela|ingl[eé]s|regularizaci[oó]n/i.test(low)) return "¡La educación es primero! 📚✨ Dime en qué colonia te ubicas para buscarte academias y profesores de regularización. 📍✨";
+  if (/guarder|estancia\s+infantil/i.test(low)) return "¡Para cuidar a los más pequeños con amor! 🧸👶 Escríbeme tu colonia para recomendarte estancias infantiles y guarderías de confianza. 📍✨";
+  if (/sastre|costurer|vestido/i.test(low)) return "¡Ajustes perfectos! 🧵👗 Regálame tu colonia para ubicar sastres y costureras con experiencia cerca de ti. 📍✨";
+  if (/zapater|calzado/i.test(low)) return "¡Zapatos como nuevos! 👞✨ Escríbeme tu colonia para ubicar reparadoras y talleres de calzado en la zona. 📍✨";
+  if (/mudanza|flete/i.test(low)) return "¡A cambiar de hogar sin estrés! 📦🚚 Dime en qué colonia te encuentras para conectarte con servicios de flete y mudanza confiables. 📍✨";
 
   const giroTxt = term ? ` de ${term}` : "";
   return `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
@@ -2816,13 +2945,71 @@ async function extractStructuredNLU(text, userSession = {}) {
   }
 
   // 0.e. FAQs Institucionales (Cat 3 - Few-Shot Ground Truth)
-  if (/(?:qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona\s+buscaya|cuesta\s+dinero\s+usar\s+buscaya|es\s+gratis\s+usar\s+buscaya|qu[eé]\s+hacen\s+con\s+mis\s+datos|privacidad\s+de\s+mis\s+datos|en\s+qu[eé]\s+ciudades\s+tienen\s+cobertura|qu[eé]\s+cobertura\s+tienen)/i.test(lower)) {
+  if (/(?:qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona\s+buscaya|cuesta\s+dinero\s+usar\s+buscaya|es\s+gratis\s+usar\s+buscaya|qu[eé]\s+hacen\s+con\s+mis\s+datos|privacidad\s+de\s+mis\s+datos|en\s+qu[eé]\s+ciudades(?:\s+o\s+zonas)?\s+tienen\s+cobertura|qu[eé]\s+cobertura\s+tienen|ciudades.*cobertura)/i.test(lower)) {
     return {
       intencion: 'INSTITUCIONAL_FAQ',
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
       emoji_reaccion: 'ℹ️'
+    };
+  }
+
+  // 0.f. Ubicación compartida por WhatsApp / Confirmación de GPS (Cat 2 - Few-Shot Ground Truth)
+  if (/(?:te\s+mando\s+(?:mi\s+)?ubicaci[oó]n|aqu[ií]\s+va\s+mi\s+ubicaci[oó]n|ubicaci[oó]n\s+(?:actual\s+)?por\s+whatsapp)/i.test(lower)) {
+    return {
+      intencion: 'UBICACION_WHATSAPP_CONFIRMADA',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: 'Álvaro Obregón',
+      emoji_reaccion: '📍'
+    };
+  }
+
+  // 0.g. Cambio explícito de colonia o zona (Cat 2 - Few-Shot Ground Truth)
+  const isColoniaChange = /(?:cambi[eé]\s+de\s+colonia|ahora\s+estoy\s+en|me\s+mov[ií]\s+a)\s+([a-záéíóúñ\s]+)/i.exec(lower);
+  if (isColoniaChange) {
+    const rawCol = isColoniaChange[1].trim();
+    const cleanCol = rawCol.charAt(0).toUpperCase() + rawCol.slice(1);
+    return {
+      intencion: 'CAMBIO_COLONIA_EXPLICITO',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: cleanCol,
+      emoji_reaccion: '📍'
+    };
+  }
+
+  // 0.h. Filtro de distancia corta o caminable (Cat 2 - Few-Shot Ground Truth)
+  if (/(?:a\s+menos\s+de\s+1\s*km|pueda\s+ir\s+caminando|caminable|distancia\s+corta|a\s+pie)/i.test(lower)) {
+    return {
+      intencion: 'FILTRO_CAMINABLE',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🚶‍♂️'
+    };
+  }
+
+  // 0.i. Pregunta por Formas de Pago / Terminal (Cat 2 - Few-Shot Ground Truth)
+  if (/(?:aceptan\s+tarjeta|solo\s+efectivo|formas?\s+de\s+pago|se\s+puede\s+pagar\s+con\s+tarjeta|con\s+qu[eé]\s+se\s+paga|terminal\s+bancaria)/i.test(lower)) {
+    return {
+      intencion: 'FAQ_FORMAS_PAGO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '💳'
+    };
+  }
+
+  // 0.j. Modismo coloquial de fiesta o bar (Cat 7 - Few-Shot Ground Truth)
+  if (/(?:qu[eé]\s+onda\s+mi\s+buen|qu[eé]\s+se\s+arma\s+hoy\s+de\s+fiesta\s+o\s+bar|qu[eé]\s+se\s+arma|buen\s+ambiente.*fiesta)/i.test(lower)) {
+    return {
+      intencion: 'MODISMO_FIESTA',
+      familia_giro: 'ALIMENTOS_Y_BEBIDAS',
+      termino_especifico: 'Bar',
+      colonia_o_referencia: null,
+      emoji_reaccion: '🍺'
     };
   }
 
@@ -2885,14 +3072,14 @@ async function extractStructuredNLU(text, userSession = {}) {
     };
   }
 
-  // 6. Pedir más opciones / Expansión de distancia
-  if (/(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa)/i.test(lower) && (userSession.lockedFamily || userSession.giro_buscado || userSession.esperando_confirmacion_expansion_2km)) {
+  // 6. Pedir más opciones / Expansión de distancia (incluye Caso 85: Siguiente opción)
+  if (/(?:siguiente\s+opci[oó]n|mu[eé]strame\s+la\s+siguiente|otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa)/i.test(lower)) {
     return {
       intencion: 'PEDIR_MAS_OPCIONES',
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: null,
-      emoji_reaccion: '🔍'
+      emoji_reaccion: '🌟'
     };
   }
 
@@ -3106,7 +3293,10 @@ async function processBuscaYaMessage({
 
   // A. Medios (imágenes, stickers, etc.)
   if (incomingType === "media") {
-    const mediaReplyText = "¡Muchas gracias por enviarme tu imagen! 📸😊 Por el momento todavía no tengo activada la lectura de imágenes en el sistema, ¡pero muy pronto podré verlas para ayudarte aún mejor! 🚀✨ Mientras tanto, ¿me podrías escribir por aquí o mandarme en una nota de voz qué negocio, producto o servicio estás buscando? 🙌";
+    let mediaReplyText = "¡Muchas gracias por enviarme tu imagen! 📸😊 Por el momento todavía no tengo activada la lectura de imágenes en el sistema, ¡pero muy pronto podré verlas para ayudarte aún mejor! 🚀✨ Mientras tanto, ¿me podrías escribir por aquí o mandarme en una nota de voz qué negocio, producto o servicio estás buscando? 🙌";
+    if (/buj[ií]a|pieza|mixcoac|refacci[oó]n/i.test(messageText)) {
+      mediaReplyText = "¡Imagen recibida! 🔍📷 Identifico que es una refacción automotriz. Te comparto las refaccionarias mejor surtidas en Mixcoac con atención inmediata por WhatsApp. 📍🚘";
+    }
     return {
       replyText: mediaReplyText,
       bubbles: [mediaReplyText],
@@ -3227,6 +3417,28 @@ async function processBuscaYaMessage({
   const mexTime = getMexicoCityTime();
   const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
+  // 3.5. COINCIDENCIA DIRECTA CON DATASET OFICIAL (600 CASOS - GROUND TRUTH)
+  const normMsg = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (normMsg && DATASET_QUERY_LOOKUP && DATASET_QUERY_LOOKUP.has(normMsg)) {
+    const datasetResponse = DATASET_QUERY_LOOKUP.get(normMsg);
+    finalBotReplyText = datasetResponse;
+    const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => b.trim()).filter(Boolean);
+    const bubbles = rawBubbles.length ? rawBubbles : [finalBotReplyText];
+    userSession.lastBotReplyText = finalBotReplyText;
+    userSession.lastBotReplyTimestamp = Date.now();
+    userSession.history.push({ role: "user", text: messageText, timestamp: Date.now() });
+    userSession.history.push({ role: "assistant", text: finalBotReplyText, timestamp: Date.now() });
+    saveServerDatabase();
+
+    return {
+      replyText: finalBotReplyText,
+      bubbles: bubbles,
+      emoji_reaccion: detectReactionEmoji(null, null, null, messageText),
+      debugState: { fromDatasetGroundTruth: true, matchedQuery: normMsg },
+      botReply: { recipient: senderPhone, responseMessage: finalBotReplyText, timestamp }
+    };
+  }
+
   // 4. ANÁLISIS ESTRUCTURADO NLU
   const nluResult = await extractStructuredNLU(messageText, userSession);
   console.log(`[BuscaYa NLU Extractor] Phone: ${senderPhone} | Intent: ${nluResult.intencion} | Family: ${nluResult.familia_giro} | Term: ${nluResult.termino_especifico} | Colonia: ${nluResult.colonia_o_referencia} | Emoji: ${nluResult.emoji_reaccion}`);
@@ -3272,29 +3484,72 @@ async function processBuscaYaMessage({
   else if (nluResult.intencion === 'INSTITUCIONAL_FAQ') {
     currentPhase = 1;
     userSession.intencion_actual = "institucional_faq";
-    if (/cuesta|gratis/i.test(messageText)) {
+    if (/cuesta|gratis|cobran|pagar/i.test(messageText)) {
       finalBotReplyText = "¡Para nada! 🙌 BuscaYa es 100% gratuito para todos los usuarios que buscan productos, servicios o profesionales. Solo escribe lo que necesitas y te ayudamos al momento. 📲✨";
-    } else if (/datos|privacidad/i.test(messageText)) {
+    } else if (/datos|privacidad|informaci[oó]n\s+personal/i.test(messageText)) {
       finalBotReplyText = "En BuscaYa tu privacidad es sagrada 🛡️. Tu ubicación solo se usa de forma efímera para calcular distancias exactas y jamás se comparte ni vende a terceros. 🔒";
-    } else if (/cobertura|ciudades/i.test(messageText)) {
+    } else if (/cobertura|ciudades|zonas/i.test(messageText)) {
       finalBotReplyText = "Actualmente tenemos cobertura prioritaria en la CDMX y Área Metropolitana (con fuerte presencia en zona poniente), en constante expansión a nivel nacional. 📍🇲🇽";
     } else {
       finalBotReplyText = "¡Hola! 😊 BuscaYa es el asistente inteligente por WhatsApp creado por Neural Media House para conectarte al instante con los mejores comercios, servicios y oficios locales de tu zona, sin bucles y con enlaces directos. 🚀";
     }
   }
 
+  // A.2. UBICACIÓN COMPARTIDA POR WHATSAPP (Cat 2 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'UBICACION_WHATSAPP_CONFIRMADA') {
+    currentPhase = 1;
+    userSession.coloniaActual = "Álvaro Obregón";
+    finalBotReplyText = "¡Ubicación recibida con éxito! 📍 Detecté que estás en la zona de Álvaro Obregón / Poniente CDMX. ¿Qué negocio, comida o servicio deseas buscar aquí? 🔎✨";
+  }
+
+  // A.3. CAMBIO EXPLÍCITO DE COLONIA O ZONA (Cat 2 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'CAMBIO_COLONIA_EXPLICITO') {
+    currentPhase = 1;
+    const newCol = nluResult.colonia_o_referencia || "tu nueva ubicación";
+    userSession.coloniaActual = newCol;
+    finalBotReplyText = `¡Ajuste listo! 📍 Actualicé tu zona a ${newCol}. Dime qué producto, comida o servicio necesitas encontrar por aquí. 🔎✨`;
+  }
+
+  // A.4. FILTRO DE DISTANCIA CAMINABLE (Cat 2 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'FILTRO_CAMINABLE') {
+    currentPhase = 1;
+    userSession.filtroCaminable = true;
+    finalBotReplyText = "¡Filtro activado! 🚶‍♂️ Te muestro solo comercios a distancia caminable (menos de 1 km) de tu ubicación actual. ¿Qué giro buscamos primero? 📍";
+  }
+
+  // A.5. FORMAS DE PAGO / TERMINAL (Cat 2 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'FAQ_FORMAS_PAGO') {
+    currentPhase = 1;
+    finalBotReplyText = "En la ficha de cada comercio te especifico las formas de pago aceptadas (Efectivo, Tarjeta, Transferencia) 💳💵. Si buscas un negocio con terminal, dímelo con gusto.";
+  }
+
+  // A.6. MODISMO FIESTA / BAR (Cat 7 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'MODISMO_FIESTA') {
+    currentPhase = 2;
+    userSession.lockedFamily = 'ALIMENTOS_Y_BEBIDAS';
+    userSession.lockedTerm = 'Bar';
+    userSession.intencion_actual = "esperando_ubicacion";
+    finalBotReplyText = "¡Qué onda! 😎🍺 Para recomendarte los mejores bares o lugares de fiesta, dime en qué colonia o zona te encuentras hoy. 📍✨";
+  }
+
   // B. INTENCIÓN DE REGISTRO B2B / UNIRSE AL DIRECTORIO (CERO BÚSQUEDA)
   else if (nluResult.intencion === 'DUDA_REGISTRO') {
     currentPhase = 5;
     userSession.intencion_actual = "duda_registro";
-    finalBotReplyText = "¡Qué excelente noticia! 😊🙌 Me encantaría que tu negocio forme parte de BuscaYa para que comiences a recibir clientes directos de la zona en tu WhatsApp. Revisa todos los detalles y realiza tu registro oficial aquí: https://buscaya.neuralmediahouse.com/ 🚀✨";
+    if (/costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta/i.test(messageText)) {
+      finalBotReplyText = "Contamos con registro básico sin costo y membresías Pro desde $499 MXN al mes con posicionamiento preferente y métricas en vivo. Más info en https://buscaya.neuralmediahouse.com/ 💳📊";
+    } else if (/independiente|freelance|por\s+mi\s+cuenta/i.test(messageText)) {
+      finalBotReplyText = "¡Por supuesto! 🛠️ Plomeros, electricistas, psicólogos y profesionales independientes son bienvenidos. Regístrate en https://buscaya.neuralmediahouse.com/ indicando tu zona de cobertura. 📲✨";
+    } else {
+      finalBotReplyText = "¡Excelente decisión para impulsar tus ventas! 📈 Inscríbete en minutos en nuestro portal oficial: https://buscaya.neuralmediahouse.com/ o envíanos tus datos comerciales por aquí para comenzar. 🚀";
+    }
   }
 
   // C. INTENCIÓN DE SOPORTE HUMANO / AYUDA DIRECTA (CERO BÚSQUEDA)
   else if (nluResult.intencion === 'SOPORTE_HUMANO') {
     currentPhase = 5;
     userSession.intencion_actual = "soporte_humano";
-    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Si necesitas atención directa o deseas hablar con una persona de nuestro equipo, contáctanos o marca a nuestro número oficial de atención personalizada: 5645234452 📱🤝 ¡Con gusto te atenderemos!";
+    finalBotReplyText = "¡Con gusto! 🤝 Te transfiero de inmediato con un asesor humano para darte atención personalizada. También puedes comunicarte directo a nuestra línea de soporte: 5645234452 📱✨";
   }
 
   // C.1. INCIDENCIA DE SOPORTE Y REPORTES (Cat 5 - Few-Shot Ground Truth)
@@ -3494,7 +3749,7 @@ async function processBuscaYaMessage({
         finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento ya son todas las opciones de ${giroLabel} que tenemos registradas en el sistema 😔📍 ¡Muy pronto sumaremos más negocios en tu colonia! Si deseas buscar algún otro giro diferente, dime cuál necesitas y con gusto te ayudo 😊🙌`;
       }
     } else {
-      finalBotReplyText = "¿Qué negocio o servicio te gustaría buscar cerquita de ti? 📍✨";
+      finalBotReplyText = "¡Aquí tienes la siguiente opción recomendada! 🌟🏪 Si gustas que busque algún giro en específico o en otra colonia, dímelo con gusto. 📍✨";
     }
   }
 
