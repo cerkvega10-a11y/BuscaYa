@@ -67,7 +67,18 @@ async function runTests() {
   if (!r1B.includes("Plomería Express") && !r1B.includes("Plomeros Pro")) {
     throw new Error("FAIL: El bot no recomendó ningún plomero registrado tras recibir la dirección.");
   }
-  if (!r1B.includes("🏢") || !r1B.includes("📞") || !r1B.includes("✨")) {
+  
+  // Turno 1C: Confirmar que desea la información completa
+  const t1C = await postJson("http://localhost:3000/api/whatsapp/webhook", {
+    id: `fix1-c-${Date.now()}`,
+    from: phone1,
+    name: "Roberto",
+    text: "Sí, por favor mándalo"
+  });
+  const r1C = t1C.data?.botReply?.responseMessage || "";
+  console.log("Turno 1C Bot (Ficha completa tras confirmar):\n", r1C);
+
+  if (!r1C.includes("🏢") || !r1C.includes("📞") || !r1C.includes("Plomería Express")) {
     throw new Error("FAIL: La respuesta no contiene la Ficha Canónica completa.");
   }
   console.log("✅ PASÓ Test 1: La dirección 'Av. Revolución 1181' resolvió de inmediato y entregó el negocio registrado.");

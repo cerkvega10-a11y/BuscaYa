@@ -113,16 +113,32 @@ async function runTests() {
     throw new Error(`FAIL: Turno 2 repitió saludo en sesión activa: "${reply2.slice(0, 40)}"`);
   }
 
+  // Lista de opciones ofrecidas
+  if (!reply2.includes("Bella Napoli") || !reply2.includes("¿Cuál de estas opciones te interesa más?")) {
+    throw new Error("FAIL: Turno 2 no ofreció la lista resumida de opciones.");
+  }
+  console.log("✅ PASÓ: Turno 2 presentó el catálogo resumido de negocios cercanos.");
+
+  // Turno 2B: Selección de opción por nombre ("Bella Napoli") -> Ficha completa
+  const turn2B = await postJson("http://localhost:3000/api/whatsapp/webhook", {
+    id: `turn2b-${Date.now()}`,
+    from: phoneFlow,
+    name: "Mariana",
+    text: "Bella Napoli"
+  });
+  const reply2B = turn2B.data?.botReply?.responseMessage || "";
+  console.log("Respuesta Turno 2B (Ficha Completa):\n", reply2B);
+
   // Ficha canónica completa obligatoria (6 campos)
-  if (!reply2.includes("🏢") || !reply2.includes("✨") || !reply2.includes("⏰") || !reply2.includes("📅") || !reply2.includes("📍") || !reply2.includes("📞")) {
-    throw new Error("FAIL: Turno 2 no contiene los 6 campos de la Ficha Canónica Completa.");
+  if (!reply2B.includes("🏢") || !reply2B.includes("✨") || !reply2B.includes("⏰") || !reply2B.includes("📅") || !reply2B.includes("📍") || !reply2B.includes("📞")) {
+    throw new Error("FAIL: Turno 2B no contiene los 6 campos de la Ficha Canónica Completa.");
   }
 
   // Pregunta de control obligatoria
-  if (!reply2.includes("¿Qué tal se ve esta opción para ti?")) {
-    throw new Error("FAIL: Turno 2 no contiene la Pregunta de Control interactiva.");
+  if (!reply2B.includes("¿Qué tal se ve esta opción para ti?")) {
+    throw new Error("FAIL: Turno 2B no contiene la Pregunta de Control interactiva.");
   }
-  console.log("✅ PASÓ: Turno 2 recomendó con Ficha Completa, Pregunta de Control y CERO saludos repetidos.");
+  console.log("✅ PASÓ: Turno 2B recomendó con Ficha Completa, Pregunta de Control y CERO saludos repetidos.");
 
   // -------------------------------------------------------------
   // TEST 4: Turno 3 - Feedback / Otra opción ("Está lejos")

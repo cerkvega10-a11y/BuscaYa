@@ -130,7 +130,7 @@ try {
 const GROQ_PARTS = ["gsk", "_zlt2L3l5", "mQdPI66no", "SD5WGdyb3", "FYz4GZx5Y", "EXMZi5Q6J", "OgMPi3yF"];
 const GEM_PARTS = ["AQ.", "Ab8RN6L7O", "5NEQIRscZ", "eZQcRxq3n", "jDEJRYmzQ", "qL8dwO9iX", "8bDOg"];
 const GROQ_API_KEY = process.env.GROQ_API_KEY || GROQ_PARTS.join("");
-const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const OFFICIAL_GOOGLE_GEMINI_KEY = process.env.GEMINI_API_KEY || GEM_PARTS.join("");
 
 // Alias de retrocompatibilidad
@@ -233,21 +233,21 @@ async function callGroqApi({ prompt, history = [], systemInstruction, model, api
   // 2. Motor Groq AI Oficial (https://api.groq.com/openai/v1/chat/completions)
   const activeGroqKey = rawKey.startsWith("gsk_") ? rawKey : GROQ_API_KEY;
   const ALLOWED_GROQ_MODELS = [
-    "openai/gpt-oss-20b",
-    "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
     "allam-2-7b"
   ];
   const cleanRequestedModel = (model && ALLOWED_GROQ_MODELS.includes(model))
     ? model
-    : "openai/gpt-oss-20b";
+    : "openai/gpt-oss-120b";
 
   // Modelos habilitados en el catálogo activo de esta cuenta Groq con fallback automático
   const candidateModels = [
     cleanRequestedModel,
-    "openai/gpt-oss-20b",
-    "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
     "allam-2-7b"
   ];
   const uniqueModels = Array.from(new Set(candidateModels.filter(Boolean)));
@@ -1080,7 +1080,7 @@ Eres el asistente virtual oficial de BuscaYa, desarrollado exclusivamente por el
 
 ## 2. FLUJO EXACTO DE 5 ESTADOS (NO SALTAR NI REPETIR PASOS)
 - ESTADO 1 (Saludo sin giro): Si el usuario solo dice "Hola", salúdalo con calidez según la hora del día y pregúntale qué negocio, comida o servicio necesita buscar hoy. (Prohibido mostrar negocios aquí).
-- ESTADO 2 (Petición de giro sin ubicación): Si el usuario dice qué busca (ej. "Tengo hambre", "Busco un plomero") pero aún no ha dado su ubicación ni su colonia, reacciona con empatía y pídele que toque el botón para enviar su ubicación actual o que escriba el nombre de su colonia 📍.
+- ESTADO 2 (Petición de giro sin ubicación): Si el usuario dice qué busca (ej. "Tengo hambre", "Busco un plomero") pero aún no ha dado su ubicación ni su colonia, reacciona con empatía y pídele amablemente que escriba en qué colonia o zona se encuentra 📍 (prohibido pedir que use botones o clips).
 - ESTADO 3 (Recepción de Ubicación por Pin GPS o Colonia escrita):
   - En cuanto recibas el Pin de Ubicación o el nombre de la colonia, NUNCA vuelvas a pedir la ubicación ni vuelvas a saludar.
   - Si existen negocios del giro solicitado a menos de 2 km, entrega el mejor/VIP de inmediato usando la ficha compacta y detente preguntando si le gusta esa opción o si quiere ver otra.
@@ -5654,7 +5654,7 @@ ${visualFormatRule}`;
             .trim();
         }
 
-        const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver)/i.test((messageText || '').trim()));
+        const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver|^1$)/i.test((messageText || '').trim()));
         const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
         const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
         const isAffirmative = !isLocationMessage && !isCategoryCorrection && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
@@ -5769,7 +5769,37 @@ ${visualFormatRule}`;
         currentPhase = 1;
         const hasValidActiveLocation = Boolean(isLocationMessage || userLocationColonia || locationIsFromMemory || (userSession.lastLocation && userSession.lastLocation.latitude));
 
-        if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
+        // Detección de Elección de Negocio entre Opciones Ofrecidas previamente
+        let selectedFromOffered = null;
+        if (Array.isArray(userSession.opciones_ofrecidas) && userSession.opciones_ofrecidas.length > 0) {
+          const normText = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          
+          if (/^(?:1|el\s+1|la\s+1|opci[oó]n\s+1|el\s+primer[oa]|la\s+primer[oa]|primero|primera)[.,!]*$/i.test(normText)) {
+            selectedFromOffered = userSession.opciones_ofrecidas[0];
+          } else if (/^(?:2|el\s+2|la\s+2|opci[oó]n\s+2|el\s+segund[oa]|la\s+segund[oa]|segundo|segunda)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[1]) {
+            selectedFromOffered = userSession.opciones_ofrecidas[1];
+          } else if (/^(?:3|el\s+3|la\s+3|opci[oó]n\s+3|el\s+tercer[oa]|la\s+tercer[oa]|tercero|tercera)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[2]) {
+            selectedFromOffered = userSession.opciones_ofrecidas[2];
+          } else if ((isAffirmative || isAffirmativeExpansion) && userSession.opciones_ofrecidas.length === 1) {
+            selectedFromOffered = userSession.opciones_ofrecidas[0];
+          } else {
+            for (const b of userSession.opciones_ofrecidas) {
+              const bNameNorm = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const bWords = bNameNorm.split(/\s+/).filter(w => w.length > 3 && !["restaurante", "pizzeria", "herreria", "plomeria", "taller", "trattoria"].includes(w));
+              if (bNameNorm.includes(normText) || normText.includes(bNameNorm) || (bWords.length > 0 && bWords.some(w => normText.includes(w)))) {
+                selectedFromOffered = b;
+                break;
+              }
+            }
+          }
+        }
+
+        if (selectedFromOffered) {
+          currentPhase = 4;
+          userSession.intencion_actual = "entrega_ficha_completa";
+          detectedFamilyName = userSession.familia_giro || selectedFromOffered.category || "Servicios Locales";
+          detectedSpecificGiro = selectedFromOffered.businessName;
+        } else if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
           currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
         } else if (isLocationWithoutCoords) {
           // Bucle de Capturas Resuelto: Si llega un aviso de ubicación sin coordenadas (ej. fin de ubicación en vivo)
@@ -6102,28 +6132,20 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
 
         if (currentPhase === 1) {
           if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - UBICACIÓN RECIBIDA]
-El usuario acaba de enviar su ubicación en ${userLocationColonia || 'su colonia'} 📍. Confírmale que ya guardaste su ubicación y pregúntale con calidez qué comida, oficio o servicio desea buscar cerca de él. TIENES ESTRICTAMENTE PROHIBIDO decir que "no tenemos ese giro registrado".`;
+            finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
           } else {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - SALUDO INICIAL]
-El usuario solo ha enviado un saludo. TIENES ESTRICTAMENTE PROHIBIDO mostrar o recomendar negocios en este mensaje. Saluda con muchísima calidez acorde a la hora actual (${mexTime.greeting} ${mexTime.icon}), da la bienvenida a BuscaYa con frescura y pregúntale cómo está y qué servicio, comida o negocio le gustaría buscar hoy.`;
+            finalBotReplyText = isSessionAlreadyActive
+              ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
+              : `${mexTime.greeting} ${mexTime.icon} ¡Bienvenido a BuscaYa! 😊✨ Me da mucho gusto saludarte. Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 📍`;
           }
         } else if (currentPhase === 2) {
           if (isLocationWithoutCoords) {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - AVISO DE UBICACIÓN SIN COORDENADAS (FIN DE UBICACIÓN EN VIVO)]
-El usuario envió un evento o respuesta de ubicación pero NO contiene coordenadas utilizables (por ejemplo, si la ubicación en tiempo real ya finalizó o expiró).
-TIENES ESTRICTAMENTE PROHIBIDO:
-1. Suponer o inventar una ubicación falsa.
-2. Volver a saludar con "Buenas noches" o bienvenidas genéricas.
-3. Preguntar qué busca desde cero (la categoría activa es "${userSession.giro_especifico || userSession.familia_giro}").
-ACCIÓN OBLIGATORIA: Explica con naturalidad y amabilidad que no te llegaron las coordenadas y pídele que te comparta un pin fijo de ubicación con el clip de WhatsApp o que te escriba el nombre de su colonia para buscarle opciones cerquita.`;
+            finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación 📍🤔 ¿Podrías escribirme en qué colonia o zona estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
           } else {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
-El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.familia_giro}). Aún NO tenemos su ubicación exacta o colonia.
-1. Responde con calidez y entusiasmo de anfitrión local de CDMX a lo que busca.
-2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍✨.
-PROHIBICIÓN ESTRICTA: Cero frases robóticas ("Para recomendarte los lugares abiertos a menos de 2 km de ti...", "Para brindarte un mejor servicio...").
-TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubicación.`;
+            const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
+            const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
+            const giroLabel = userSession.giro_especifico || userSession.familia_giro || "el servicio que buscas";
+            finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo a encontrar ${giroLabel}! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿en qué colonia o zona te encuentras? Escríbemela por aquí por favor 📍✨`;
           }
         } else if (currentPhase === 3) {
           // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
@@ -6134,24 +6156,35 @@ TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubi
             selectedBusinesses
           );
 
-          if (selectedBusinesses.length > 0) {
-            const locationConnectPhrase = isLocationMessage
-              ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
-              : `¡Perfecto! Buscando en ${userLocationColonia || 'tu zona'} 📍✨ Aquí tienes la mejor opción abierta cerquita de ti... 👇`;
+          if (directBusinessNameMatches.length > 0 && selectedBusinesses.length > 0) {
+            finalBotReplyText = `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
+          } else if (cercanos_2km.length > 0) {
+            userSession.opciones_ofrecidas = cercanos_2km.slice(0, 3);
+            if (userSession.opciones_ofrecidas.length === 1) {
+              const b = userSession.opciones_ofrecidas[0];
+              const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
+              const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
+              finalBotReplyText = `¡Perfecto! Encontré esta excelente opción abierta cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
+                `🏢 *${b.businessName}*${sponsorTag}\n` +
+                `✨ ${b.services || b.category}\n` +
+                `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
+                `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n\n` +
+                `¿Te gustaría que te mande su teléfono, WhatsApp directo y ubicación completa? 😊🙌`;
+            } else {
+              const listItems = userSession.opciones_ofrecidas.map((b, idx) => {
+                const numEmoji = ["1️⃣", "2️⃣", "3️⃣"][idx] || `•`;
+                const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
+                const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km` : "";
+                return `${numEmoji} *${b.businessName}*${sponsorTag}\n` +
+                  `✨ ${b.services || b.category}\n` +
+                  `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
+                  `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}`;
+              }).join("\n\n");
 
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADO INTERACTIVO (1 SOLA OPCIÓN)]
-El usuario ya compartió su ubicación. Debes presentar ÚNICAMENTE a este negocio en una ficha limpia y completa. TIENES ESTRICTAMENTE PROHIBIDO mostrar más de un negocio en este mensaje.
-Conéctate con calidez y fluidez humana: "${locationConnectPhrase}"
-
-FICHA COMPLETA OBLIGATORIA (CON TODOS SUS 6 CAMPOS SIN RECORTAR):
-|||SEPARAR|||
-${canonicalCard}
-|||SEPARAR|||
-
-PREGUNTA DE CONTROL OBLIGATORIA AL FINAL:
-"${controlQuestion}"
-
-REGLA DE PAUSA INTERACTIVA: No muestres ninguna otra opción ni te adelantes. Detén la respuesta tras la pregunta de control.`;
+              finalBotReplyText = `¡Perfecto! Encontré estas opciones cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
+                `${listItems}\n\n` +
+                `¿Cuál de estas opciones te interesa más? 😊 Escríbeme el nombre o número y te paso de inmediato su ficha completa con teléfono, WhatsApp directo y mapa 🙌✨`;
+            }
           } else {
             // Regla de Entrega Honesta a 2 km (Fase 3.2):
             if (lejanos_mas_2km.length > 0) {
@@ -6165,19 +6198,13 @@ REGLA DE PAUSA INTERACTIVA: No muestres ninguna otra opción ni te adelantes. De
             }
           }
         } else if (currentPhase === 4) {
-          if (selectedBusinesses.length > 0) {
-            const feedbackIntroNote = isFeedbackOnPrevious
-              ? `\nNOTA DE FEEDBACK: El usuario comentó "${messageText}" sobre la opción anterior. Comprende su comentario con amabilidad y preséntale esta otra alternativa de ${userSession.giro_especifico}:`
-              : "";
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - SIGUIENTE OPCIÓN (1 SOLA OPCIÓN)]
-El usuario solicitó ver otra opción de ${userSession.giro_especifico}.${feedbackIntroNote}
-REGLA INQUEBRANTABLE DE FAMILIA: ÚNICAMENTE puedes recomendar un negocio de la familia ${userSession.familia_giro}.
-CERO HERRERÍAS NI OFICIOS SI EL USUARIO PIDIÓ COMIDA.
-Presenta ÚNICAMENTE este negocio con su ficha completa y haz la pregunta de control:
-|||SEPARAR|||
-${canonicalCard}
-|||SEPARAR|||
-"${controlQuestion}"`;
+          if (selectedFromOffered && canonicalCard) {
+            finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n¿Qué tal se ve esta opción para ti? 😊 ¿Te gustaría ver los detalles de otra opción o que busquemos algo diferente? 🙌`;
+          } else if (selectedBusinesses.length > 0 && canonicalCard) {
+            const intro = isFeedbackOnPrevious
+              ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
+              : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
+            finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
           } else {
             const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
             finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento son todas las opciones de ${giroLabel} que tenemos registradas cerca de tu zona 😔🙏 ¡Muy pronto sumaremos nuevos lugares! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨`;
@@ -6194,17 +6221,23 @@ ${canonicalCard}
           finalBotReplyText = SYSTEM_FAQ_OPTIONS[faqIndex % SYSTEM_FAQ_OPTIONS.length];
           userSession.faqReplyIndex = (faqIndex + 1) % SYSTEM_FAQ_OPTIONS.length;
         } else if (finalBotReplyText) {
-          // Ya asignado por regla determinista de entrega honesta
+          // Ya asignado por regla determinista de entrega honesta o flujo guiado
         } else {
           try {
             const aiRes = await callGroqApi({
               prompt: contextualPrompt,
               systemInstruction: CURRENT_SYSTEM_PROMPT,
-              temperature: 0.75
+              temperature: 0.2
             });
 
             if (aiRes.success && aiRes.reply) {
-              finalBotReplyText = cleanAiSymbols(aiRes.reply);
+              const rawReply = cleanAiSymbols(aiRes.reply);
+              const isHallucinated = /(?:hora\s+exacta|saludo\s+correspondiente|mensaje\s+recibido|estado\s+conversacional|esta\s+fase|su\s+primer\s+mensaje|proceso\s+recibido|d[ií]as\s+del\s+dueje|informaci[oó]n\s+de\s+chicos|informaci[oó]n\s+de\s+chiles)/i.test(rawReply);
+              if (!isHallucinated && rawReply.length > 5) {
+                finalBotReplyText = rawReply;
+              } else {
+                console.warn("[Sanitizador Anti-Alucinación] Descartando texto alucinado de IA:", rawReply.slice(0, 80));
+              }
             }
           } catch (groqErr) {
             console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
@@ -6213,8 +6246,10 @@ ${canonicalCard}
 
         // ==============================================================
         // BLINDAJE DE FICHA COMPLETA: VALIDAR Y GARANTIZAR LOS 6 CAMPOS
+        // (Aplica únicamente al entregar la ficha completa, no al listar opciones resumidas)
         // ==============================================================
-        if (selectedBusinesses.length > 0 && finalBotReplyText && canonicalCard) {
+        const isDeliveringFullCard = Boolean(selectedFromOffered || directBusinessNameMatches.length > 0 || currentPhase === 4);
+        if (isDeliveringFullCard && selectedBusinesses.length > 0 && finalBotReplyText && canonicalCard) {
           const b = selectedBusinesses[0];
           const hasPhone = finalBotReplyText.includes(b.phone) || finalBotReplyText.includes("📞") || finalBotReplyText.includes("Teléfono");
           const hasHours = finalBotReplyText.includes("⏰") || finalBotReplyText.includes("Horario") || finalBotReplyText.includes(b.openInfo.hoursDisplay);
@@ -6376,32 +6411,7 @@ ${canonicalCard}
               }
             }
 
-            // En Fase 2: Enviar botón interactivo nativo "📍 Enviar ubicación"
-            if (currentPhase === 2) {
-              await new Promise(r => setTimeout(r, 600));
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: cleanTo,
-                  type: "interactive",
-                  interactive: {
-                    type: "location_request_message",
-                    body: {
-                      text: "Toca el botón de abajo para enviar tu ubicación actual con un solo toque 📍✨"
-                    },
-                    action: {
-                      name: "send_location"
-                    }
-                  }
-                })
-              });
-            }
+
           } catch (metaSendErr) {
             console.warn("[Meta Cloud API Multi-Bubble Send Warning]:", metaSendErr.message);
           }
