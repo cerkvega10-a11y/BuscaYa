@@ -564,12 +564,20 @@ let SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
 
 // ==============================================================
 // FAMILIAS SEMÁNTICAS DE GIROS Y ANCLAJE ESTRICTO DE CATEGORÍA
+// Catálogo Nacional Exhaustivo (México) con 8 Categorías Oficiales
 // ==============================================================
 const GIRO_FAMILIES = {
   "ALIMENTOS_Y_BEBIDAS": {
     name: "Alimentos y Bebidas",
+    isOficio: false,
     categories: [
       "Restaurantes, Cafeterías y Bares",
+      "Taquerías y Antojitos Mexicanos",
+      "Pizzerías y Comida Rápida",
+      "Postres, Panaderías y Pastelerías",
+      "Fondas y Cocinas Económicas",
+      "Marisquerías y Pescados",
+      "Bares, Alitas y Cervecerías",
       "Restaurantes",
       "Pizzerías",
       "Taquerías",
@@ -582,16 +590,25 @@ const GIRO_FAMILIES = {
       "Postres y Panaderías"
     ],
     keywords: [
-      "hambre", "comer", "comida", "cenar", "cena", "desayunar", "desayuno",
+      "hambre", "comer", "comida", "cenar", "cena", "desayunar", "desayuno", "lonche",
       "pizza", "pizzas", "pizzeria", "pizzería", "taco", "tacos", "taqueria", "taquería",
-      "mariscos", "birria", "pancita", "chilaquiles", "sushi", "hamburguesa", "hamburguesas",
-      "alitas", "café", "cafe", "cafeteria", "cafetería", "bar", "cerveza", "chela", "reta",
-      "postre", "pan", "antojo", "algo rico", "antojitos"
+      "mariscos", "marisco", "pescado", "ceviche", "birria", "pancita", "chilaquiles", "sushi",
+      "hamburguesa", "hamburguesas", "alitas", "café", "cafe", "cafeteria", "cafetería", "bar",
+      "cerveza", "chela", "chelas", "postre", "postres", "pastel", "pasteles", "pan", "panaderia",
+      "panadería", "antojo", "algo rico", "antojitos"
     ]
   },
   "SALUD": {
-    name: "Salud y Farmacias",
+    name: "Salud y Bienestar",
+    isOficio: false,
     categories: [
+      "Médicos Generales y Especialistas",
+      "Odontología y Dentistas",
+      "Farmacias y Medicamentos",
+      "Clínicas, Hospitales y Laboratorios",
+      "Psicología, Terapia y Bienestar Mental",
+      "Ópticas y Cuidado Visual",
+      "Fisioterapia y Rehabilitación",
       "Médicos, Odontólogos y Salud",
       "Farmacias",
       "Consultorios Médicos",
@@ -600,60 +617,177 @@ const GIRO_FAMILIES = {
       "Hospitales"
     ],
     keywords: [
-      "enfermo", "enferma", "mal", "duele", "dolor", "muela", "diente", "gripa",
-      "fiebre", "tos", "medicina", "medicinas", "farmacia", "pastilla", "pastillas",
-      "médico", "medico", "doctor", "doctora", "dentista", "odontólogo", "analisis",
-      "laboratorio", "hospital", "clínica", "clinica"
+      "enfermo", "enferma", "mal", "duele", "dolor", "muela", "diente", "dentista", "odontologo", "odontólogo",
+      "gripa", "fiebre", "tos", "medicina", "medicinas", "farmacia", "pastilla", "pastillas",
+      "médico", "medico", "doctor", "doctora", "analisis", "laboratorio", "hospital", "clínica", "clinica",
+      "psicologo", "psicólogo", "terapia", "optica", "óptica", "lentes", "fisioterapia", "rehabilitacion"
+    ]
+  },
+  "ENTRETENIMIENTO_Y_ARTE": {
+    name: "Entretenimiento, Arte y Cultura",
+    isOficio: false,
+    categories: [
+      "Artistas, Grupos Musicales y DJs",
+      "Producción de Audio, Video y Fotografía",
+      "Salones de Eventos y Banquetes",
+      "Renta de Inflables y Mobiliario para Fiestas",
+      "Escuelas de Arte, Música y Danza",
+      "Teatros, Galerías y Foros Culturales",
+      "Fotografía, Video y Eventos"
+    ],
+    keywords: [
+      "artista", "artistas", "musica", "música", "musico", "músico", "músicos", "musicos",
+      "dj", "djs", "banda", "mariachi", "grupo musical", "audio", "video", "fotografo", "fotógrafo",
+      "fotografia", "fotografía", "evento", "eventos", "fiesta", "fiestas", "salon", "salón",
+      "banquete", "banquetes", "inflables", "brincolin", "mobiliario", "danza", "baile", "teatro",
+      "galeria", "galería", "caramelo media music", "caramelo"
     ]
   },
   "OFICIOS_DEL_HOGAR": {
-    name: "Oficios del Hogar",
+    name: "Oficios del Hogar y Mantenimiento",
+    isOficio: true,
     categories: [
-      "Plomeros y Gasfitería",
+      "Plomería y Fontanería",
       "Electricistas y Alta Tensión",
+      "Cerrajería y Apertura de Cerraduras",
+      "Herrería y Estructuras Metálicas",
+      "Carpintería y Muebles sobre Diseño",
+      "Pintores, Albañilería e Impermeabilización",
+      "Mantenimiento de Climas y Aire Acondicionado",
+      "Limpieza y Fumigación",
+      "Plomeros y Gasfitería",
+      "Plomeros",
       "Cerrajerías y Aperturas Urgentes",
+      "Herrería y Forja Metálica",
       "Herrerías y Estructuras Metálicas",
-      "Carpinterías y Ebanistería",
-      "Pintores y Albañilería"
+      "Carpintería y Muebles a Medida",
+      "Pintores e Impermeabilización",
+      "Aire Acondicionado y Climas (HVAC)",
+      "Limpieza Residencial y Comercial",
+      "Fumigación y Control de Plagas"
     ],
     keywords: [
-      "plomero", "plomeria", "plomería", "fuga", "tubo", "tubería", "tuberia", "boiler", "gotera",
-      "electricista", "luz", "corto", "pastilla", "cableado", "enchufe", "apagón", "apagon", "fusible",
-      "cerrajero", "cerrajeria", "cerrajería", "llave", "llaves", "chapa", "cerradura", "candado", "afuera de mi casa",
-      "herrero", "herreria", "herrería", "soldador", "puerta de metal", "zaguan", "zaguán", "reja", "protecciones",
-      "carpintero", "carpinteria", "carpintería", "mueble", "madera", "puerta"
+      "plomero", "plomeros", "plomeria", "plomería", "fuga", "tubo", "tubería", "tuberia", "boiler", "gotera", "gasfiteria", "gasfitero",
+      "electricista", "electricistas", "luz", "corto", "pastilla", "cableado", "enchufe", "apagón", "apagon", "fusible",
+      "cerrajero", "cerrajeros", "cerrajeria", "cerrajería", "llave", "llaves", "chapa", "cerradura", "candado", "afuera de mi casa", "abrir puerta",
+      "herrero", "herreros", "herreria", "herrería", "soldador", "soldadura", "puerta de metal", "zaguan", "zaguán", "reja", "protecciones",
+      "carpintero", "carpinteros", "carpinteria", "carpintería", "mueble", "madera", "puerta",
+      "pintor", "pintores", "pintar", "albañil", "albañiles", "impermeabilizar", "impermeabilizante", "clima", "aire acondicionado", "minisplit", "fumigar", "plaga"
     ]
   },
   "AUTOMOTRIZ": {
-    name: "Automotriz y Emergencias Viales",
+    name: "Automotriz y Movilidad",
+    isOficio: true,
     categories: [
+      "Talleres Mecánicos y Afinaciones",
+      "Vulcanizadoras y Llanteras",
+      "Grúas y Auxilio Vial",
+      "Cerrajería Automotriz",
+      "Autolavados y Estéticas Automotrices",
+      "Refaccionarias y Autopartes",
       "Mecánicos, Talleres y Grúas",
       "Talleres Mecánicos",
       "Vulcanizadoras",
       "Llanteras",
-      "Grúas",
-      "Cerrajería Automotriz"
+      "Grúas"
     ],
     keywords: [
-      "coche", "carro", "auto", "mecánico", "mecanico", "taller", "llanta", "llantas",
+      "coche", "carro", "auto", "mecánico", "mecanico", "mecanicos", "taller", "llanta", "llantas",
       "ponchó", "poncho", "ponchada", "vulcanizadora", "vulca", "grúa", "grua", "arranque",
-      "batería", "bateria", "frenos", "afinación", "tirado"
+      "batería", "bateria", "frenos", "afinación", "afinacion", "tirado", "autolavado", "refaccionaria", "refacciones"
     ]
   },
   "MASCOTAS": {
-    name: "Mascotas y Veterinarias",
+    name: "Mascotas y Cuidado Animal",
+    isOficio: false,
     categories: [
+      "Clínicas Veterinarias y Urgencias",
+      "Estéticas Caninas y Baño de Mascotas",
+      "Pensiones, Paseadores y Adiestramiento",
+      "Alimentos y Accesorios para Mascotas",
       "Veterinarios y Mascotas",
       "Veterinarias",
       "Clínicas Veterinarias",
       "Estética Canina"
     ],
     keywords: [
-      "perro", "perrito", "gato", "gatito", "mascota", "mascotas", "firulais", "michi",
-      "veterinario", "veterinaria", "vacuna", "desparasitacion"
+      "perro", "perrito", "perros", "gato", "gatito", "gatos", "mascota", "mascotas", "firulais", "michi",
+      "veterinario", "veterinaria", "veterinarios", "vacuna", "desparasitacion", "estetica canina", "baño de perro", "croquetas"
+    ]
+  },
+  "COMERCIO_LOCAL": {
+    name: "Comercio y Tiendas Locales",
+    isOficio: false,
+    categories: [
+      "Abarrotes, Minisúpers y Tienditas",
+      "Papelerías y Copias",
+      "Ferreterías y Tlapalerías",
+      "Tiendas de Ropa, Calzado y Boutiques",
+      "Florerías y Regalos",
+      "Purificadoras de Agua y Hielo"
+    ],
+    keywords: [
+      "tienda", "tiendita", "abarrotes", "minisuper", "minisúper", "papeleria", "papelería", "copias",
+      "impresiones", "ferreteria", "ferretería", "tlapaleria", "tlapalería", "tornillos", "ropa",
+      "boutique", "calzado", "zapatos", "floreria", "florería", "flores", "regalos", "purificadora", "garrafon", "garrafón", "agua", "hielo"
+    ]
+  },
+  "SERVICIOS_PROFESIONALES": {
+    name: "Servicios Profesionales y Técnicos",
+    isOficio: true,
+    categories: [
+      "Despachos Contables y Asesoría Fiscal",
+      "Abogados y Servicios Notariales",
+      "Reparación de Celulares y Computadoras",
+      "Agencias de Diseño, Marketing y Publicidad",
+      "Arquitectura y Construcción",
+      "Abogados y Asesoría Jurídica",
+      "Contadores y Consultoría Fiscal"
+    ],
+    keywords: [
+      "contador", "contadora", "contadores", "contabilidad", "fiscal", "impuestos", "sat",
+      "abogado", "abogada", "abogados", "juridico", "jurídico", "notaria", "notaría", "notario", "demanda",
+      "celular", "celulares", "computadora", "computadoras", "laptop", "pc", "reparacion", "reparación",
+      "marketing", "diseño", "publicidad", "arquitecto", "arquitectura", "construccion", "construcción", "obra"
     ]
   }
 };
+
+/**
+ * Motor de Búsqueda Flexible y Difusa (Fuzzy Search) para Negocios de BuscaYa
+ * Busca coincidencias parciales por nombre de negocio, categoría, servicios y etiquetas
+ */
+function searchBusinessesFuzzy(query, businesses) {
+  if (!query || typeof query !== "string" || !Array.isArray(businesses)) return [];
+  const qClean = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  if (qClean.length < 2) return [];
+
+  const stopWords = new Set([
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "en", "para", "por",
+    "con", "y", "o", "a", "al", "que", "tendras", "tendras", "tienen", "tiene", "hay",
+    "busco", "necesito", "quiero", "algun", "alguna", "algunos", "algunas", "cerca", "aqui",
+    "aqui", "porfa", "favor", "hola", "buenas", "buenos", "dias", "tardes", "noches"
+  ]);
+  const tokens = qClean.split(/[\s,.-]+/).filter(w => w.length > 2 && !stopWords.has(w));
+
+  return businesses.filter(b => {
+    const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bCat = (b.category || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bServ = (b.services || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bTags = Array.isArray(b.tags) ? b.tags.join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+    const combined = `${bName} ${bCat} ${bServ} ${bTags}`;
+
+    // Coincidencia exacta o contenida directa
+    if (combined.includes(qClean)) return true;
+    if (bName.includes(qClean) || qClean.includes(bName)) return true;
+
+    // Coincidencia por tokens relevantes
+    if (tokens.length > 0) {
+      return tokens.some(tok => combined.includes(tok));
+    }
+    return false;
+  });
+}
 
 // ==============================================================
 // CONFIGURACIÓN DE ENTRENAMIENTO IA POR TARJETAS Y REGLAS RÁPIDAS
@@ -662,8 +796,15 @@ const DEFAULT_AI_TASKS = [
   {
     id: "task-1",
     active: true,
-    condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio",
-    action: "Felicitarlo con entusiasmo, informarle que tiene 7 días gratis sin costo y compartirle el enlace oficial: https://buscaya.neuralmediahouse.com/",
+    condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio, cuánto cuesta o cómo sumarse",
+    action: "Felicitarlo con entusiasmo, darle la bienvenida al ecosistema, recordarle brevemente que tiene días de prueba gratis para recibir clientes en su WhatsApp y entregarle el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨",
+    priority: "Alta (Obligatoria)"
+  },
+  {
+    id: "task-human",
+    active: true,
+    condition: "Cuando el usuario pida hablar con una persona, ayuda humana, asesor o soporte directo",
+    action: "Entregar de inmediato el número 5645234452 con el siguiente mensaje exacto obligatorio: '¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!'",
     priority: "Alta (Obligatoria)"
   },
   {
@@ -694,6 +835,8 @@ const DEFAULT_AI_QUICK_RULES = [
   "Nunca recomendar negocios cerrados sin avisar con honestidad y ofrecer una alternativa abierta",
   "Usar la etiqueta |||SEPARAR||| para enviar un mensaje individual por cada negocio y evitar textos largos",
   "Si el usuario pide más opciones, nunca repetir negocios que ya se le hayan mostrado en el chat",
+  "Cero saltos absurdos en oficios: si pide cerrajero y no hay, jamás mandar plomeros ni herreros; decir con honestidad que no hay",
+  "En gastronomía, sí se permite sugerir alternativas dentro de alimentos (ej. pizza o hamburguesas si no hay tacos)",
   "No usar caracteres de código o markdown roto (*, #, _, [, ]) en la respuesta final"
 ];
 
@@ -797,16 +940,16 @@ Debes seguir estrictamente este orden lógico en cada conversación. JAMÁS te s
 
 ---
 
-## REGLA CRÍTICA #2: ASOCIACIÓN INTELIGENTE POR NECESIDAD (FAMILIAS DE GIROS)
-Cuando el usuario exprese una necesidad general, mantén la conversación estrictamente dentro de esa familia:
-- Si dice "Tengo hambre", "Quiero desayunar/comer/cenar", "Quiero algo rico":
-  -> Familia exclusiva: ALIMENTOS Y BEBIDAS (Restaurantes, Pizzerías, Taquerías, Cafeterías, Fondas, Sushi, Hamburguesas, Postres). Prohibido mostrar oficios o comercios no alimenticios.
-- Si dice "Me siento mal", "Me duele la cabeza/estómago", "Necesito medicinas":
-  -> Familia exclusiva: SALUD (Farmacias, Consultorios Médicos, Laboratorios, Hospitales, Dentistas).
-- Si dice "Se rompió un tubo", "No tengo luz", "Me quedé afuera de mi casa", "Necesito arreglar una puerta":
-  -> Familia exclusiva: OFICIOS DEL HOGAR (Plomeros, Electricistas, Cerrajeros, Herreros, Carpinteros, Mantenimiento).
-- Si dice "Me quedé tirado en el coche", "Se ponchó mi llanta":
-  -> Familia exclusiva: AUTOMOTRIZ (Mecánicos, Vulcanizadoras/Llanteras, Grúas, Cerrajería Automotriz).
+## REGLA CRÍTICA #2: ASOCIACIÓN INTELIGENTE POR NECESIDAD (8 FAMILIAS DE GIROS)
+Cuando el usuario exprese una necesidad general o pregunte por un giro o servicio, mantén la conversación estrictamente dentro de su correspondiente familia:
+1. ALIMENTOS Y BEBIDAS: Restaurantes, Taquerías, Pizzerías, Cafeterías, Fondas, Sushi, Hamburguesas, Postres, Bares. Si no hay una opción exacta dentro de 2 km, se permite sugerir alternativas dentro de alimentos. Prohibido saltar a oficios o comercios no alimenticios.
+2. SALUD Y BIENESTAR: Médicos, Odontólogos y Dentistas, Farmacias y Medicamentos, Clínicas, Laboratorios, Psicología, Ópticas, Fisioterapia.
+3. ENTRETENIMIENTO, ARTE Y CULTURA: Artistas, Grupos Musicales y DJs, Producción de Audio y Video, Salones de Eventos, Mobiliario e Inflables, Escuelas de Arte y Música. (Ej. Caramelo Media Music).
+4. OFICIOS DEL HOGAR Y MANTENIMIENTO: Plomería, Electricistas, Cerrajería, Herrería, Carpintería, Pintores, Climas y Aire Acondicionado, Limpieza y Fumigación. REGLA ESTRICTA DE OFICIOS: Si el usuario pide un cerrajero y no hay a 2 km, TIENES ESTRICTAMENTE PROHIBIDO recomendar un plomero o herrero. Debes informar con total honestidad que no hay cerrajeros registrados por el momento.
+5. AUTOMOTRIZ Y MOVILIDAD: Talleres Mecánicos, Vulcanizadoras, Llanteras, Grúas y Auxilio Vial, Cerrajería Automotriz, Autolavados, Refaccionarias.
+6. MASCOTAS Y CUIDADO ANIMAL: Clínicas Veterinarias, Estéticas Caninas, Pensiones, Paseadores, Alimentos y Accesorios.
+7. COMERCIO Y TIENDAS LOCALES: Abarrotes y Minisúpers, Papelerías, Ferreterías, Tiendas de Ropa y Calzado, Florerías, Purificadoras de Agua y Hielo.
+8. SERVICIOS PROFESIONALES Y TÉCNICOS: Despachos Contables y Asesoría Fiscal, Abogados y Servicios Notariales, Reparación de Celulares y Computadoras, Agencias de Diseño y Marketing, Arquitectura y Construcción.
 
 ---
 
@@ -838,6 +981,7 @@ Para que el usuario nunca vea mucho texto junto ni se canse de leer en su celula
    - NUNCA juntes dos o más negocios en el mismo bloque.
    - Si vas a recomendar negocios, debes colocar la etiqueta exacta |||SEPARAR||| entre tu texto introductorio, entre cada ficha de negocio individual y antes de tu pregunta de cierre.
    - NUNCA mandes más de 3 negocios a la vez para no saturar al usuario. Al final, pregunta amablemente si desea ver más opciones.
+   - NUNCA repitas negocios que ya le fueron mostrados al usuario en mensajes anteriores.
    - Estructura obligatoria cuando hay resultados:
 
 ¡Claro que sí! Aquí te comparto las mejores opciones cerquita de ti 😊👇
@@ -850,14 +994,16 @@ Para que el usuario nunca vea mucho texto junto ni se canse de leer en su celula
 
 ---
 
-## REGLA CRÍTICA #5: TONO HUMANO, VARIEDAD Y ESCUDO DE SEGURIDAD
+## REGLA CRÍTICA #5: TONO HUMANO, CAPTACIÓN B2B, SOPORTE Y ESCUDO DE SEGURIDAD
 1. Cero Respuestas Repetitivas: Cada vez que saludes o respondas, incluso a la misma persona, usa frases distintas, frescas y naturales.
 2. Muchos Emojis y Cero Símbolos Raros: Acompaña tus ideas con emojis expresivos 😊🙌🌟📍🍕🛠️, sin usar caracteres de programación (*, #, _, [, ]).
 3. Identidad y Creadores: Si te preguntan quién te diseñó, quién te creó o cómo estás hecho, responde siempre: "Fui diseñado y desarrollado exclusivamente por el equipo de Neural Media House 🚀🤖 para ayudarte a encontrar los mejores negocios y servicios en BuscaYa ✨".
-4. Qué puedes hacer: Si te preguntan qué haces, responde: "¡Puedo ayudarte a encontrar comida deliciosa, médicos, farmacias, plomeros y todo tipo de negocios cerca de tu ubicación! 😊📍 Te digo cuáles están abiertos ahorita mismo 🕒, qué servicios ofrecen ✨, te paso su teléfono directo 📞 y su mapa para que llegues rapidísimo 🗺️ ¿Qué buscamos hoy?".
-5. Dueños de Negocios: Si alguien pregunta cómo anunciar o registrar su negocio en BuscaYa, invítalo con entusiasmo a disfrutar sus 7 días de prueba gratis registrándose en: https://buscaya.neuralmediahouse.com/ 🚀
-6. Manejo de Groserías o Temas Fuera de Lugar: Si alguien dice malas palabras o pregunta temas ajenos (política, tareas, chistes, matemáticas), responde con educación impecable y calidez, recordándole que estás dedicado exclusivamente a ayudarle a encontrar negocios, comida y servicios locales en BuscaYa 😊🙏.
-7. Prohibición de Inventar Datos: Jamás inventes un negocio, teléfono o dirección que no exista en la base de datos activa del sistema.${tasksPrompt}${rulesPrompt}`;
+4. Qué puedes hacer: Si te preguntan qué haces, responde: "¡Puedo ayudarte a encontrar comida deliciosa, artistas, médicos, farmacias, plomeros y todo tipo de negocios cerca de tu ubicación! 😊📍 Te digo cuáles están abiertos ahorita mismo 🕒, qué servicios ofrecen ✨, te paso su teléfono directo 📞 y su mapa para que llegues rapidísimo 🗺️ ¿Qué buscamos hoy?".
+5. Captación Comercial de Negocios (B2B): Si el usuario pregunta cómo sumarse, anunciarse, registrar su negocio o cuánto cuesta, felicítalo con enorme entusiasmo, dale la bienvenida al ecosistema, explícale que tiene días de prueba gratis para recibir clientes en su WhatsApp y dale obligatoriamente el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨
+6. Escalamiento a Asistencia Humana: Si el usuario pide hablar con una persona real, ayuda humana o soporte directo, responde de inmediato con el formato obligatorio:
+"¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!"
+7. Manejo de Groserías o Temas Fuera de Lugar: Si alguien dice malas palabras o pregunta temas ajenos (política, tareas, chistes, matemáticas), responde con educación impecable y calidez, recordándole que estás dedicado exclusivamente a ayudarle a encontrar negocios, comida y servicios locales en BuscaYa 😊🙏.
+8. Cero Alucinación (Regla Inquebrantable): Jamás inventes un negocio, teléfono o dirección que no exista en la base de datos activa del sistema. Si no hay negocios del giro solicitado, dilo con honestidad y cariño.${tasksPrompt}${rulesPrompt}`;
 }
 
 CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
@@ -4436,6 +4582,15 @@ ${visualFormatRule}`;
         }
 
         // ==============================================================
+        // REGLAS CRÍTICAS PREVIAS: CAPTACIÓN B2B Y ASISTENCIA HUMANA
+        // ==============================================================
+        const REGISTRATION_INTENT_REGEX = /(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i;
+        const HUMAN_SUPPORT_REGEX = /(?:necesito\s+(?:hablar\s+con\s+una\s+persona|ayuda\s+humana|un\s+humano)|quiero\s+que\s+me\s+atienda\s+alguien\s+real|oye[,.]?\s+necesito\s+ayuda\s+humana|hablar\s+con\s+(?:un\s+)?(?:asesor|humano|persona)|soporte\s+humano|asistencia\s+personalizada|atenci[oó]n\s+humana|atencion\s+humana)/i;
+
+        const isRegistrationIntent = REGISTRATION_INTENT_REGEX.test(messageText);
+        const isHumanSupportIntent = HUMAN_SUPPORT_REGEX.test(messageText);
+
+        // ==============================================================
         // MÁQUINA DE ESTADOS CONVERSACIONAL DE 4 FASES (BUSCAYA V3)
         // ==============================================================
         const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
@@ -4443,6 +4598,14 @@ ${visualFormatRule}`;
 
         const isGreetingOnly = GREETING_REGEX.test(messageText.trim());
         const isAffirmative = AFFIRMATIVE_REGEX.test(messageText.trim());
+
+        // 4. Sincronización con BD: Negocios activos o en demo vigente
+        const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
+
+        // Búsqueda Difusa Flexible en Base de Datos en Tiempo Real
+        const directFuzzyMatches = (!isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent)
+          ? searchBusinessesFuzzy(messageText, activeBusinesses)
+          : [];
 
         // Detección de Modismos Mexicanos
         let matchedIdiom = null;
@@ -4479,39 +4642,67 @@ ${visualFormatRule}`;
         }
 
         if (!detectedFamilyKey && matchedIdiom) {
-          if (deducedCategoryFromIdiom.includes("Mecánicos")) {
+          if (deducedCategoryFromIdiom.includes("Mecánicos") || deducedCategoryFromIdiom.includes("Automotriz")) {
             detectedFamilyKey = "AUTOMOTRIZ";
-            detectedFamilyName = "Automotriz y Emergencias Viales";
+            detectedFamilyName = "Automotriz y Movilidad";
             detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Restaurantes")) {
+          } else if (deducedCategoryFromIdiom.includes("Restaurantes") || deducedCategoryFromIdiom.includes("Alimentos")) {
             detectedFamilyKey = "ALIMENTOS_Y_BEBIDAS";
             detectedFamilyName = "Alimentos y Bebidas";
             detectedSpecificGiro = matchedIdiom;
           } else if (deducedCategoryFromIdiom.includes("Salud")) {
             detectedFamilyKey = "SALUD";
-            detectedFamilyName = "Salud y Farmacias";
+            detectedFamilyName = "Salud y Bienestar";
             detectedSpecificGiro = matchedIdiom;
           } else if (deducedCategoryFromIdiom.includes("Plomeros") || deducedCategoryFromIdiom.includes("Electricistas") || deducedCategoryFromIdiom.includes("Cerrajerías")) {
             detectedFamilyKey = "OFICIOS_DEL_HOGAR";
-            detectedFamilyName = "Oficios del Hogar";
+            detectedFamilyName = "Oficios del Hogar y Mantenimiento";
             detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Veterinarios")) {
+          } else if (deducedCategoryFromIdiom.includes("Veterinarios") || deducedCategoryFromIdiom.includes("Mascotas")) {
             detectedFamilyKey = "MASCOTAS";
-            detectedFamilyName = "Mascotas y Veterinarias";
+            detectedFamilyName = "Mascotas y Cuidado Animal";
             detectedSpecificGiro = matchedIdiom;
           }
         }
 
+        // Si hubo coincidencia difusa con un negocio o servicio activo en la base de datos
+        if (!detectedFamilyKey && directFuzzyMatches.length > 0) {
+          const topMatch = directFuzzyMatches[0];
+          for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+            const catHit = fData.categories.some(c => 
+              (topMatch.category || '').toLowerCase().includes(c.toLowerCase()) || 
+              c.toLowerCase().includes((topMatch.category || '').toLowerCase())
+            );
+            if (catHit) {
+              detectedFamilyKey = fKey;
+              detectedFamilyName = fData.name;
+              break;
+            }
+          }
+          if (!detectedFamilyName) {
+            detectedFamilyName = topMatch.category || "Servicios Locales";
+          }
+          detectedSpecificGiro = topMatch.businessName || topMatch.category;
+        }
+
         // Determinar Fase Conversacional Actual
         let currentPhase = 1;
-        if (isAffirmative && (userSession.esperando_confirmacion_expansion_2km || userSession.familia_giro)) {
+        if (isHumanSupportIntent || isRegistrationIntent) {
+          currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
+        } else if (isAffirmative && (userSession.esperando_confirmacion_expansion_2km || userSession.familia_giro)) {
           currentPhase = 4; // FASE 4: Confirmación de expansión o más opciones
           detectedFamilyName = userSession.familia_giro || "Alimentos y Bebidas";
           detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
           userSession.esperando_confirmacion_expansion_2km = false;
-        } else if (isGreetingOnly && !detectedFamilyKey) {
+        } else if (isGreetingOnly && !detectedFamilyKey && directFuzzyMatches.length === 0) {
           currentPhase = 1; // FASE 1: Saludo inicial puro (Prohibido escupir negocios)
           userSession.intencion_actual = "saludo";
+        } else if (directFuzzyMatches.length > 0) {
+          // Búsqueda directa con nombre de negocio o servicio encontrado
+          currentPhase = 3;
+          userSession.familia_giro = detectedFamilyName || "Servicios Locales";
+          userSession.giro_especifico = detectedSpecificGiro || directFuzzyMatches[0].businessName;
+          userSession.intencion_actual = "buscar_negocio";
         } else if (detectedFamilyKey) {
           userSession.familia_giro = detectedFamilyName;
           userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
@@ -4532,22 +4723,28 @@ ${visualFormatRule}`;
           userSession.intencion_actual = "buscar_negocio";
           detectedFamilyName = userSession.familia_giro;
           detectedSpecificGiro = userSession.giro_especifico;
+        } else if (!isGreetingOnly) {
+          // Si no fue saludo ni afirmativo, tratar como búsqueda directa en Fase 3 para no bloquear al usuario
+          currentPhase = 3;
+          userSession.familia_giro = userSession.familia_giro || "Servicios Locales";
+          userSession.giro_especifico = messageText.trim();
+          userSession.intencion_actual = "buscar_negocio";
         }
-
-        // 4. Sincronización con BD: Solo negocios con Suscripción Activa o Demo Vigente
-        const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
         let cercanos_2km = [];
         let lejanos_mas_2km = [];
         let candidatePool = [];
 
+        const familyDef = Object.values(GIRO_FAMILIES).find(f => f.name === userSession.familia_giro);
+        const allowedCategories = familyDef ? familyDef.categories : [];
+        const isOficioFamily = familyDef?.isOficio || false;
+
         // Ejecutar búsqueda SOLO en Fases 3 y 4 (PROHIBIDO en Fases 1 y 2)
         if (currentPhase === 3 || currentPhase === 4) {
-          // Filtrar estrictamente por la Familia de Giro anclada (Solución definitiva al error de la herrería)
-          const familyDef = Object.values(GIRO_FAMILIES).find(f => f.name === userSession.familia_giro);
-          const allowedCategories = familyDef ? familyDef.categories : [];
+          const directMatchIds = new Set(directFuzzyMatches.map(m => m.id));
 
           candidatePool = activeBusinesses.filter(b => {
+            if (directMatchIds.has(b.id)) return true;
             if (!userSession.familia_giro) return true;
             // Coincidencia exacta de categoría o pertenencia a la familia
             const catMatches = allowedCategories.some(ac => (b.category || '').toLowerCase().includes(ac.toLowerCase()));
@@ -4557,9 +4754,35 @@ ${visualFormatRule}`;
             return catMatches || nameOrServiceMatches;
           });
 
-          // Filtrar negocios que NO hayan sido mostrados en esta sesión todavía
-          const unshownPool = candidatePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
-          const effectivePool = unshownPool.length ? unshownPool : candidatePool;
+          // REGLA CRÍTICA DE OFICIOS: Cero saltos absurdos
+          // Si el usuario pidió un oficio específico (ej. cerrajero, mecánico, plomero),
+          // queda estrictamente prohibido incluir oficios no relacionados (ej. plomeros para cerrajero).
+          if (isOficioFamily && userSession.giro_especifico) {
+            const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
+            candidatePool = candidatePool.filter(b => {
+              if (directMatchIds.has(b.id)) return true;
+              const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const bCat = (b.category || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const bServ = (b.services || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              return bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
+                     bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
+            });
+          }
+
+          // Deduplicación estricta: asegurar que cada negocio en candidatePool sea único
+          const uniqueCandidatePool = [];
+          const seenCandIds = new Set();
+          for (const b of candidatePool) {
+            if (!seenCandIds.has(b.id)) {
+              seenCandIds.add(b.id);
+              uniqueCandidatePool.push(b);
+            }
+          }
+
+          // Filtrar negocios que NO hayan sido mostrados en esta sesión todavía (Eliminación de duplicados exactos)
+          const unshownPool = uniqueCandidatePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
+          const effectivePool = unshownPool.length ? unshownPool : uniqueCandidatePool;
 
           const scored = effectivePool.map(b => {
             let bLat = b.latitude ? Number(b.latitude) : 19.3496;
@@ -4568,8 +4791,9 @@ ${visualFormatRule}`;
             const openInfo = isBusinessOpenNow(b, mexTime);
 
             let score = 0;
-            if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 40;
-            if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
+            if (directMatchIds.has(b.id)) score += 150; // Máxima prioridad si fue coincidencia directa
+            if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
+            if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 80;
             if (openInfo.isOpen) score += 30;
             if (b.isSponsored || b.plan === "plus" || b.featured) score += 35; // Priorización BuscaYa Plus
 
@@ -4583,8 +4807,10 @@ ${visualFormatRule}`;
 
           if (currentPhase === 3) {
             cercanos_2km = scored
-              .filter(b => b.distanceKm <= 2.0)
+              .filter(b => (b.distanceKm <= 2.0 || directMatchIds.has(b.id)))
               .sort((a, b) => {
+                if (directMatchIds.has(b.id) && !directMatchIds.has(a.id)) return 1;
+                if (directMatchIds.has(a.id) && !directMatchIds.has(b.id)) return -1;
                 if ((b.isSponsored || b.plan === "plus") && !(a.isSponsored || a.plan === "plus")) return 1;
                 if ((a.isSponsored || a.plan === "plus") && !(b.isSponsored || b.plan === "plus")) return -1;
                 return b.matchScore - a.matchScore;
@@ -4601,14 +4827,33 @@ ${visualFormatRule}`;
           }
         }
 
-        // Selección máxima de 1 a 3 negocios para despacho ultra-compacto
-        const selectedBusinesses = (currentPhase === 3 && cercanos_2km.length > 0)
-          ? cercanos_2km.slice(0, 3)
+        // Selección máxima de 1 a 3 negocios con eliminación garantizada de duplicados
+        const sourcePool = (currentPhase === 3 && cercanos_2km.length > 0)
+          ? cercanos_2km
           : (currentPhase === 4 && lejanos_mas_2km.length > 0)
-            ? lejanos_mas_2km.slice(0, 3)
+            ? lejanos_mas_2km
             : [];
 
-        // Guardar IDs mostrados para no repetir
+        const selectedBusinesses = [];
+        const selectedIdSet = new Set();
+        for (const b of sourcePool) {
+          if (!selectedIdSet.has(b.id) && !userSession.negocios_ya_mostrados.includes(b.id)) {
+            selectedIdSet.add(b.id);
+            selectedBusinesses.push(b);
+            if (selectedBusinesses.length >= 3) break;
+          }
+        }
+        if (selectedBusinesses.length === 0 && sourcePool.length > 0) {
+          for (const b of sourcePool) {
+            if (!selectedIdSet.has(b.id)) {
+              selectedIdSet.add(b.id);
+              selectedBusinesses.push(b);
+              if (selectedBusinesses.length >= 3) break;
+            }
+          }
+        }
+
+        // Guardar IDs mostrados para no repetir jamás en la misma conversación
         selectedBusinesses.forEach(b => {
           if (!userSession.negocios_ya_mostrados.includes(b.id)) {
             userSession.negocios_ya_mostrados.push(b.id);
@@ -4655,8 +4900,9 @@ TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubi
           );
 
           if (selectedBusinesses.length > 0) {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADOS EN 2 KM DISPONIBLES]
-Se encontraron ${selectedBusinesses.length} opciones verificadas a menos de 2 km de ${userSession.giro_especifico}.
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADOS ENCONTRADOS EN BASE DE DATOS]
+Se encontraron ${selectedBusinesses.length} opciones verificadas en el sistema para "${userSession.giro_especifico}".
+REGLA DE CERO ALUCINACIÓN: ÚNICAMENTE puedes presentar estos negocios exactos de la lista. TIENES PROHIBIDO inventar negocios o datos.
 Debes usar OBLIGATORIAMENTE la etiqueta |||SEPARAR||| para enviar cada negocio en una burbuja de mensaje separada.
 Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
               const cleanP = String(b.phone || '').replace(/\D/g, '');
@@ -4673,9 +4919,17 @@ Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
               };
             }), null, 2) + `\n\nAl final, en otra burbuja tras |||SEPARAR|||, pregunta amablemente si le agrada alguna opción o si desea ver más.`;
           } else {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - SIN COBERTURA EN 2 KM]
+            if (isOficioFamily) {
+              contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - OFICIO SIN COBERTURA EN 2 KM]
+NO hay ningún negocio de "${userSession.giro_especifico}" a menos de 2 km registrado actualmente en la base de datos.
+REGLA ESTRICTA DE OFICIOS (CERO SALTOS ABSURDOS): TIENES ESTRICTAMENTE PROHIBIDO recomendar otro oficio diferente (por ejemplo, JAMÁS recomiendes plomeros ni herreros si el usuario pidió cerrajero).
+Debes responder con sinceridad, empatía y honestidad:
+"Acabo de revisar en todo nuestro sistema y por el momento no tenemos ese giro o establecimiento registrado 😔✨ ¡Pero muy pronto lo agregaremos! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente que sí tengamos disponible?"`;
+            } else {
+              contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - SIN COBERTURA EN 2 KM (GASTRONOMÍA / COMERCIO)]
 NO hay opciones de "${userSession.giro_especifico}" a menos de 2 km registradas actualmente.
-Dile con amabilidad que en 2 km no hay opciones por ahora pero que muy pronto habrá más, y pregúntale con amabilidad si desea que le busques otras opciones deliciosas de ${userSession.familia_giro} aunque estén a más de 2 km 🚗💨.`;
+Dile con amabilidad que en 2 km no hay opciones de ese platillo por ahora pero que muy pronto habrá más, y pregúntale amablemente si desea que le busques otras opciones deliciosas de ${userSession.familia_giro} (pizzas, hamburguesas, fondas, etc.) aunque estén a más de 2 km 🚗💨.`;
+            }
           }
         } else if (currentPhase === 4) {
           if (selectedBusinesses.length > 0) {
@@ -4706,18 +4960,26 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
         }
 
         let finalBotReplyText = "";
-        try {
-          const aiRes = await callGroqApi({
-            prompt: contextualPrompt,
-            systemInstruction: CURRENT_SYSTEM_PROMPT,
-            temperature: 0.75
-          });
 
-          if (aiRes.success && aiRes.reply) {
-            finalBotReplyText = cleanAiSymbols(aiRes.reply);
+        // Manejo inmediato de intenciones prioritarias sin latencia de IA
+        if (isHumanSupportIntent) {
+          finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
+        } else if (isRegistrationIntent) {
+          finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
+        } else {
+          try {
+            const aiRes = await callGroqApi({
+              prompt: contextualPrompt,
+              systemInstruction: CURRENT_SYSTEM_PROMPT,
+              temperature: 0.75
+            });
+
+            if (aiRes.success && aiRes.reply) {
+              finalBotReplyText = cleanAiSymbols(aiRes.reply);
+            }
+          } catch (groqErr) {
+            console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
           }
-        } catch (groqErr) {
-          console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
         }
 
         // Fallbacks inteligentes por fase con enlace de atribución directa
@@ -4742,7 +5004,11 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
               `💬 WhatsApp: ${waLink}\n|||SEPARAR|||\n` +
               `¿Te late esta opción o buscamos algo más? 🙌✨`;
           } else {
-            finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de ${userSession.familia_giro || 'lo mismo'} aunque estén un poquito más retiradas? 🚗💨`;
+            if (isOficioFamily) {
+              finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento no tenemos ese giro o establecimiento registrado 😔✨ ¡Pero muy pronto lo agregaremos! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente que sí tengamos disponible?`;
+            } else {
+              finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de ${userSession.familia_giro || 'lo mismo'} aunque estén un poquito más retiradas? 🚗💨`;
+            }
           }
         }
 

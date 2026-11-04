@@ -399,7 +399,8 @@ function checkPasswordMatch() {
 function handleCategoryChange(selectedCategory, menuSectionId, customCategoryContainerId = "regCustomCategoryContainer") {
   const menuSection = document.getElementById(menuSectionId);
   if (menuSection) {
-    if (selectedCategory && selectedCategory.includes("Restaurantes")) {
+    const isFood = selectedCategory && ["Restaurantes", "Taquerías", "Pizzerías", "Fondas", "Marisquerías", "Bares", "Cafeterías", "Postres"].some(k => selectedCategory.includes(k));
+    if (isFood) {
       menuSection.classList.remove("hidden");
     } else {
       menuSection.classList.add("hidden");
@@ -409,7 +410,7 @@ function handleCategoryChange(selectedCategory, menuSectionId, customCategoryCon
   const customCatContainer = document.getElementById(customCategoryContainerId);
   if (customCatContainer) {
     const input = customCatContainer.querySelector("input");
-    if (selectedCategory === "Otros") {
+    if (selectedCategory === "Otros" || (selectedCategory && selectedCategory.includes("Otro"))) {
       customCatContainer.classList.remove("hidden");
       if (input) {
         input.setAttribute("required", "required");
@@ -636,7 +637,7 @@ async function handleRegisterSubmit(event) {
 
   // 2. Validación y Asignación de Categoría ("Otros" Dinámica)
   let category = document.getElementById("regCategory")?.value || "";
-  if (category === "Otros") {
+  if (category === "Otros" || category.includes("Otro")) {
     const customCat = document.getElementById("regCustomCategory")?.value.trim() || "";
     if (!customCat) {
       showToast("Por favor especifica el giro de tu negocio.", "warning");
@@ -1094,7 +1095,7 @@ function handleClientSaveBusiness(event) {
 
   // Manejo de Categoría "Otros" en Panel de Cliente
   let category = document.getElementById("clientEditCategory")?.value || "";
-  if (category === "Otros") {
+  if (category === "Otros" || category.includes("Otro")) {
     const customCat = document.getElementById("clientCustomCategory")?.value.trim() || "";
     if (!customCat) {
       showToast("Por favor especifica el giro de tu negocio.", "warning");

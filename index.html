@@ -642,29 +642,76 @@
 
             <div>
               <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría del Negocio *</label>
-              <select id="regCategory" required onchange="handleCategoryChange(this.value, 'regMenuSection', 'regCustomCategoryContainer')" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#25D366] text-sm bg-white">
-                <option value="">-- Selecciona el giro principal (20 Giros Disponibles) --</option>
-                <option value="Plomeros y Gasfitería">Plomeros y Gasfitería</option>
-                <option value="Herrería y Forja Metálica">Herrería y Forja Metálica</option>
-                <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
-                <option value="Abogados y Asesoría Jurídica">Abogados y Asesoría Jurídica</option>
-                <option value="Contadores y Consultoría Fiscal">Contadores y Consultoría Fiscal</option>
-                <option value="Veterinarios y Mascotas">Veterinarios y Mascotas</option>
-                <option value="Médicos, Odontólogos y Salud">Médicos, Odontólogos y Salud</option>
-                <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
-                <option value="Mecánicos, Talleres y Grúas">Mecánicos, Talleres y Grúas</option>
-                <option value="Cerrajerías y Aperturas Urgentes">Cerrajerías y Aperturas Urgentes</option>
-                <option value="Pintores e Impermeabilización">Pintores e Impermeabilización</option>
-                <option value="Carpintería y Muebles a Medida">Carpintería y Muebles a Medida</option>
-                <option value="Aire Acondicionado y Climas (HVAC)">Aire Acondicionado y Climas (HVAC)</option>
-                <option value="Limpieza Residencial y Comercial">Limpieza Residencial y Comercial</option>
-                <option value="Fumigación y Control de Plagas">Fumigación y Control de Plagas</option>
-                <option value="Fotografía, Video y Eventos">Fotografía, Video y Eventos</option>
-                <option value="Gimnasios, Fitness y Entrenadores">Gimnasios, Fitness y Entrenadores</option>
-                <option value="Belleza, Barberías y Spas">Belleza, Barberías y Spas</option>
-                <option value="Seguridad Privada y Alarmas">Seguridad Privada y Alarmas</option>
-                <option value="Escuelas, Cursos y Clases Particulares">Escuelas, Cursos y Clases Particulares</option>
-                <option value="Otros">Otros (Especificar giro personalizado)...</option>
+              <select id="regCategory" required onchange="handleCategoryChange(this.value, 'regMenuSection', 'regCustomCategoryContainer')" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#25D366] text-sm bg-white font-medium">
+                <option value="">-- Selecciona el giro comercial oficial (Catálogo México) --</option>
+                <optgroup label="🍔 Alimentos y Bebidas">
+                  <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
+                  <option value="Taquerías y Antojitos Mexicanos">Taquerías y Antojitos Mexicanos</option>
+                  <option value="Pizzerías y Comida Rápida">Pizzerías y Comida Rápida</option>
+                  <option value="Postres, Panaderías y Pastelerías">Postres, Panaderías y Pastelerías</option>
+                  <option value="Fondas y Cocinas Económicas">Fondas y Cocinas Económicas</option>
+                  <option value="Marisquerías y Pescados">Marisquerías y Pescados</option>
+                  <option value="Bares, Alitas y Cervecerías">Bares, Alitas y Cervecerías</option>
+                </optgroup>
+                <optgroup label="🩺 Salud y Bienestar">
+                  <option value="Médicos Generales y Especialistas">Médicos Generales y Especialistas</option>
+                  <option value="Odontología y Dentistas">Odontología y Dentistas</option>
+                  <option value="Farmacias y Medicamentos">Farmacias y Medicamentos</option>
+                  <option value="Clínicas, Hospitales y Laboratorios">Clínicas, Hospitales y Laboratorios</option>
+                  <option value="Psicología, Terapia y Bienestar Mental">Psicología, Terapia y Bienestar Mental</option>
+                  <option value="Ópticas y Cuidado Visual">Ópticas y Cuidado Visual</option>
+                  <option value="Fisioterapia y Rehabilitación">Fisioterapia y Rehabilitación</option>
+                </optgroup>
+                <optgroup label="🎭 Entretenimiento, Arte y Cultura">
+                  <option value="Artistas, Grupos Musicales y DJs">Artistas, Grupos Musicales y DJs</option>
+                  <option value="Producción de Audio, Video y Fotografía">Producción de Audio, Video y Fotografía</option>
+                  <option value="Salones de Eventos y Banquetes">Salones de Eventos y Banquetes</option>
+                  <option value="Renta de Inflables y Mobiliario para Fiestas">Renta de Inflables y Mobiliario para Fiestas</option>
+                  <option value="Escuelas de Arte, Música y Danza">Escuelas de Arte, Música y Danza</option>
+                  <option value="Teatros, Galerías y Foros Culturales">Teatros, Galerías y Foros Culturales</option>
+                </optgroup>
+                <optgroup label="🛠️ Oficios del Hogar y Mantenimiento">
+                  <option value="Plomería y Fontanería">Plomería y Fontanería</option>
+                  <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
+                  <option value="Cerrajería y Apertura de Cerraduras">Cerrajería y Apertura de Cerraduras</option>
+                  <option value="Herrería y Estructuras Metálicas">Herrería y Estructuras Metálicas</option>
+                  <option value="Carpintería y Muebles sobre Diseño">Carpintería y Muebles sobre Diseño</option>
+                  <option value="Pintores, Albañilería e Impermeabilización">Pintores, Albañilería e Impermeabilización</option>
+                  <option value="Mantenimiento de Climas y Aire Acondicionado">Mantenimiento de Climas y Aire Acondicionado</option>
+                  <option value="Limpieza y Fumigación">Limpieza y Fumigación</option>
+                </optgroup>
+                <optgroup label="🚗 Automotriz y Movilidad">
+                  <option value="Talleres Mecánicos y Afinaciones">Talleres Mecánicos y Afinaciones</option>
+                  <option value="Vulcanizadoras y Llanteras">Vulcanizadoras y Llanteras</option>
+                  <option value="Grúas y Auxilio Vial">Grúas y Auxilio Vial</option>
+                  <option value="Cerrajería Automotriz">Cerrajería Automotriz</option>
+                  <option value="Autolavados y Estéticas Automotrices">Autolavados y Estéticas Automotrices</option>
+                  <option value="Refaccionarias y Autopartes">Refaccionarias y Autopartes</option>
+                </optgroup>
+                <optgroup label="🐾 Mascotas y Cuidado Animal">
+                  <option value="Clínicas Veterinarias y Urgencias">Clínicas Veterinarias y Urgencias</option>
+                  <option value="Estéticas Caninas y Baño de Mascotas">Estéticas Caninas y Baño de Mascotas</option>
+                  <option value="Pensiones, Paseadores y Adiestramiento">Pensiones, Paseadores y Adiestramiento</option>
+                  <option value="Alimentos y Accesorios para Mascotas">Alimentos y Accesorios para Mascotas</option>
+                </optgroup>
+                <optgroup label="🛍️ Comercio y Tiendas Locales">
+                  <option value="Abarrotes, Minisúpers y Tienditas">Abarrotes, Minisúpers y Tienditas</option>
+                  <option value="Papelerías y Copias">Papelerías y Copias</option>
+                  <option value="Ferreterías y Tlapalerías">Ferreterías y Tlapalerías</option>
+                  <option value="Tiendas de Ropa, Calzado y Boutiques">Tiendas de Ropa, Calzado y Boutiques</option>
+                  <option value="Florerías y Regalos">Florerías y Regalos</option>
+                  <option value="Purificadoras de Agua y Hielo">Purificadoras de Agua y Hielo</option>
+                </optgroup>
+                <optgroup label="💼 Servicios Profesionales y Técnicos">
+                  <option value="Despachos Contables y Asesoría Fiscal">Despachos Contables y Asesoría Fiscal</option>
+                  <option value="Abogados y Servicios Notariales">Abogados y Servicios Notariales</option>
+                  <option value="Reparación de Celulares y Computadoras">Reparación de Celulares y Computadoras</option>
+                  <option value="Agencias de Diseño, Marketing y Publicidad">Agencias de Diseño, Marketing y Publicidad</option>
+                  <option value="Arquitectura y Construcción">Arquitectura y Construcción</option>
+                </optgroup>
+                <optgroup label="➕ Personalizado">
+                  <option value="Otros">➕ Otro Giro / Especificar manualmente...</option>
+                </optgroup>
               </select>
             </div>
 
@@ -1361,28 +1408,75 @@
           <div class="md:col-span-2">
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría / Giro del Negocio *</label>
             <select id="clientEditCategory" required onchange="handleCategoryChange(this.value, 'clientMenuSection', 'clientCustomCategoryContainer')" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#25D366] text-sm bg-white font-medium">
-              <option value="">-- Selecciona el giro principal --</option>
-              <option value="Plomeros y Gasfitería">Plomeros y Gasfitería</option>
-              <option value="Herrería y Forja Metálica">Herrería y Forja Metálica</option>
-              <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
-              <option value="Abogados y Asesoría Jurídica">Abogados y Asesoría Jurídica</option>
-              <option value="Contadores y Consultoría Fiscal">Contadores y Consultoría Fiscal</option>
-              <option value="Veterinarios y Mascotas">Veterinarios y Mascotas</option>
-              <option value="Médicos, Odontólogos y Salud">Médicos, Odontólogos y Salud</option>
-              <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
-              <option value="Mecánicos, Talleres y Grúas">Mecánicos, Talleres y Grúas</option>
-              <option value="Cerrajerías y Aperturas Urgentes">Cerrajerías y Aperturas Urgentes</option>
-              <option value="Pintores e Impermeabilización">Pintores e Impermeabilización</option>
-              <option value="Carpintería y Muebles a Medida">Carpintería y Muebles a Medida</option>
-              <option value="Aire Acondicionado y Climas (HVAC)">Aire Acondicionado y Climas (HVAC)</option>
-              <option value="Limpieza Residencial y Comercial">Limpieza Residencial y Comercial</option>
-              <option value="Fumigación y Control de Plagas">Fumigación y Control de Plagas</option>
-              <option value="Fotografía, Video y Eventos">Fotografía, Video y Eventos</option>
-              <option value="Gimnasios, Fitness y Entrenadores">Gimnasios, Fitness y Entrenadores</option>
-              <option value="Belleza, Barberías y Spas">Belleza, Barberías y Spas</option>
-              <option value="Seguridad Privada y Alarmas">Seguridad Privada y Alarmas</option>
-              <option value="Escuelas, Cursos y Clases Particulares">Escuelas, Cursos y Clases Particulares</option>
-              <option value="Otros">Otros (Especificar giro personalizado)...</option>
+              <option value="">-- Selecciona el giro comercial oficial (Catálogo México) --</option>
+              <optgroup label="🍔 Alimentos y Bebidas">
+                <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
+                <option value="Taquerías y Antojitos Mexicanos">Taquerías y Antojitos Mexicanos</option>
+                <option value="Pizzerías y Comida Rápida">Pizzerías y Comida Rápida</option>
+                <option value="Postres, Panaderías y Pastelerías">Postres, Panaderías y Pastelerías</option>
+                <option value="Fondas y Cocinas Económicas">Fondas y Cocinas Económicas</option>
+                <option value="Marisquerías y Pescados">Marisquerías y Pescados</option>
+                <option value="Bares, Alitas y Cervecerías">Bares, Alitas y Cervecerías</option>
+              </optgroup>
+              <optgroup label="🩺 Salud y Bienestar">
+                <option value="Médicos Generales y Especialistas">Médicos Generales y Especialistas</option>
+                <option value="Odontología y Dentistas">Odontología y Dentistas</option>
+                <option value="Farmacias y Medicamentos">Farmacias y Medicamentos</option>
+                <option value="Clínicas, Hospitales y Laboratorios">Clínicas, Hospitales y Laboratorios</option>
+                <option value="Psicología, Terapia y Bienestar Mental">Psicología, Terapia y Bienestar Mental</option>
+                <option value="Ópticas y Cuidado Visual">Ópticas y Cuidado Visual</option>
+                <option value="Fisioterapia y Rehabilitación">Fisioterapia y Rehabilitación</option>
+              </optgroup>
+              <optgroup label="🎭 Entretenimiento, Arte y Cultura">
+                <option value="Artistas, Grupos Musicales y DJs">Artistas, Grupos Musicales y DJs</option>
+                <option value="Producción de Audio, Video y Fotografía">Producción de Audio, Video y Fotografía</option>
+                <option value="Salones de Eventos y Banquetes">Salones de Eventos y Banquetes</option>
+                <option value="Renta de Inflables y Mobiliario para Fiestas">Renta de Inflables y Mobiliario para Fiestas</option>
+                <option value="Escuelas de Arte, Música y Danza">Escuelas de Arte, Música y Danza</option>
+                <option value="Teatros, Galerías y Foros Culturales">Teatros, Galerías y Foros Culturales</option>
+              </optgroup>
+              <optgroup label="🛠️ Oficios del Hogar y Mantenimiento">
+                <option value="Plomería y Fontanería">Plomería y Fontanería</option>
+                <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
+                <option value="Cerrajería y Apertura de Cerraduras">Cerrajería y Apertura de Cerraduras</option>
+                <option value="Herrería y Estructuras Metálicas">Herrería y Estructuras Metálicas</option>
+                <option value="Carpintería y Muebles sobre Diseño">Carpintería y Muebles sobre Diseño</option>
+                <option value="Pintores, Albañilería e Impermeabilización">Pintores, Albañilería e Impermeabilización</option>
+                <option value="Mantenimiento de Climas y Aire Acondicionado">Mantenimiento de Climas y Aire Acondicionado</option>
+                <option value="Limpieza y Fumigación">Limpieza y Fumigación</option>
+              </optgroup>
+              <optgroup label="🚗 Automotriz y Movilidad">
+                <option value="Talleres Mecánicos y Afinaciones">Talleres Mecánicos y Afinaciones</option>
+                <option value="Vulcanizadoras y Llanteras">Vulcanizadoras y Llanteras</option>
+                <option value="Grúas y Auxilio Vial">Grúas y Auxilio Vial</option>
+                <option value="Cerrajería Automotriz">Cerrajería Automotriz</option>
+                <option value="Autolavados y Estéticas Automotrices">Autolavados y Estéticas Automotrices</option>
+                <option value="Refaccionarias y Autopartes">Refaccionarias y Autopartes</option>
+              </optgroup>
+              <optgroup label="🐾 Mascotas y Cuidado Animal">
+                <option value="Clínicas Veterinarias y Urgencias">Clínicas Veterinarias y Urgencias</option>
+                <option value="Estéticas Caninas y Baño de Mascotas">Estéticas Caninas y Baño de Mascotas</option>
+                <option value="Pensiones, Paseadores y Adiestramiento">Pensiones, Paseadores y Adiestramiento</option>
+                <option value="Alimentos y Accesorios para Mascotas">Alimentos y Accesorios para Mascotas</option>
+              </optgroup>
+              <optgroup label="🛍️ Comercio y Tiendas Locales">
+                <option value="Abarrotes, Minisúpers y Tienditas">Abarrotes, Minisúpers y Tienditas</option>
+                <option value="Papelerías y Copias">Papelerías y Copias</option>
+                <option value="Ferreterías y Tlapalerías">Ferreterías y Tlapalerías</option>
+                <option value="Tiendas de Ropa, Calzado y Boutiques">Tiendas de Ropa, Calzado y Boutiques</option>
+                <option value="Florerías y Regalos">Florerías y Regalos</option>
+                <option value="Purificadoras de Agua y Hielo">Purificadoras de Agua y Hielo</option>
+              </optgroup>
+              <optgroup label="💼 Servicios Profesionales y Técnicos">
+                <option value="Despachos Contables y Asesoría Fiscal">Despachos Contables y Asesoría Fiscal</option>
+                <option value="Abogados y Servicios Notariales">Abogados y Servicios Notariales</option>
+                <option value="Reparación de Celulares y Computadoras">Reparación de Celulares y Computadoras</option>
+                <option value="Agencias de Diseño, Marketing y Publicidad">Agencias de Diseño, Marketing y Publicidad</option>
+                <option value="Arquitectura y Construcción">Arquitectura y Construcción</option>
+              </optgroup>
+              <optgroup label="➕ Personalizado">
+                <option value="Otros">➕ Otro Giro / Especificar manualmente...</option>
+              </optgroup>
             </select>
           </div>
 
@@ -4302,28 +4396,76 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría *</label>
-            <select id="adminAddCategory" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white">
-              <option value="Plomeros y Gasfitería">Plomeros y Gasfitería</option>
-              <option value="Herrería y Forja Metálica">Herrería y Forja Metálica</option>
-              <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
-              <option value="Abogados y Asesoría Jurídica">Abogados y Asesoría Jurídica</option>
-              <option value="Contadores y Consultoría Fiscal">Contadores y Consultoría Fiscal</option>
-              <option value="Veterinarios y Mascotas">Veterinarios y Mascotas</option>
-              <option value="Médicos, Odontólogos y Salud">Médicos, Odontólogos y Salud</option>
-              <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
-              <option value="Mecánicos, Talleres y Grúas">Mecánicos, Talleres y Grúas</option>
-              <option value="Cerrajerías y Aperturas Urgentes">Cerrajerías y Aperturas Urgentes</option>
-              <option value="Pintores e Impermeabilización">Pintores e Impermeabilización</option>
-              <option value="Carpintería y Muebles a Medida">Carpintería y Muebles a Medida</option>
-              <option value="Aire Acondicionado y Climas (HVAC)">Aire Acondicionado y Climas (HVAC)</option>
-              <option value="Limpieza Residencial y Comercial">Limpieza Residencial y Comercial</option>
-              <option value="Fumigación y Control de Plagas">Fumigación y Control de Plagas</option>
-              <option value="Fotografía, Video y Eventos">Fotografía, Video y Eventos</option>
-              <option value="Gimnasios, Fitness y Entrenadores">Gimnasios, Fitness y Entrenadores</option>
-              <option value="Belleza, Barberías y Spas">Belleza, Barberías y Spas</option>
-              <option value="Seguridad Privada y Alarmas">Seguridad Privada y Alarmas</option>
-              <option value="Escuelas, Cursos y Clases Particulares">Escuelas, Cursos y Clases Particulares</option>
-              <option value="Otros">Otros (Especificar)...</option>
+            <select id="adminAddCategory" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white font-medium">
+              <option value="">-- Selecciona el giro comercial oficial (Catálogo México) --</option>
+              <optgroup label="🍔 Alimentos y Bebidas">
+                <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
+                <option value="Taquerías y Antojitos Mexicanos">Taquerías y Antojitos Mexicanos</option>
+                <option value="Pizzerías y Comida Rápida">Pizzerías y Comida Rápida</option>
+                <option value="Postres, Panaderías y Pastelerías">Postres, Panaderías y Pastelerías</option>
+                <option value="Fondas y Cocinas Económicas">Fondas y Cocinas Económicas</option>
+                <option value="Marisquerías y Pescados">Marisquerías y Pescados</option>
+                <option value="Bares, Alitas y Cervecerías">Bares, Alitas y Cervecerías</option>
+              </optgroup>
+              <optgroup label="🩺 Salud y Bienestar">
+                <option value="Médicos Generales y Especialistas">Médicos Generales y Especialistas</option>
+                <option value="Odontología y Dentistas">Odontología y Dentistas</option>
+                <option value="Farmacias y Medicamentos">Farmacias y Medicamentos</option>
+                <option value="Clínicas, Hospitales y Laboratorios">Clínicas, Hospitales y Laboratorios</option>
+                <option value="Psicología, Terapia y Bienestar Mental">Psicología, Terapia y Bienestar Mental</option>
+                <option value="Ópticas y Cuidado Visual">Ópticas y Cuidado Visual</option>
+                <option value="Fisioterapia y Rehabilitación">Fisioterapia y Rehabilitación</option>
+              </optgroup>
+              <optgroup label="🎭 Entretenimiento, Arte y Cultura">
+                <option value="Artistas, Grupos Musicales y DJs">Artistas, Grupos Musicales y DJs</option>
+                <option value="Producción de Audio, Video y Fotografía">Producción de Audio, Video y Fotografía</option>
+                <option value="Salones de Eventos y Banquetes">Salones de Eventos y Banquetes</option>
+                <option value="Renta de Inflables y Mobiliario para Fiestas">Renta de Inflables y Mobiliario para Fiestas</option>
+                <option value="Escuelas de Arte, Música y Danza">Escuelas de Arte, Música y Danza</option>
+                <option value="Teatros, Galerías y Foros Culturales">Teatros, Galerías y Foros Culturales</option>
+              </optgroup>
+              <optgroup label="🛠️ Oficios del Hogar y Mantenimiento">
+                <option value="Plomería y Fontanería">Plomería y Fontanería</option>
+                <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
+                <option value="Cerrajería y Apertura de Cerraduras">Cerrajería y Apertura de Cerraduras</option>
+                <option value="Herrería y Estructuras Metálicas">Herrería y Estructuras Metálicas</option>
+                <option value="Carpintería y Muebles sobre Diseño">Carpintería y Muebles sobre Diseño</option>
+                <option value="Pintores, Albañilería e Impermeabilización">Pintores, Albañilería e Impermeabilización</option>
+                <option value="Mantenimiento de Climas y Aire Acondicionado">Mantenimiento de Climas y Aire Acondicionado</option>
+                <option value="Limpieza y Fumigación">Limpieza y Fumigación</option>
+              </optgroup>
+              <optgroup label="🚗 Automotriz y Movilidad">
+                <option value="Talleres Mecánicos y Afinaciones">Talleres Mecánicos y Afinaciones</option>
+                <option value="Vulcanizadoras y Llanteras">Vulcanizadoras y Llanteras</option>
+                <option value="Grúas y Auxilio Vial">Grúas y Auxilio Vial</option>
+                <option value="Cerrajería Automotriz">Cerrajería Automotriz</option>
+                <option value="Autolavados y Estéticas Automotrices">Autolavados y Estéticas Automotrices</option>
+                <option value="Refaccionarias y Autopartes">Refaccionarias y Autopartes</option>
+              </optgroup>
+              <optgroup label="🐾 Mascotas y Cuidado Animal">
+                <option value="Clínicas Veterinarias y Urgencias">Clínicas Veterinarias y Urgencias</option>
+                <option value="Estéticas Caninas y Baño de Mascotas">Estéticas Caninas y Baño de Mascotas</option>
+                <option value="Pensiones, Paseadores y Adiestramiento">Pensiones, Paseadores y Adiestramiento</option>
+                <option value="Alimentos y Accesorios para Mascotas">Alimentos y Accesorios para Mascotas</option>
+              </optgroup>
+              <optgroup label="🛍️ Comercio y Tiendas Locales">
+                <option value="Abarrotes, Minisúpers y Tienditas">Abarrotes, Minisúpers y Tienditas</option>
+                <option value="Papelerías y Copias">Papelerías y Copias</option>
+                <option value="Ferreterías y Tlapalerías">Ferreterías y Tlapalerías</option>
+                <option value="Tiendas de Ropa, Calzado y Boutiques">Tiendas de Ropa, Calzado y Boutiques</option>
+                <option value="Florerías y Regalos">Florerías y Regalos</option>
+                <option value="Purificadoras de Agua y Hielo">Purificadoras de Agua y Hielo</option>
+              </optgroup>
+              <optgroup label="💼 Servicios Profesionales y Técnicos">
+                <option value="Despachos Contables y Asesoría Fiscal">Despachos Contables y Asesoría Fiscal</option>
+                <option value="Abogados y Servicios Notariales">Abogados y Servicios Notariales</option>
+                <option value="Reparación de Celulares y Computadoras">Reparación de Celulares y Computadoras</option>
+                <option value="Agencias de Diseño, Marketing y Publicidad">Agencias de Diseño, Marketing y Publicidad</option>
+                <option value="Arquitectura y Construcción">Arquitectura y Construcción</option>
+              </optgroup>
+              <optgroup label="➕ Personalizado">
+                <option value="Otros">➕ Otro Giro / Especificar manualmente...</option>
+              </optgroup>
             </select>
           </div>
           <div>
@@ -4436,28 +4578,76 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría *</label>
-            <select id="adminEditCategory" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white">
-              <option value="Plomeros y Gasfitería">Plomeros y Gasfitería</option>
-              <option value="Herrería y Forja Metálica">Herrería y Forja Metálica</option>
-              <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
-              <option value="Abogados y Asesoría Jurídica">Abogados y Asesoría Jurídica</option>
-              <option value="Contadores y Consultoría Fiscal">Contadores y Consultoría Fiscal</option>
-              <option value="Veterinarios y Mascotas">Veterinarios y Mascotas</option>
-              <option value="Médicos, Odontólogos y Salud">Médicos, Odontólogos y Salud</option>
-              <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
-              <option value="Mecánicos, Talleres y Grúas">Mecánicos, Talleres y Grúas</option>
-              <option value="Cerrajerías y Aperturas Urgentes">Cerrajerías y Aperturas Urgentes</option>
-              <option value="Pintores e Impermeabilización">Pintores e Impermeabilización</option>
-              <option value="Carpintería y Muebles a Medida">Carpintería y Muebles a Medida</option>
-              <option value="Aire Acondicionado y Climas (HVAC)">Aire Acondicionado y Climas (HVAC)</option>
-              <option value="Limpieza Residencial y Comercial">Limpieza Residencial y Comercial</option>
-              <option value="Fumigación y Control de Plagas">Fumigación y Control de Plagas</option>
-              <option value="Fotografía, Video y Eventos">Fotografía, Video y Eventos</option>
-              <option value="Gimnasios, Fitness y Entrenadores">Gimnasios, Fitness y Entrenadores</option>
-              <option value="Belleza, Barberías y Spas">Belleza, Barberías y Spas</option>
-              <option value="Seguridad Privada y Alarmas">Seguridad Privada y Alarmas</option>
-              <option value="Escuelas, Cursos y Clases Particulares">Escuelas, Cursos y Clases Particulares</option>
-              <option value="Otros">Otros (Especificar)...</option>
+            <select id="adminEditCategory" required class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white font-medium">
+              <option value="">-- Selecciona el giro comercial oficial (Catálogo México) --</option>
+              <optgroup label="🍔 Alimentos y Bebidas">
+                <option value="Restaurantes, Cafeterías y Bares">Restaurantes, Cafeterías y Bares</option>
+                <option value="Taquerías y Antojitos Mexicanos">Taquerías y Antojitos Mexicanos</option>
+                <option value="Pizzerías y Comida Rápida">Pizzerías y Comida Rápida</option>
+                <option value="Postres, Panaderías y Pastelerías">Postres, Panaderías y Pastelerías</option>
+                <option value="Fondas y Cocinas Económicas">Fondas y Cocinas Económicas</option>
+                <option value="Marisquerías y Pescados">Marisquerías y Pescados</option>
+                <option value="Bares, Alitas y Cervecerías">Bares, Alitas y Cervecerías</option>
+              </optgroup>
+              <optgroup label="🩺 Salud y Bienestar">
+                <option value="Médicos Generales y Especialistas">Médicos Generales y Especialistas</option>
+                <option value="Odontología y Dentistas">Odontología y Dentistas</option>
+                <option value="Farmacias y Medicamentos">Farmacias y Medicamentos</option>
+                <option value="Clínicas, Hospitales y Laboratorios">Clínicas, Hospitales y Laboratorios</option>
+                <option value="Psicología, Terapia y Bienestar Mental">Psicología, Terapia y Bienestar Mental</option>
+                <option value="Ópticas y Cuidado Visual">Ópticas y Cuidado Visual</option>
+                <option value="Fisioterapia y Rehabilitación">Fisioterapia y Rehabilitación</option>
+              </optgroup>
+              <optgroup label="🎭 Entretenimiento, Arte y Cultura">
+                <option value="Artistas, Grupos Musicales y DJs">Artistas, Grupos Musicales y DJs</option>
+                <option value="Producción de Audio, Video y Fotografía">Producción de Audio, Video y Fotografía</option>
+                <option value="Salones de Eventos y Banquetes">Salones de Eventos y Banquetes</option>
+                <option value="Renta de Inflables y Mobiliario para Fiestas">Renta de Inflables y Mobiliario para Fiestas</option>
+                <option value="Escuelas de Arte, Música y Danza">Escuelas de Arte, Música y Danza</option>
+                <option value="Teatros, Galerías y Foros Culturales">Teatros, Galerías y Foros Culturales</option>
+              </optgroup>
+              <optgroup label="🛠️ Oficios del Hogar y Mantenimiento">
+                <option value="Plomería y Fontanería">Plomería y Fontanería</option>
+                <option value="Electricistas y Alta Tensión">Electricistas y Alta Tensión</option>
+                <option value="Cerrajería y Apertura de Cerraduras">Cerrajería y Apertura de Cerraduras</option>
+                <option value="Herrería y Estructuras Metálicas">Herrería y Estructuras Metálicas</option>
+                <option value="Carpintería y Muebles sobre Diseño">Carpintería y Muebles sobre Diseño</option>
+                <option value="Pintores, Albañilería e Impermeabilización">Pintores, Albañilería e Impermeabilización</option>
+                <option value="Mantenimiento de Climas y Aire Acondicionado">Mantenimiento de Climas y Aire Acondicionado</option>
+                <option value="Limpieza y Fumigación">Limpieza y Fumigación</option>
+              </optgroup>
+              <optgroup label="🚗 Automotriz y Movilidad">
+                <option value="Talleres Mecánicos y Afinaciones">Talleres Mecánicos y Afinaciones</option>
+                <option value="Vulcanizadoras y Llanteras">Vulcanizadoras y Llanteras</option>
+                <option value="Grúas y Auxilio Vial">Grúas y Auxilio Vial</option>
+                <option value="Cerrajería Automotriz">Cerrajería Automotriz</option>
+                <option value="Autolavados y Estéticas Automotrices">Autolavados y Estéticas Automotrices</option>
+                <option value="Refaccionarias y Autopartes">Refaccionarias y Autopartes</option>
+              </optgroup>
+              <optgroup label="🐾 Mascotas y Cuidado Animal">
+                <option value="Clínicas Veterinarias y Urgencias">Clínicas Veterinarias y Urgencias</option>
+                <option value="Estéticas Caninas y Baño de Mascotas">Estéticas Caninas y Baño de Mascotas</option>
+                <option value="Pensiones, Paseadores y Adiestramiento">Pensiones, Paseadores y Adiestramiento</option>
+                <option value="Alimentos y Accesorios para Mascotas">Alimentos y Accesorios para Mascotas</option>
+              </optgroup>
+              <optgroup label="🛍️ Comercio y Tiendas Locales">
+                <option value="Abarrotes, Minisúpers y Tienditas">Abarrotes, Minisúpers y Tienditas</option>
+                <option value="Papelerías y Copias">Papelerías y Copias</option>
+                <option value="Ferreterías y Tlapalerías">Ferreterías y Tlapalerías</option>
+                <option value="Tiendas de Ropa, Calzado y Boutiques">Tiendas de Ropa, Calzado y Boutiques</option>
+                <option value="Florerías y Regalos">Florerías y Regalos</option>
+                <option value="Purificadoras de Agua y Hielo">Purificadoras de Agua y Hielo</option>
+              </optgroup>
+              <optgroup label="💼 Servicios Profesionales y Técnicos">
+                <option value="Despachos Contables y Asesoría Fiscal">Despachos Contables y Asesoría Fiscal</option>
+                <option value="Abogados y Servicios Notariales">Abogados y Servicios Notariales</option>
+                <option value="Reparación de Celulares y Computadoras">Reparación de Celulares y Computadoras</option>
+                <option value="Agencias de Diseño, Marketing y Publicidad">Agencias de Diseño, Marketing y Publicidad</option>
+                <option value="Arquitectura y Construcción">Arquitectura y Construcción</option>
+              </optgroup>
+              <optgroup label="➕ Personalizado">
+                <option value="Otros">➕ Otro Giro / Especificar manualmente...</option>
+              </optgroup>
             </select>
           </div>
         </div>
