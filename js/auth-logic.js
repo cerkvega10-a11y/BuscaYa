@@ -216,7 +216,7 @@ function setCurrentUser(user) {
  * Iniciar sesión: Validación 100% en Servidor (POST /api/auth/login)
  * Previene bypass y protege credenciales mediante bcrypt en backend
  */
-async function authenticateUser(identifier, password) {
+async function authenticateUser(identifier, password, captchaId = null, captchaAnswer = null) {
   const cleanId = (identifier || "").trim();
   const cleanPass = (password || "").trim();
 
@@ -225,10 +225,15 @@ async function authenticateUser(identifier, password) {
   }
 
   try {
+    const payload = { identifier: cleanId, password: cleanPass };
+    if (captchaId) {
+      payload.captchaId = captchaId;
+      payload.captchaAnswer = captchaAnswer;
+    }
     const resp = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: cleanId, password: cleanPass })
+      body: JSON.stringify(payload)
     });
     const data = await resp.json();
 
@@ -244,6 +249,67 @@ async function authenticateUser(identifier, password) {
   } catch (err) {
     console.error("[Auth Server Error]", err);
     return { success: false, message: "Error al comunicar con el servidor de autenticación." };
+  }
+}
+
+/**
+ * Obtener desafío Anti-Bot eCaptcha
+ */
+async function fetchAuthCaptcha() {
+  try {
+    const resp = await fetch("/api/auth/captcha");
+    const data = await resp.json();
+    return data;
+  } catch (e) {
+    return { success: false, message: "Error al obtener captcha." };
+  }
+}
+
+/**
+ * Solicitar código de recuperación de contraseña (Paso 1)
+ */
+async function requestForgotPassword(phone, email, captchaId = null, captchaAnswer = null) {
+  try {
+    const resp = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, email, captchaId, captchaAnswer })
+    });
+    return await resp.json();
+  } catch (e) {
+    return { success: false, message: "Error al solicitar código de recuperación." };
+  }
+}
+
+/**
+ * Verificar código de 4 dígitos (Paso 2)
+ */
+async function verifyResetCode(resetKey, code) {
+  try {
+    const resp = await fetch("/api/auth/verify-reset-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetKey, code })
+    });
+    return await resp.json();
+  } catch (e) {
+    return { success: false, message: "Error al verificar código." };
+  }
+}
+
+/**
+ * Guardar nueva contraseña (Paso 3)
+ */
+async function resetUserPassword(resetToken, newPassword, confirmPassword) {
+  try {
+    const resp = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetToken, newPassword, confirmPassword })
+    });
+    return await resp.json();
+  } catch (e) {
+    return { success: false, message: "Error al guardar nueva contraseña." };
   }
 }
 

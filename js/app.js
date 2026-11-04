@@ -318,11 +318,33 @@ function handleLogout() {
 // ==========================================================
 // MODAL DE LOGIN DUAL (CLIENTES Y CONTROL MAESTRO)
 // ==========================================================
+async function refreshLoginCaptcha() {
+  const questionEl = document.getElementById("loginCaptchaQuestion");
+  const idEl = document.getElementById("loginCaptchaId");
+  const inputEl = document.getElementById("loginCaptchaInput");
+  if (questionEl) questionEl.textContent = "Cargando...";
+  if (inputEl) inputEl.value = "";
+  try {
+    const data = await fetchAuthCaptcha();
+    if (data && data.success) {
+      if (questionEl) questionEl.textContent = data.question;
+      if (idEl) idEl.value = data.captchaId;
+    } else {
+      if (questionEl) questionEl.textContent = "¿Cuánto es 5 + 3?";
+      if (idEl) idEl.value = "fallback";
+    }
+  } catch (e) {
+    if (questionEl) questionEl.textContent = "¿Cuánto es 4 + 2?";
+    if (idEl) idEl.value = "fallback";
+  }
+}
+
 function openLoginModal() {
   const modal = document.getElementById("loginModal");
   const errorAlert = document.getElementById("loginErrorAlert");
   if (errorAlert) errorAlert.classList.add("hidden");
   if (modal) modal.classList.remove("hidden");
+  refreshLoginCaptcha();
 }
 
 function closeLoginModal() {
@@ -332,11 +354,13 @@ function closeLoginModal() {
 
 async function handleLoginSubmit(event) {
   event.preventDefault();
-  const identifier = document.getElementById("loginIdentifier").value;
-  const password = document.getElementById("loginPassword").value;
+  const identifier = document.getElementById("loginIdentifier")?.value || "";
+  const password = document.getElementById("loginPassword")?.value || "";
+  const captchaId = document.getElementById("loginCaptchaId")?.value || "";
+  const captchaAnswer = document.getElementById("loginCaptchaInput")?.value || "";
   const errorAlert = document.getElementById("loginErrorAlert");
 
-  const result = await authenticateUser(identifier, password);
+  const result = await authenticateUser(identifier, password, captchaId, captchaAnswer);
 
   if (result.success) {
     closeLoginModal();
@@ -350,10 +374,171 @@ async function handleLoginSubmit(event) {
       navigateTo("business-panel");
     }
   } else {
+    refreshLoginCaptcha();
     if (errorAlert) {
       errorAlert.textContent = result.message;
       errorAlert.classList.remove("hidden");
     }
+  }
+}
+
+// ==========================================================
+// FLUJO DE RECUPERACIÓN DE CONTRASEÑA (OLVIDÉ MI CONTRASEÑA)
+// ==========================================================
+let currentForgotResetKey = null;
+let currentForgotResetToken = null;
+
+function openForgotPasswordModal() {
+  closeLoginModal();
+  const modal = document.getElementById("forgotPasswordModal");
+  if (modal) modal.classList.remove("hidden");
+  backToForgotStep1();
+  refreshForgotCaptcha();
+}
+
+function closeForgotPasswordModal() {
+  const modal = document.getElementById("forgotPasswordModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function refreshForgotCaptcha() {
+  const questionEl = document.getElementById("forgotCaptchaQuestion");
+  const idEl = document.getElementById("forgotCaptchaId");
+  const inputEl = document.getElementById("forgotCaptchaInput");
+  if (questionEl) questionEl.textContent = "Cargando...";
+  if (inputEl) inputEl.value = "";
+  try {
+    const data = await fetchAuthCaptcha();
+    if (data && data.success) {
+      if (questionEl) questionEl.textContent = data.question;
+      if (idEl) idEl.value = data.captchaId;
+    }
+  } catch (e) {
+    if (questionEl) questionEl.textContent = "¿Cuánto es 3 + 4?";
+  }
+}
+
+function showForgotAlert(msg, type = "error") {
+  const el = document.getElementById("forgotAlert");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove("hidden", "bg-red-50", "text-red-700", "border-red-200", "bg-green-50", "text-green-700", "border-green-200");
+  if (type === "success") {
+    el.classList.add("bg-green-50", "text-green-700", "border-green-200");
+  } else {
+    el.classList.add("bg-red-50", "text-red-700", "border-red-200");
+  }
+}
+
+function hideForgotAlert() {
+  const el = document.getElementById("forgotAlert");
+  if (el) el.classList.add("hidden");
+}
+
+function backToForgotStep1() {
+  hideForgotAlert();
+  document.getElementById("forgotStep1")?.classList.remove("hidden");
+  document.getElementById("forgotStep2")?.classList.add("hidden");
+  document.getElementById("forgotStep3")?.classList.add("hidden");
+  document.getElementById("forgotStep4")?.classList.add("hidden");
+}
+
+async function submitForgotPasswordRequest() {
+  hideForgotAlert();
+  const phone = document.getElementById("forgotPhone")?.value || "";
+  const email = document.getElementById("forgotEmail")?.value || "";
+  const captchaId = document.getElementById("forgotCaptchaId")?.value || "";
+  const captchaAnswer = document.getElementById("forgotCaptchaInput")?.value || "";
+
+  if (!phone || phone.replace(/\D/g, '').length < 10) {
+    showForgotAlert("Ingresa un número telefónico válido a 10 dígitos.", "error");
+    return;
+  }
+  if (!email || !email.includes("@")) {
+    showForgotAlert("Ingresa un correo electrónico válido.", "error");
+    return;
+  }
+  if (!captchaAnswer) {
+    showForgotAlert("Por favor resuelve la operación anti-bot eCaptcha.", "error");
+    return;
+  }
+
+  showToast("Verificando datos...", "info");
+  const res = await requestForgotPassword(phone, email, captchaId, captchaAnswer);
+
+  if (res && res.success) {
+    currentForgotResetKey = res.resetKey;
+    showForgotAlert(res.message || "Código enviado con éxito.", "success");
+    document.getElementById("forgotStep1")?.classList.add("hidden");
+    document.getElementById("forgotStep2")?.classList.remove("hidden");
+    const codeInput = document.getElementById("forgotCodeInput");
+    if (codeInput) {
+      codeInput.value = "";
+      codeInput.focus();
+    }
+    if (res.demoCode) {
+      showToast(`Código generado: ${res.demoCode}`, "success");
+    }
+  } else {
+    refreshForgotCaptcha();
+    showForgotAlert(res.message || "No pudimos validar tu cuenta. Revisa tus datos.", "error");
+  }
+}
+
+async function submitVerifyResetCode() {
+  hideForgotAlert();
+  const code = document.getElementById("forgotCodeInput")?.value || "";
+  if (!code || code.trim().length !== 4) {
+    showForgotAlert("Ingresa los 4 dígitos del código de seguridad.", "error");
+    return;
+  }
+
+  showToast("Validando código...", "info");
+  const res = await verifyResetCode(currentForgotResetKey, code);
+
+  if (res && res.success) {
+    currentForgotResetToken = res.resetToken;
+    document.getElementById("forgotStep2")?.classList.add("hidden");
+    document.getElementById("forgotStep3")?.classList.remove("hidden");
+    showForgotAlert("Código confirmado. Ahora ingresa tu nueva contraseña.", "success");
+  } else {
+    showForgotAlert(res.message || "Código incorrecto o expirado.", "error");
+  }
+}
+
+async function submitResetNewPassword() {
+  hideForgotAlert();
+  const newPass = document.getElementById("forgotNewPassword")?.value || "";
+  const confirmPass = document.getElementById("forgotConfirmPassword")?.value || "";
+
+  if (!newPass || newPass.length < 6) {
+    showForgotAlert("La contraseña debe tener al menos 6 caracteres.", "error");
+    return;
+  }
+  if (newPass !== confirmPass) {
+    showForgotAlert("Las contraseñas no coinciden. Escríbelas idénticas.", "error");
+    return;
+  }
+
+  showToast("Guardando contraseña...", "info");
+  const res = await resetUserPassword(currentForgotResetToken, newPass, confirmPass);
+
+  if (res && res.success) {
+    document.getElementById("forgotStep3")?.classList.add("hidden");
+    document.getElementById("forgotStep4")?.classList.remove("hidden");
+    showToast("¡Contraseña restablecida exitosamente!", "success");
+  } else {
+    showForgotAlert(res.message || "Error al actualizar la contraseña.", "error");
+  }
+}
+
+function finishForgotPasswordAndLogin() {
+  closeForgotPasswordModal();
+  openLoginModal();
+  const emailInput = document.getElementById("forgotEmail")?.value;
+  const loginIdInput = document.getElementById("loginIdentifier");
+  if (emailInput && loginIdInput) {
+    loginIdInput.value = emailInput;
   }
 }
 
@@ -8593,6 +8778,18 @@ window.openPrivacyModal = openPrivacyModal;
 window.closePrivacyModal = closePrivacyModal;
 window.openTermsModal = openTermsModal;
 window.closeTermsModal = closeTermsModal;
+
+// Exportaciones de Autenticación, eCaptcha y Recuperación de Contraseña
+window.refreshLoginCaptcha = refreshLoginCaptcha;
+window.openForgotPasswordModal = openForgotPasswordModal;
+window.closeForgotPasswordModal = closeForgotPasswordModal;
+window.refreshForgotCaptcha = refreshForgotCaptcha;
+window.backToForgotStep1 = backToForgotStep1;
+window.submitForgotPasswordRequest = submitForgotPasswordRequest;
+window.submitVerifyResetCode = submitVerifyResetCode;
+window.submitResetNewPassword = submitResetNewPassword;
+window.finishForgotPasswordAndLogin = finishForgotPasswordAndLogin;
+window.togglePasswordVisibility = togglePasswordVisibility;
 
 console.log("App Inicializada");
 

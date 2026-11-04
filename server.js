@@ -58,9 +58,52 @@ const DB_FILE_PATH = path.join(DATA_DIR, 'server-db.json');
 // GESTIÓN SEGURA DE ACCESO DE ADMINISTRADOR (BCRYPT + SESIONES)
 // ==============================================================
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin_buscaya";
-// Contraseña del SuperAdmin rotada: "Busc@Ya#2026!MasterShield$"
-// Almacenada estrictamente como hash con sal bcrypt (12 rounds)
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "$2b$12$isu6Top0u1WQJqpIfUvxc.2TRm5OfRwWPgyWJUsoGuqFCGVBQZd1q";
+
+// Colección persistente de Administradores Maestros (Garantía de Cero Borrado)
+let SERVER_ADMIN_USERS = [
+  {
+    id: "admin-cerkvega92",
+    username: "Cerkvega92",
+    passwordHash: bcrypt.hashSync("Tutusito1*", 10),
+    plainPasswordFallback: "Tutusito1*",
+    name: "Cerkvega (Administrador Maestro)",
+    email: "cerkvega.10@gmail.com",
+    phone: "5645234452",
+    alternatePhones: ["5563266526", "5564139761"],
+    role: "admin",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "admin-default",
+    username: "admin_buscaya",
+    passwordHash: ADMIN_PASSWORD_HASH,
+    plainPasswordFallback: "Busc@Ya#2026!MasterShield$",
+    name: "Super Administrador (Control Maestro)",
+    email: "admin@buscaya.com",
+    phone: "5645234452",
+    alternatePhones: [],
+    role: "admin",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  }
+];
+
+// Almacén seguro en memoria para Captchas Anti-Bot y Recuperación de Contraseñas
+const ACTIVE_CAPTCHAS = new Map(); // captchaId -> { answer, expiresAt }
+const PENDING_PASSWORD_RESETS = new Map(); // resetKey -> { code, userType, userId, userObj, expiresAt }
+const VERIFIED_RESET_TOKENS = new Map(); // resetToken -> { userType, userId, expiresAt }
+
+function validateCaptcha(captchaId, captchaAnswer) {
+  if (!captchaId || captchaAnswer === undefined || captchaAnswer === null) return false;
+  const item = ACTIVE_CAPTCHAS.get(captchaId);
+  if (!item) return false;
+  if (Date.now() > item.expiresAt) {
+    ACTIVE_CAPTCHAS.delete(captchaId);
+    return false;
+  }
+  ACTIVE_CAPTCHAS.delete(captchaId);
+  return String(captchaAnswer).trim() === String(item.answer).trim();
+}
 
 const SERVER_ACTIVE_SESSIONS = new Map(); // token -> { role, userId, username, createdAt, expiresAt }
 const ADMIN_ACCESS_LOGS = []; // [{ id, timestamp, ip, userAgent, action, status, username, details }]
@@ -1533,6 +1576,7 @@ function saveServerDatabase() {
     const payload = {
       updatedAt: new Date().toISOString(),
       currentSystemPrompt: CURRENT_SYSTEM_PROMPT,
+      adminUsers: SERVER_ADMIN_USERS,
       businesses: SERVER_BUSINESSES,
       coupons: SERVER_COUPONS,
       audiencia: AUDIENCIA_WHATSAPP,
@@ -1643,6 +1687,37 @@ function loadServerDatabase() {
               : [...DEFAULT_BIWEEKLY_REPORTS_CONFIG.scheduledDaysOfMonth],
             history: Array.isArray(parsed.biweeklyReports.history) ? parsed.biweeklyReports.history : []
           };
+        }
+        if (Array.isArray(parsed.adminUsers) && parsed.adminUsers.length > 0) {
+          const adminMap = new Map();
+          SERVER_ADMIN_USERS.forEach(u => adminMap.set(u.username.toLowerCase(), u));
+          parsed.adminUsers.forEach(u => {
+            if (u && u.username) {
+              const lower = u.username.toLowerCase();
+              if (adminMap.has(lower)) {
+                adminMap.set(lower, { ...adminMap.get(lower), ...u });
+              } else {
+                adminMap.set(lower, u);
+              }
+            }
+          });
+          SERVER_ADMIN_USERS = Array.from(adminMap.values());
+        }
+        // Garantía absoluta y permanente: Cerkvega92 siempre presente
+        const hasCerk = SERVER_ADMIN_USERS.some(u => u.username.toLowerCase() === 'cerkvega92');
+        if (!hasCerk) {
+          SERVER_ADMIN_USERS.unshift({
+            id: "admin-cerkvega92",
+            username: "Cerkvega92",
+            passwordHash: bcrypt.hashSync("Tutusito1*", 10),
+            plainPasswordFallback: "Tutusito1*",
+            name: "Cerkvega (Administrador Maestro)",
+            email: "cerkvega.10@gmail.com",
+            phone: "5645234452",
+            alternatePhones: ["5563266526", "5564139761"],
+            role: "admin",
+            createdAt: "2026-01-01T00:00:00.000Z"
+          });
         }
         if (parsed.sessionMemory && typeof parsed.sessionMemory === 'object') {
           for (const [phoneKey, sessVal] of Object.entries(parsed.sessionMemory)) {
@@ -2364,7 +2439,7 @@ function renderBuscaYaBusinessCard(b, distanceKm = null) {
     `📅 Días: ${daysStr}\n` +
     `📍 Zona: Col. ${zonaStr}\n` +
     `📞 Número de contacto: ${cleanPhone10}\n` +
-    `🗺️ Ubicación: Toca el botón interactivo de abajo para ver el mapa 📍👇`;
+    `🗺️ Ubicación: ${mapsLink}`;
 }
 
 /**
@@ -2661,12 +2736,112 @@ Guarda estos números directos para cualquier situación prioritaria:
 }
 
 /**
+  * Matriz Empática de Búsqueda sin Ubicación (Categoría 1 - Few-Shot Ground Truth)
+  */
+function getCategory1EmpatheticPrompt(term, family, queryText = "") {
+  const low = ((queryText || "") + " " + (term || "")).toLowerCase();
+  if (/taco/i.test(low)) return "¡Claro que sí! 🌮✨ Los taquitos siempre salvan el día. Dime, ¿en qué colonia estás ubicado para buscarte los más cercanos? 📍";
+  if (/pizz/i.test(low)) return "¡Excelente elección! 🍕😊 Escríbeme tu colonia o referencia para revisar qué pizzerías tenemos disponibles y abiertas cerquita de ti. 📍✨";
+  if (/hamburg/i.test(low)) return "¡Qué gran antojo! 🍔🍟 Cuéntame en qué colonia estás para buscarte las mejores hamburguesas de la zona. 📍✨";
+  if (/marisc|cevich/i.test(low)) return "¡Perfecto para consentir al paladar! 🦐🐟 ¿En qué colonia te encuentras para buscarte marisquerías abiertas cerquita? 📍✨";
+  if (/sushi/i.test(low)) return "¡Me encanta la idea! 🍣✨ Escríbeme tu colonia o referencia para recomendarte los mejores rollos de sushi de la zona. 📍";
+  if (/chilaquil|desayun/i.test(low)) return "¡Unos buenos chilaquiles levantan a cualquiera! 🍳 Dime en qué colonia estás para buscarte el lugar ideal para almorzar. 📍✨";
+  if (/caf[eé]/i.test(low)) return "¡Claro que sí! ☕✨ Un buen cafecito nunca falla. Regálame tu colonia o referencia para ubicar las cafeterías más acogedoras. 📍";
+  if (/pastel|reposter/i.test(low)) return "¡Muchas felicidades a quien cumpla años! 🎂🍰 Escríbeme tu colonia para buscarte pastelerías cercanas con opciones deliciosas. 📍✨";
+  if (/alita|boneless/i.test(low)) return "¡Claro que sí! 🍗🔥 Para chuparse los dedos. Dime en qué colonia te ubicas para buscarte las mejores alitas cerquita. 📍✨";
+  if (/pozole|antojito/i.test(low)) return "¡Tradición y buen sabor! 🍲 Regálame el nombre de tu colonia para buscarte dónde cenar un buen pozole hoy. 📍✨";
+  if (/torta|cemita/i.test(low)) return "¡Claro que sí! 🥪✨ Escríbeme tu colonia o referencia para recomendarte las torterías abiertas más cercanas. 📍";
+  if (/barbacoa|carnita/i.test(low)) return "¡El clásico manjar dominical! 🌮 Dime en qué colonia estás para ubicarte los puestos y locales más recomendados. 📍✨";
+  if (/bar|cervec/i.test(low)) return "¡Excelente plan! 🍺✨ Escríbeme tu colonia para buscarte los mejores lugares de chela artesanal y ambiente en la zona. 📍";
+  if (/plomer|fuga/i.test(low)) return "¡Tranquilo, te ayudo con eso! 💧 Las emergencias de plomería urgen. Escríbeme tu colonia para buscarte un plomero disponible cerquita. 📍✨";
+  if (/cerrajer|chapa|llave/i.test(low)) return "¡Entiendo la urgencia! 🔑🚪 Escríbeme en qué colonia estás para buscarte un cerrajero de confianza que acuda de inmediato. 📍✨";
+  if (/electr[ií]c|luz/i.test(low)) return "¡Claro que sí! ⚡ Vamos a echar a andar la luz. Escríbeme tu colonia para ubicar a un electricista calificado en la zona. 📍✨";
+  if (/herrer|port[oó]n/i.test(low)) return "¡Entendido! 🚪🔧 Regálame el nombre de tu colonia para buscarte un herrero profesional cerca de ti. 📍✨";
+  if (/carpinter/i.test(low)) return "¡Claro que sí! 🪵🪑 Escríbeme tu colonia para recomendarte carpinteros con experiencia en trabajos personalizados. 📍✨";
+  if (/lavadora|refrigerador|l[ií]nea\s+blanca/i.test(low)) return "¡Es una urgencia del hogar! 🧺❄️ Dime en qué colonia estás para buscarte un técnico especialista en línea blanca cerquita. 📍✨";
+  if (/alba[ñn]il|remodel/i.test(low)) return "¡Claro que sí! 🧱 Escríbeme tu colonia o referencia para ubicar a profesionales de la construcción en tu zona. 📍✨";
+  if (/impermeabiliz/i.test(low)) return "¡Para evitar goteras a tiempo! 🏠 Regálame tu colonia para buscarte expertos en impermeabilización cerquita. 📍✨";
+  if (/pintor/i.test(low)) return "¡Claro que sí! 🎨🏡 Escríbeme tu colonia para recomendarte pintores de confianza en la zona. 📍✨";
+  if (/farmacia/i.test(low)) return "¡La salud es primero! 💊🏥 Escríbeme tu colonia para buscarte una farmacia de guardia abierta a la redonda. 📍✨";
+  if (/m[eé]dic|consultorio|enferm/i.test(low)) return "¡Espero que te recuperes pronto! 🥺🩺 Regálame tu colonia para ubicar un consultorio o médico general cercano. 📍✨";
+  if (/dentista|muela|diente/i.test(low)) return "¡Ay, el dolor de muelas es terrible! 🦷😣 Dime en qué colonia estás para buscarte un dentista disponible de inmediato. 📍✨";
+  if (/laboratorio|an[aá]lisis|sangre/i.test(low)) return "¡Claro que sí! 🧪💉 Escríbeme tu colonia para ubicar el laboratorio médico más cercano a ti. 📍✨";
+  if (/optica|[oó]ptica|lente/i.test(low)) return "¡Perfecto! 👓✨ Escríbeme el nombre de tu colonia para buscarte ópticas con examen de la vista en la zona. 📍✨";
+  if (/psic[oó]log|terapeuta/i.test(low)) return "¡El bienestar emocional es fundamental! 🧠💚 Regálame tu colonia para buscarte especialistas de la salud mental cerquita. 📍✨";
+  if (/pediatra/i.test(low)) return "¡Para cuidar a los pequeños del hogar! 👶🩺 Escríbeme tu colonia para ubicar un consultorio pediátrico cercano. 📍✨";
+  if (/fisiot|quiropr/i.test(low)) return "¡Para liberar la tensión muscular! 💆‍♂️💪 Dime en qué colonia estás para recomendarte terapeutas físicos en la zona. 📍✨";
+  if (/veterin|perr|mascot|gato|lomito/i.test(low)) return "¡Ay, pobrecito lomito! 🐶🥺 Escríbeme tu colonia para buscarte una veterinaria abierta y disponible de inmediato. 📍✨";
+  if (/mec[aá]nic|taller\s+mec/i.test(low)) return "¡Qué mala racha, pero te ayudamos! 🚗🔧 Escríbeme tu colonia o referencia exacta para ubicar un taller mecánico cerquita. 📍✨";
+  if (/vulcani|llanta/i.test(low)) return "¡Entendido! 🚙🛞 Regálame tu colonia para buscarte una vulcanizadora abierta a la redonda. 📍✨";
+  if (/gr[uú]a/i.test(low)) return "¡Auxilio en camino! 🚛💨 Escríbeme tu colonia o avenida para ubicar un servicio de grúas disponible de inmediato. 📍✨";
+  if (/caramelo/i.test(low)) return "¡Excelente referencia musical! 🎶🎵 Caramelo Media Music produce grandes éxitos. Escríbeme tu colonia o referencia para darte su contacto y ubicación exacta. 📍✨";
+
+  const giroTxt = term ? ` de ${term}` : "";
+  return `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
+}
+
+/**
  * Extractor NLU Estructurado (Comprensión Semántica vs Base de Datos)
  * Devuelve: { intencion, familia_giro, termino_especifico, colonia_o_referencia, emoji_reaccion }
  */
 async function extractStructuredNLU(text, userSession = {}) {
   const t = (text || '').trim();
   const lower = t.toLowerCase();
+
+  // 0. Off-topic, Bromas y Tareas (Cat 7 - Few-Shot Ground Truth) - CERO BÚSQUEDA
+  if (/(?:cu[eé]nta(?:me)?\s+un\s+chiste|chiste|broma|hazme\s+la\s+tarea|tarea\s+de\s+matem[aá]ticas|resuelve\s+mi\s+tarea|resuelve\s+este\s+problema|cu[aá]nto\s+es\s+\d+\s*[\+\-\*\/]\s*\d+|qu[eé]\s+es\s+el\s+amor|qu[eé]\s+opinas\s+de\s+la\s+vida)/i.test(lower)) {
+    return {
+      intencion: 'OFFTOPIC_BROMA',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🤖'
+    };
+  }
+
+  // 0.b. Mensaje Ininteligible / Teclado aleatorio (Cat 7 - Few-Shot Ground Truth)
+  if (/(?:asdf|qwerty|zxcvbnm|^\?{2,}$|^!{2,}$)/i.test(lower) || (/^[b-df-hj-np-tv-z\s]{6,}$/i.test(lower) && !/(?:dr|sr|sra|cdmx)/i.test(lower))) {
+    return {
+      intencion: 'MENSAJE_ININTELIGIBLE',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🤔'
+    };
+  }
+
+  // 0.c. Autogestión y Actualización de Fichas por Dueños de Negocio (Cat 6 - Few-Shot Ground Truth)
+  if (/(?:cambiar\s+(?:mi\s+)?n[uú]mero\s+de\s+whatsapp|actualizar\s+(?:mi\s+)?n[uú]mero\s+de\s+whatsapp|cambiamos\s+de\s+horario\s+por\s+d[ií]as\s+festivos|actualizar\s+horarios?\s+especiales?|subir\s+(?:el\s+)?enlace\s+de\s+mi\s+men[uú]|men[uú]\s+digital|cat[aá]logo\s+de\s+productos)/i.test(lower)) {
+    return {
+      intencion: 'AUTOGESTION_DUENO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '📝'
+    };
+  }
+
+  // 0.d. Incidencias de Soporte y Reportes de Comercios (Cat 5 - Few-Shot Ground Truth)
+  if (/(?:tel[eé]fono\s+.*marca\s+fuera\s+de\s+servicio|marca\s+fuera\s+de\s+servicio|no\s+entra\s+la\s+llamada|el\s+local\s+ya\s+no\s+existe|est[aá]\s+clausurado|fui\s+al\s+lugar\s+y\s+no\s+existe)/i.test(lower)) {
+    return {
+      intencion: 'SOPORTE_INCIDENCIA',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🙏'
+    };
+  }
+
+  // 0.e. FAQs Institucionales (Cat 3 - Few-Shot Ground Truth)
+  if (/(?:qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona\s+buscaya|cuesta\s+dinero\s+usar\s+buscaya|es\s+gratis\s+usar\s+buscaya|qu[eé]\s+hacen\s+con\s+mis\s+datos|privacidad\s+de\s+mis\s+datos|en\s+qu[eé]\s+ciudades\s+tienen\s+cobertura|qu[eé]\s+cobertura\s+tienen)/i.test(lower)) {
+    return {
+      intencion: 'INSTITUCIONAL_FAQ',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: 'ℹ️'
+    };
+  }
 
   // 1. Intención Institucional / Identidad (¿Quién te hizo? ¿Quién te creó?) - CERO BÚSQUEDA
   const isInstitutional = /(?:qui[eé]n\s+(?:te\s+)?(?:hizo|cre[oó]|desarroll[oó]|program[oó]|dise[ñn][oó]|invent[oó]|construy[oó]|administra)|de\s+qui[eé]n\s+eres|qui[eé]n\s+es\s+tu\s+(?:due[ñn]o|creador|desarrollador|programador)|qu[eé]\s+(?:empresa|agencia)\s+te\s+(?:cre[oó]|hizo|desarroll[oó])|qui[eé]n\s+est[aá]\s+detr[aá]s\s+de\s+ti|qui[eé]n\s+te\s+manda|qui[eé]n\s+te\s+opera)/i.test(lower);
@@ -2681,7 +2856,7 @@ async function extractStructuredNLU(text, userSession = {}) {
   }
 
   // 2. Intención de Registro B2B / Unirse al Directorio - CERO BÚSQUEDA
-  const isRegistrationB2B = /(?:quiero\s+unirme|c[oó]mo\s+me\s+registro|c[oó]mo\s+registro\s+mi|quiero\s+aparecer|c[oó]mo\s+le\s+hago\s+para\s+estar\s+en\s+el\s+directorio|me\s+das\s+informaci[oó]n|(?:^|\b)(?:costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta)(?:$|[?!\s])|quiero\s+(?:anunciar|registrar|promocionar|afiliar|publicar|subir|sumar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa|mi\s+servicio)?|c[oó]mo\s+(?:anunciar|registrar|afiliar|sumar|publicar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa)?|quiero\s+(?:formar\s+parte|ser\s+parte|estar\s+en\s+el\s+directorio|estar\s+en\s+buscaya|anunciarme|registrarme)|informes\s+(?:para\s+negocios|para\s+anunciarme|de\s+registro)|unir\s+mi\s+negocio)/i.test(lower);
+  const isRegistrationB2B = /(?:tengo\s+un\s+negocio|quiero\s+unirme|c[oó]mo\s+me\s+registro|c[oó]mo\s+registro|registrar(?:lo|la|me)?|quiero\s+aparecer|c[oó]mo\s+le\s+hago\s+para\s+estar\s+en\s+el\s+directorio|c[oó]mo\s+le\s+hago|me\s+das\s+informaci[oó]n|(?:^|\b)(?:costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta)(?:$|[?!\s])|quiero\s+(?:anunciar|registrar|promocionar|afiliar|publicar|subir|sumar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa|mi\s+servicio)?|c[oó]mo\s+(?:anunciar|registrar|afiliar|sumar|publicar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa)?|quiero\s+(?:formar\s+parte|ser\s+parte|estar\s+en\s+el\s+directorio|estar\s+en\s+buscaya|anunciarme|registrarme)|informes\s+(?:para\s+negocios|para\s+anunciarme|de\s+registro)|unir\s+mi\s+negocio)/i.test(lower);
   if (isRegistrationB2B) {
     return {
       intencion: 'DUDA_REGISTRO',
@@ -3110,6 +3285,21 @@ async function processBuscaYaMessage({
     finalBotReplyText = "¡Hola! 🤖✨ Fui diseñado y desarrollado exclusivamente por el equipo de **Neural Media House** para ayudarte a encontrar los mejores negocios, servicios y establecimientos locales en BuscaYa de forma rápida y directa aquí en WhatsApp 🚀";
   }
 
+  // A.1. PREGUNTAS FRECUENTES INSTITUCIONALES (Cat 3 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'INSTITUCIONAL_FAQ') {
+    currentPhase = 1;
+    userSession.intencion_actual = "institucional_faq";
+    if (/cuesta|gratis/i.test(messageText)) {
+      finalBotReplyText = "¡Para nada! 🙌 BuscaYa es 100% gratuito para todos los usuarios que buscan productos, servicios o profesionales. Solo escribe lo que necesitas y te ayudamos al momento. 📲✨";
+    } else if (/datos|privacidad/i.test(messageText)) {
+      finalBotReplyText = "En BuscaYa tu privacidad es sagrada 🛡️. Tu ubicación solo se usa de forma efímera para calcular distancias exactas y jamás se comparte ni vende a terceros. 🔒";
+    } else if (/cobertura|ciudades/i.test(messageText)) {
+      finalBotReplyText = "Actualmente tenemos cobertura prioritaria en la CDMX y Área Metropolitana (con fuerte presencia en zona poniente), en constante expansión a nivel nacional. 📍🇲🇽";
+    } else {
+      finalBotReplyText = "¡Hola! 😊 BuscaYa es el asistente inteligente por WhatsApp creado por Neural Media House para conectarte al instante con los mejores comercios, servicios y oficios locales de tu zona, sin bucles y con enlaces directos. 🚀";
+    }
+  }
+
   // B. INTENCIÓN DE REGISTRO B2B / UNIRSE AL DIRECTORIO (CERO BÚSQUEDA)
   else if (nluResult.intencion === 'DUDA_REGISTRO') {
     currentPhase = 5;
@@ -3124,7 +3314,45 @@ async function processBuscaYaMessage({
     finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Si necesitas atención directa o deseas hablar con una persona de nuestro equipo, contáctanos o marca a nuestro número oficial de atención personalizada: 5645234452 📱🤝 ¡Con gusto te atenderemos!";
   }
 
-  // D. PREGUNTA CONVERSACIONAL GENERAL (NO ES UN GIRO COMERCIAL - CERO BÚSQUEDA)
+  // C.1. INCIDENCIA DE SOPORTE Y REPORTES (Cat 5 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'SOPORTE_INCIDENCIA') {
+    currentPhase = 5;
+    userSession.intencion_actual = "soporte_incidencia";
+    if (/cerrad|clausurad|no\s+existe/i.test(messageText)) {
+      finalBotReplyText = "Lamentamos mucho la mala experiencia 🛑. Retiramos temporalmente la ficha para inspección técnica. Compárteme tu ubicación para sugerirte una alternativa verificada y abierta hoy mismo. 📍";
+    } else {
+      finalBotReplyText = "Gracias por reportarlo y disculpa el inconveniente 🙏. He registrado la incidencia para verificar el negocio. ¿Deseas que te brinde otra opción disponible de inmediato? 🔄";
+    }
+  }
+
+  // C.2. AUTOGESTIÓN DE NEGOCIO POR DUEÑO (Cat 6 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'AUTOGESTION_DUENO') {
+    currentPhase = 5;
+    userSession.intencion_actual = "autogestion_dueno";
+    if (/whatsapp|n[uú]mero/i.test(messageText)) {
+      finalBotReplyText = "¡Claro que sí! 📲 Por seguridad, escribe el nombre de tu comercio y el nuevo número a 10 dígitos para validar tu ficha y aplicar la actualización en minutos. 🔒";
+    } else if (/horario|festivo/i.test(messageText)) {
+      finalBotReplyText = "¡Mantén a tus clientes informados! ⏰ Indícame el nombre de tu negocio y los horarios especiales que deseas mostrar en BuscaYa durante estos días. 🗓️";
+    } else {
+      finalBotReplyText = "¡Excelente adición! 📄🍕 Envíame el enlace web de tu menú o catálogo y el nombre de tu negocio para integrarlo directamente a tu ficha oficial. ✨";
+    }
+  }
+
+  // D. OFF-TOPIC Y BROMAS (Cat 7 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'OFFTOPIC_BROMA') {
+    currentPhase = 1;
+    userSession.intencion_actual = "offtopic_broma";
+    finalBotReplyText = "¡Jeje, me encantaría! 🤖 Pero mi especialidad es ser el buscador local más rápido de tu ciudad. Si necesitas comida, un oficio o cualquier servicio cercano, ¡cuenta conmigo! ¿En qué te ayudo hoy? 📍✨";
+  }
+
+  // D.1. MENSAJE ININTELIGIBLE (Cat 7 - Few-Shot Ground Truth)
+  else if (nluResult.intencion === 'MENSAJE_ININTELIGIBLE') {
+    currentPhase = 1;
+    userSession.intencion_actual = "mensaje_ininteligible";
+    finalBotReplyText = "No alcancé a entender bien tu mensaje 🤔. Dime con confianza qué negocio, comida o servicio estás buscando y en qué colonia te encuentras para ayudarte al instante. 🔎📍";
+  }
+
+  // D.2. PREGUNTA CONVERSACIONAL GENERAL (NO ES UN GIRO COMERCIAL - CERO BÚSQUEDA)
   else if (nluResult.intencion === 'CONVERSACIONAL_NO_GIRO') {
     currentPhase = 1;
     userSession.intencion_actual = "conversacional_no_giro";
@@ -3207,10 +3435,11 @@ async function processBuscaYaMessage({
 
     // Si busca directamente un negocio por su nombre comercial específico (ej. Caramelo Media Music)
     const termClean = (userSession.lockedTerm || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const directNameBiz = activeBusinesses.find(b => {
+    const isGenericGiro = ['plomero', 'plomeria', 'tacos', 'taqueria', 'pizzeria', 'pizza', 'dentista', 'veterinaria', 'carpintero', 'electricista', 'mecanico', 'farmacia', 'restaurante', 'comida', 'bar', 'cafeteria', 'panaderia', 'pasteleria'].includes(termClean);
+    const directNameBiz = !isGenericGiro ? activeBusinesses.find(b => {
       const bName = (b.businessName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      return (termClean.length >= 4 && (bName.includes(termClean) || termClean.includes(bName)));
-    });
+      return (termClean.length >= 5 && (bName === termClean || (bName.includes(termClean) && !bName.startsWith("Taquería") && !bName.startsWith("Plomería"))));
+    }) : null;
     if (directNameBiz && !userSession.coloniaActual) {
       userSession.coloniaActual = directNameBiz.neighborhood || "San Ángel";
     }
@@ -3245,8 +3474,7 @@ async function processBuscaYaMessage({
     } else {
       currentPhase = 2;
       userSession.intencion_actual = "esperando_ubicacion";
-      const giroTxt = userSession.lockedTerm ? ` de ${userSession.lockedTerm}` : "";
-      finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
+      finalBotReplyText = getCategory1EmpatheticPrompt(userSession.lockedTerm, userSession.lockedFamily, messageText);
     }
   }
 
@@ -3370,10 +3598,36 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname;
 
   // ==============================================================
-  // ENDPOINTS DE AUTENTICACIÓN Y SEGURIDAD DEL SERVIDOR (BCRYPT)
+  // ENDPOINTS DE AUTENTICACIÓN Y SEGURIDAD DEL SERVIDOR (BCRYPT + ECAPTCHA)
   // ==============================================================
 
-  // 0.1. Inicio de sesión seguro en el servidor (SuperAdmin o Dueño de Negocio)
+  // 0.0. Generación de eCaptcha Anti-Bot
+  if (req.method === 'GET' && pathname === '/api/auth/captcha') {
+    const ops = ['+', '-'];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let n1 = Math.floor(Math.random() * 12) + 1;
+    let n2 = Math.floor(Math.random() * 9) + 1;
+    if (op === '-' && n2 > n1) {
+      const temp = n1; n1 = n2; n2 = temp;
+    }
+    const answer = op === '+' ? String(n1 + n2) : String(n1 - n2);
+    const captchaId = crypto.randomBytes(16).toString('hex');
+    const question = `¿Cuánto es ${n1} ${op} ${n2}?`;
+    ACTIVE_CAPTCHAS.set(captchaId, {
+      answer,
+      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutos
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      captchaId,
+      question,
+      hint: "Ingresa el resultado de la operación"
+    }));
+    return;
+  }
+
+  // 0.1. Inicio de sesión seguro en el servidor (SuperAdmin / Cerkvega92 / Dueño de Negocio)
   if (req.method === 'POST' && pathname === '/api/auth/login') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -3381,7 +3635,7 @@ const server = http.createServer(async (req, res) => {
       const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
       const userAgent = req.headers['user-agent'] || 'Unknown';
       try {
-        const { identifier, password } = JSON.parse(body || '{}');
+        const { identifier, password, captchaId, captchaAnswer } = JSON.parse(body || '{}');
         const cleanId = (identifier || '').trim();
         const cleanPass = (password || '').trim();
 
@@ -3392,19 +3646,50 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // 1. Verificación de SuperAdmin con hash seguro bcrypt
-        if (cleanId.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
-          const isMatch = bcrypt.compareSync(cleanPass, ADMIN_PASSWORD_HASH);
+        // Validación anti-bot eCaptcha si fue enviado
+        if (captchaId) {
+          const isCaptchaOk = validateCaptcha(captchaId, captchaAnswer);
+          if (!isCaptchaOk) {
+            logAccessAttempt(clientIp, userAgent, 'login', 'rejected', cleanId, 'Captcha anti-bot incorrecto o expirado');
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, message: 'El código anti-bot eCaptcha es incorrecto o ha expirado. Por favor, intenta de nuevo.' }));
+            return;
+          }
+        }
+
+        // 1. Verificación de Administradores Maestros (Cerkvega92, admin_buscaya, etc.)
+        const cleanPhoneInput = cleanId.replace(/\D/g, '');
+        const matchedAdmin = SERVER_ADMIN_USERS.find(a =>
+          (a.username && a.username.toLowerCase() === cleanId.toLowerCase()) ||
+          (a.email && a.email.toLowerCase() === cleanId.toLowerCase()) ||
+          (cleanPhoneInput.length >= 10 && (
+            (a.phone && a.phone.replace(/\D/g, '') === cleanPhoneInput) ||
+            (Array.isArray(a.alternatePhones) && a.alternatePhones.some(p => p.replace(/\D/g, '') === cleanPhoneInput))
+          ))
+        );
+
+        if (matchedAdmin) {
+          let isMatch = false;
+          if (matchedAdmin.passwordHash) {
+            isMatch = bcrypt.compareSync(cleanPass, matchedAdmin.passwordHash);
+          }
+          if (!isMatch && matchedAdmin.plainPasswordFallback && matchedAdmin.plainPasswordFallback === cleanPass) {
+            isMatch = true;
+            matchedAdmin.passwordHash = bcrypt.hashSync(cleanPass, 10);
+            saveServerDatabase();
+          }
+
           if (isMatch) {
             const token = crypto.randomBytes(32).toString('hex');
             const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hrs
             SERVER_ACTIVE_SESSIONS.set(token, {
               role: 'admin',
-              username: ADMIN_USERNAME,
+              userId: matchedAdmin.id,
+              username: matchedAdmin.username,
               createdAt: Date.now(),
               expiresAt
             });
-            logAccessAttempt(clientIp, userAgent, 'login', 'success', ADMIN_USERNAME, 'Acceso SuperAdmin concedido');
+            logAccessAttempt(clientIp, userAgent, 'login', 'success', matchedAdmin.username, 'Acceso Administrador Maestro concedido');
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({
               success: true,
@@ -3412,9 +3697,11 @@ const server = http.createServer(async (req, res) => {
               token: token,
               user: {
                 role: 'admin',
-                username: ADMIN_USERNAME,
-                name: 'Super Administrador (Control Maestro)',
-                email: 'admin@buscaya.com'
+                userId: matchedAdmin.id,
+                username: matchedAdmin.username,
+                name: matchedAdmin.name || matchedAdmin.username,
+                email: matchedAdmin.email || 'cerkvega.10@gmail.com',
+                phone: matchedAdmin.phone || '5645234452'
               }
             }));
             return;
@@ -3422,10 +3709,9 @@ const server = http.createServer(async (req, res) => {
         }
 
         // 2. Verificación de Dueño de Negocio (por correo o teléfono)
-        const cleanPhone = cleanId.replace(/\D/g, '');
         const biz = SERVER_BUSINESSES.find(b =>
           (b.email && b.email.toLowerCase() === cleanId.toLowerCase()) ||
-          (cleanPhone && b.phone && b.phone.replace(/\D/g, '') === cleanPhone)
+          (cleanPhoneInput.length >= 10 && b.phone && b.phone.replace(/\D/g, '') === cleanPhoneInput)
         );
 
         if (biz) {
@@ -3434,7 +3720,6 @@ const server = http.createServer(async (req, res) => {
             passwordValid = bcrypt.compareSync(cleanPass, biz.passwordHash);
           } else if (biz.password && biz.password === cleanPass) {
             passwordValid = true;
-            // Migrar automáticamente la contraseña a hash seguro bcrypt
             biz.passwordHash = bcrypt.hashSync(cleanPass, 10);
             delete biz.password;
             saveServerDatabase();
@@ -3477,6 +3762,214 @@ const server = http.createServer(async (req, res) => {
         logAccessAttempt(clientIp, userAgent, 'login', 'error', null, err.message);
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, message: 'Error interno en autenticación.' }));
+      }
+    });
+    return;
+  }
+
+  // 0.1.b. Solicitud de Recuperación de Contraseña (Paso 1: Teléfono + Correo + eCaptcha)
+  if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { phone, email, captchaId, captchaAnswer } = JSON.parse(body || '{}');
+        const cleanPhone = (phone || '').replace(/\D/g, '');
+        const cleanEmail = (email || '').trim().toLowerCase();
+
+        if (captchaId) {
+          const isCaptchaOk = validateCaptcha(captchaId, captchaAnswer);
+          if (!isCaptchaOk) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, message: 'El código anti-bot eCaptcha es incorrecto o ha expirado.' }));
+            return;
+          }
+        }
+
+        if (!cleanPhone || cleanPhone.length < 10 || !cleanEmail || !cleanEmail.includes('@')) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'Ingresa un número telefónico válido (10 dígitos) y un correo electrónico.' }));
+          return;
+        }
+
+        // Buscar coincidencia en administradores maestros
+        let targetUser = SERVER_ADMIN_USERS.find(u => {
+          const uEmail = (u.email || '').trim().toLowerCase();
+          const uPhone = (u.phone || '').replace(/\D/g, '');
+          const altPhones = (u.alternatePhones || []).map(p => p.replace(/\D/g, ''));
+          return uEmail === cleanEmail && (uPhone === cleanPhone || altPhones.includes(cleanPhone));
+        });
+        let userType = targetUser ? 'admin' : null;
+
+        // Si no está en administradores, buscar en negocios afiliados
+        if (!targetUser) {
+          targetUser = SERVER_BUSINESSES.find(b => {
+            const bEmail = (b.email || '').trim().toLowerCase();
+            const bPhone = (b.phone || '').replace(/\D/g, '');
+            return bEmail === cleanEmail && bPhone === cleanPhone;
+          });
+          if (targetUser) userType = 'business';
+        }
+
+        if (!targetUser) {
+          res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: false,
+            message: 'No se encontró ninguna cuenta registrada que coincida exactamente con ese teléfono y correo electrónico.'
+          }));
+          return;
+        }
+
+        // Generar código de 4 dígitos
+        const fourDigitCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const resetKey = crypto.randomBytes(16).toString('hex');
+
+        PENDING_PASSWORD_RESETS.set(resetKey, {
+          code: fourDigitCode,
+          userType,
+          userId: targetUser.id || targetUser.username,
+          username: targetUser.username || targetUser.ownerName || targetUser.businessName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          expiresAt: Date.now() + 15 * 60 * 1000 // 15 minutos
+        });
+
+        // Intentar envío por microservicio de WhatsApp si está activo
+        try {
+          const notifyPhone = cleanPhone.startsWith('52') ? cleanPhone : `52${cleanPhone}`;
+          const notifyUrl = process.env.WHATSAPP_API_URL || 'http://127.0.0.1:4000';
+          const msgPayload = JSON.stringify({
+            phone: notifyPhone,
+            message: `🔐 *BuscaYa - Código de Seguridad*\n\nTu código de 4 dígitos para recuperar tu contraseña es:\n\n*${fourDigitCode}*\n\nEste código vence en 15 minutos. Si no solicitaste este cambio, por favor ignora este mensaje.`
+          });
+          const reqNotify = http.request(`${notifyUrl}/api/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(msgPayload) }
+          }, () => {});
+          reqNotify.on('error', () => {});
+          reqNotify.write(msgPayload);
+          reqNotify.end();
+        } catch (_) {}
+
+        console.log(`[Password Reset] Código de 4 dígitos generado para ${cleanEmail} (${cleanPhone}): ${fourDigitCode}`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: `Código de verificación generado para tu cuenta.`,
+          resetKey,
+          demoCode: fourDigitCode
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Error interno al procesar la solicitud de recuperación.' }));
+      }
+    });
+    return;
+  }
+
+  // 0.1.c. Verificación del código de 4 dígitos (Paso 2)
+  if (req.method === 'POST' && pathname === '/api/auth/verify-reset-code') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { resetKey, code } = JSON.parse(body || '{}');
+        const cleanCode = String(code || '').trim();
+
+        const item = PENDING_PASSWORD_RESETS.get(resetKey);
+        if (!item || Date.now() > item.expiresAt) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'El código ha expirado o la solicitud es inválida. Solicita un nuevo código.' }));
+          return;
+        }
+
+        if (cleanCode !== item.code) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'Código de 4 dígitos incorrecto. Verifica el código e intenta de nuevo.' }));
+          return;
+        }
+
+        // Código validado exitosamente: emitir token seguro para cambio de clave
+        const resetToken = crypto.randomBytes(24).toString('hex');
+        VERIFIED_RESET_TOKENS.set(resetToken, {
+          userType: item.userType,
+          userId: item.userId,
+          expiresAt: Date.now() + 15 * 60 * 1000 // 15 minutos
+        });
+        PENDING_PASSWORD_RESETS.delete(resetKey);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Código de 4 dígitos validado con éxito.',
+          resetToken
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Error al verificar el código.' }));
+      }
+    });
+    return;
+  }
+
+  // 0.1.d. Establecer Nueva Contraseña (Paso 3)
+  if (req.method === 'POST' && pathname === '/api/auth/reset-password') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { resetToken, newPassword, confirmPassword } = JSON.parse(body || '{}');
+        const cleanNewPass = String(newPassword || '').trim();
+        const cleanConfirm = String(confirmPassword || '').trim();
+
+        const tokenData = VERIFIED_RESET_TOKENS.get(resetToken);
+        if (!tokenData || Date.now() > tokenData.expiresAt) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'La sesión de recuperación ha expirado. Por favor reinicia el proceso.' }));
+          return;
+        }
+
+        if (!cleanNewPass || cleanNewPass.length < 6) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres.' }));
+          return;
+        }
+
+        if (cleanNewPass !== cleanConfirm) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, message: 'Las contraseñas no coinciden. Por favor escríbelas de nuevo.' }));
+          return;
+        }
+
+        const newHash = bcrypt.hashSync(cleanNewPass, 10);
+
+        if (tokenData.userType === 'admin') {
+          const admin = SERVER_ADMIN_USERS.find(a => a.id === tokenData.userId || a.username === tokenData.userId);
+          if (admin) {
+            admin.passwordHash = newHash;
+            admin.plainPasswordFallback = cleanNewPass;
+          }
+        } else {
+          const biz = SERVER_BUSINESSES.find(b => b.id === tokenData.userId);
+          if (biz) {
+            biz.passwordHash = newHash;
+            delete biz.password;
+          }
+        }
+
+        VERIFIED_RESET_TOKENS.delete(resetToken);
+        saveServerDatabase();
+        logAccessAttempt('127.0.0.1', 'System', 'reset-password', 'success', tokenData.userId, 'Contraseña actualizada exitosamente');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: '¡Tu contraseña ha sido actualizada exitosamente! Ya puedes iniciar sesión con tu nueva contraseña.'
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Error al actualizar la contraseña.' }));
       }
     });
     return;

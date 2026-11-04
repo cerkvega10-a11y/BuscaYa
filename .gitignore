@@ -2,6 +2,7 @@ node_modules/
 .env
 whatsapp_session/
 data/
+!data/dataset-600-cases.json
 .DS_Store
 Thumbs.db
 *.log
