@@ -455,13 +455,17 @@ async function handleIncomingMessage(sock, msg) {
   const rawSender = msg.key.participant || remoteJid;
   const phone = rawSender.split(':')[0].split('@')[0];
 
-  // Extraer texto o coordenadas GPS de ubicación compartida
-  const isLocation = !!(msg.message.locationMessage || msg.message.liveLocationMessage);
-  let userText = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+  // Extraer texto o coordenadas GPS de ubicación compartida, audio o imágenes
+  const isLocation = !!(msg.message?.locationMessage || msg.message?.liveLocationMessage);
+  const isAudio = !!msg.message?.audioMessage;
+  const isMedia = !!(msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.documentMessage || msg.message?.stickerMessage);
+  let userText = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
   let lat = null;
   let lng = null;
 
+  let msgType = "text";
   if (isLocation) {
+    msgType = "location";
     const loc = msg.message.locationMessage || msg.message.liveLocationMessage;
     if (loc && typeof loc.degreesLatitude === 'number' && typeof loc.degreesLongitude === 'number') {
       lat = loc.degreesLatitude;
@@ -470,11 +474,15 @@ async function handleIncomingMessage(sock, msg) {
     } else {
       userText = "📍 [Ubicación compartida sin coordenadas o finalizada]";
     }
-  } else if (msg.message.audioMessage) {
+  } else if (isAudio) {
+    msgType = "audio";
     userText = "🎙️ [Nota de voz recibida del usuario]";
+  } else if (isMedia) {
+    msgType = "image";
+    userText = "📸 [Imagen / Multimedia recibida del usuario]";
   }
 
-  if (!userText && !isLocation) return;
+  if (!userText && !isLocation && !isAudio && !isMedia) return;
 
   // Detección de Transferencia a Humano (Human Handoff)
   const isHandoff = /humano|persona real|operador|agente|asesor|ayuda humana|queja|fraude|estafa/i.test(userText);
@@ -491,6 +499,7 @@ async function handleIncomingMessage(sock, msg) {
       id: msg?.key?.id,
       from: `+${phone}`,
       name: pushName,
+      type: msgType,
       text: isLocation ? "" : userText,
       location: (isLocation && typeof lat === 'number' && typeof lng === 'number') ? { latitude: lat, longitude: lng } : null
     };
