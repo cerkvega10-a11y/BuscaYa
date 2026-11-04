@@ -832,11 +832,13 @@ const DEFAULT_AI_TASKS = [
 
 const DEFAULT_AI_QUICK_RULES = [
   "Hablar siempre de tú con calidez, cercanía y muchos emojis alegres 😊🙌✨📍🌮🛠️",
+  "Obligatoriedad de Ficha Completa: Toda ficha debe contener nombre, especialidad, horario con estado, días laborales, colonia y teléfono.",
+  "Flujo Interactivo (1 solo negocio por turno): Mandar 1 sola opción a la vez, pausar y preguntar si le agrada o si desea otra opción antes de mandar más.",
+  "Blindaje Semántico de Comida: Si el usuario busca comida, queda estrictamente prohibido sugerir oficios (como herrería o plomería); solo sugerir otros lugares de comida.",
   "Nunca recomendar negocios cerrados sin avisar con honestidad y ofrecer una alternativa abierta",
   "Usar la etiqueta |||SEPARAR||| para enviar un mensaje individual por cada negocio y evitar textos largos",
   "Si el usuario pide más opciones, nunca repetir negocios que ya se le hayan mostrado en el chat",
   "Cero saltos absurdos en oficios: si pide cerrajero y no hay, jamás mandar plomeros ni herreros; decir con honestidad que no hay",
-  "En gastronomía, sí se permite sugerir alternativas dentro de alimentos (ej. pizza o hamburguesas si no hay tacos)",
   "No usar caracteres de código o markdown roto (*, #, _, [, ]) en la respuesta final"
 ];
 
@@ -926,23 +928,29 @@ Debes seguir estrictamente este orden lógico en cada conversación. JAMÁS te s
     2. Si aún NO tienes su ubicación o colonia en la sesión actual, pídele amablemente que toque el botón para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍. (Aún NO muestres negocios hasta tener su ubicación).
     3. Si el usuario YA envió su ubicación junto con lo que busca, pasa directo a la Fase 3.
 
-- FASE 3: BÚSQUEDA EXACTA A 2 KILÓMETROS A LA REDONDA
-  - Conociendo QUÉ busca y DÓNDE está, revisa únicamente los negocios dentro de un radio de 2 km (o en su misma colonia) que correspondan EXACTAMENTE al giro o necesidad solicitada.
-  - Muestra máximo de 1 a 3 opciones abiertas y verificadas.
+- FASE 3: BÚSQUEDA EXACTA A 2 KILÓMETROS A LA REDONDA Y FLUJO INTERACTIVO (1 NEGOCIO A LA VEZ)
+  - Conociendo QUÉ busca y DÓNDE está, revisa los negocios dentro de un radio de 2 km que correspondan EXACTAMENTE a la necesidad solicitada.
+  - REGLA DE ORO DEL FLUJO INTERACTIVO (PASO A PASO):
+    1. Paso 1: Presenta ÚNICAMENTE la primera mejor opción (1 solo negocio) en su propia burbuja con su FICHA COMPLETA Y LIMPIA (los 6 campos obligatorios).
+    2. Paso 2 (La Pausa Oculta / Interrogación): Detén por completo la entrega de negocios y haz obligatoriamente la pregunta de control:
+       "¿Qué tal se ve esta opción para ti? 😊 ¿Te gusta o prefieres que te busque algún otro lugar de [comida/servicio] aquí cerquita? 🙌"
+    3. Paso 3 (Respuesta Condicionada): TIENES ESTRICTAMENTE PROHIBIDO enviar más negocios adicionales en este turno. Espera pacientemente a que el usuario responda.
 
-- FASE 4: EXPANSIÓN A MÁS DE 2 KM Y CONTINUIDAD DE GIRO (REGLA ANTI-ERROR DE GIRO)
-  - Si dentro de los 2 km NO hay ningún negocio del giro que pidió (o ya le mostraste el único que había y pide otro), dile con honestidad y cariño:
-    "Fíjate que a menos de 2 km no tenemos otra opción de [mencionar el giro exacto, ej. pizzerías / comida] registrada por ahora 😔✨ ¡Pero muy pronto tendremos más! Si quieres, te puedo buscar otras opciones deliciosas de [mismo giro o misma familia, ej. pizzerías o lugares para comer] aunque estén a más de 2 km de ti 🚗💨 ¿Te gustaría que te las mande?"
-  - REGLA DE ORO AL RECIBIR UN "SÍ": Si el usuario responde "Sí", "Claro", "Por favor", "Otra opción" o "Mándamelas", tienes ESTRICTAMENTE PROHIBIDO cambiar de tema o de giro.
-    - Si el usuario tenía hambre o buscaba pizza, SOLO puedes recomendarle otras pizzerías o lugares de comida a más de 2 km.
-    - JAMÁS recomiendes una herrería, plomería, ferretería o negocio que no tenga relación directa con lo que el usuario pidió originalmente.
-    - Si en toda la base de datos (incluso a más de 2 km) no existe ni un solo negocio más de comida o del giro solicitado, dilo con sinceridad: "Acabo de revisar en todo nuestro sistema y por el momento son todas las opciones de comida que tenemos registradas 😔🙏 ¡Cada semana sumamos nuevos lugares! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨"
+- FASE 4: EXPANSIÓN A MÁS DE 2 KM Y CONTINUIDAD DE GIRO (BLINDAJE SEMÁNTICO ESTRICTO)
+  - Si dentro de los 2 km NO hay ningún negocio del giro que pidió (o si ya le mostraste la opción anterior y el usuario pide ver más opciones):
+    Dile con honestidad y cariño si no hay en 2 km, o envía la SIGUIENTE opción disponible (1 sola a la vez) dentro de la misma familia.
+  - REGLA DE BLINDAJE SEMÁNTICO POR FAMILIA (CERO CRUCES EXTRAÑOS):
+    - Si el usuario pidió ALIMENTOS Y BEBIDAS (comida, pizza, tacos, sushi, hamburguesas, café):
+      TIENES ESTRICTAMENTE PROHIBIDO cruzar la línea hacia oficios (herrería, plomería, cerrajería) o rubros no gastronómicos. Las ÚNICAS alternativas permitidas son otros restaurantes, locales de comida o fondas.
+    - JAMÁS recomiendes una herrería, plomería, taller mecánico o negocio ajeno cuando el usuario pidió comida.
+    - Si en toda la base de datos ya no existen más opciones de comida, dilo con sinceridad:
+      "Acabo de revisar en todo nuestro sistema y por el momento son todas las opciones de comida que tenemos registradas 😔🙏 ¡Muy pronto sumaremos nuevos lugares! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨"
 
 ---
 
 ## REGLA CRÍTICA #2: ASOCIACIÓN INTELIGENTE POR NECESIDAD (8 FAMILIAS DE GIROS)
 Cuando el usuario exprese una necesidad general o pregunte por un giro o servicio, mantén la conversación estrictamente dentro de su correspondiente familia:
-1. ALIMENTOS Y BEBIDAS: Restaurantes, Taquerías, Pizzerías, Cafeterías, Fondas, Sushi, Hamburguesas, Postres, Bares. Si no hay una opción exacta dentro de 2 km, se permite sugerir alternativas dentro de alimentos. Prohibido saltar a oficios o comercios no alimenticios.
+1. ALIMENTOS Y BEBIDAS: Restaurantes, Taquerías, Pizzerías, Cafeterías, Fondas, Sushi, Hamburguesas, Postres, Bares. CERO HERRERÍAS NI OFICIOS. Si el usuario pide más opciones, solo se permiten locales gastronómicos.
 2. SALUD Y BIENESTAR: Médicos, Odontólogos y Dentistas, Farmacias y Medicamentos, Clínicas, Laboratorios, Psicología, Ópticas, Fisioterapia.
 3. ENTRETENIMIENTO, ARTE Y CULTURA: Artistas, Grupos Musicales y DJs, Producción de Audio y Video, Salones de Eventos, Mobiliario e Inflables, Escuelas de Arte y Música. (Ej. Caramelo Media Music).
 4. OFICIOS DEL HOGAR Y MANTENIMIENTO: Plomería, Electricistas, Cerrajería, Herrería, Carpintería, Pintores, Climas y Aire Acondicionado, Limpieza y Fumigación. REGLA ESTRICTA DE OFICIOS: Si el usuario pide un cerrajero y no hay a 2 km, TIENES ESTRICTAMENTE PROHIBIDO recomendar un plomero o herrero. Debes informar con total honestidad que no hay cerrajeros registrados por el momento.
@@ -962,35 +970,36 @@ Compara siempre la hora y el día actual con los horarios de cada negocio en la 
 
 ---
 
-## REGLA CRÍTICA #4: LECTURA LIGERA, MULTI-BURBUJA Y SEPARACIÓN CON |||SEPARAR|||
-Para que el usuario nunca vea mucho texto junto ni se canse de leer en su celular, debes cumplir estas directrices:
+## REGLA CRÍTICA #4: OBLIGATORIEDAD DE LA FICHA COMPLETA, LIMPIA Y MULTI-BURBUJA
+Para garantizar una experiencia visual profesional en WhatsApp, debes cumplir estrictamente estas directrices:
 
-1. SÍNTESIS EXTREMA (FICHAS CORTAS Y VISUALES):
-   - Prohibido escribir párrafos largos o explicaciones extensas dentro de los datos del negocio.
-   - El campo de servicios no debe pasar de 6 a 8 palabras clave separadas por comas.
-   - Estructura compacta para cada negocio:
+1. OBLIGATORIEDAD DE LA FICHA COMPLETA (LOS 6 CAMPOS SIN FALTA):
+   - Queda ESTRICTAMENTE PROHIBIDO mandar fichas recortadas, incompletas o a medias (ej. mandar solo el nombre y estado).
+   - Toda ficha de negocio debe contener de forma obligatoria y completa los 6 campos siguientes:
 
-🏢 [Nombre del Negocio]
-✨ [Servicios clave en máximo 1 línea corta]
-🟢 [Abierto ahora / 🔴 Cerrado] • ⏰ [Horario corto, ej. 9am a 8pm]
-📅 [Días, ej. Lun a Sáb]
-📍 [Colonia]
-📞 [Teléfono directo]
+🏢 [Nombre oficial del negocio]
+✨ [Especialidad o servicios clave]
+🟢 [Abierto ahora / 🔴 Cerrado] • ⏰ [Horario]
+📅 [Días laborales]
+📍 [Colonia / Zona]
+📞 [Teléfono de contacto]
 
 2. SEPARACIÓN ESTRICTA POR BURBUJAS DE MENSAJE (USO DE |||SEPARAR|||):
-   - NUNCA juntes dos o más negocios en el mismo bloque.
-   - Si vas a recomendar negocios, debes colocar la etiqueta exacta |||SEPARAR||| entre tu texto introductorio, entre cada ficha de negocio individual y antes de tu pregunta de cierre.
-   - NUNCA mandes más de 3 negocios a la vez para no saturar al usuario. Al final, pregunta amablemente si desea ver más opciones.
+   - Usa siempre |||SEPARAR||| entre tu texto introductorio, la ficha del negocio y tu pregunta de control de cierre.
+   - Manda ÚNICAMENTE 1 negocio por turno. Jamás mandes varios negocios de golpe.
    - NUNCA repitas negocios que ya le fueron mostrados al usuario en mensajes anteriores.
    - Estructura obligatoria cuando hay resultados:
 
-¡Claro que sí! Aquí te comparto las mejores opciones cerquita de ti 😊👇
+¡Claro que sí! Aquí tienes una excelente opción para ti 😊👇
 |||SEPARAR|||
-🏢 [Ficha compacta del Negocio 1]
+🏢 [Ficha compacta y completa del Negocio]
+✨ [Especialidad]
+🟢 [Abierto ahora / 🔴 Cerrado] • ⏰ [Horario]
+📅 [Días]
+📍 [Colonia]
+📞 [Teléfono]
 |||SEPARAR|||
-🏢 [Ficha compacta del Negocio 2]
-|||SEPARAR|||
-¿Te late alguna de estas opciones o buscamos algo más? 🙌✨
+¿Qué tal se ve esta opción para ti? 😊 ¿Te gusta o prefieres que te busque algún otro lugar aquí cerquita? 🙌✨
 
 ---
 
@@ -4594,10 +4603,11 @@ ${visualFormatRule}`;
         // MÁQUINA DE ESTADOS CONVERSACIONAL DE 4 FASES (BUSCAYA V3)
         // ==============================================================
         const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
-        const AFFIRMATIVE_REGEX = /^(s[ií]|claro|por\s+favor|m[aá]ndalos|m[aá]ndamelas|m[aá]ndalas|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late)[!.\s]*$/i;
+        const AFFIRMATIVE_REGEX = /^(s[ií]|claro|por\s+favor|m[aá]ndalos|m[aá]ndamelas|m[aá]ndalas|m[aá]ndame\s+otro|m[aá]ndame\s+otra|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|otro|otra|algun\s+otro|alguna\s+otra|mu[eé]strame\s+otro|mu[eé]strame\s+m[aá]s)[!.\s]*$/i;
+        const MORE_OPTIONS_REGEX = /(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida)/i;
 
         const isGreetingOnly = GREETING_REGEX.test(messageText.trim());
-        const isAffirmative = AFFIRMATIVE_REGEX.test(messageText.trim());
+        const isAffirmative = AFFIRMATIVE_REGEX.test(messageText.trim()) || MORE_OPTIONS_REGEX.test(messageText.trim());
 
         // 4. Sincronización con BD: Negocios activos o en demo vigente
         const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
@@ -4738,37 +4748,58 @@ ${visualFormatRule}`;
         const familyDef = Object.values(GIRO_FAMILIES).find(f => f.name === userSession.familia_giro);
         const allowedCategories = familyDef ? familyDef.categories : [];
         const isOficioFamily = familyDef?.isOficio || false;
+        const isFoodFamily = (userSession.familia_giro === "Alimentos y Bebidas" || detectedFamilyKey === "ALIMENTOS_Y_BEBIDAS");
 
         // Ejecutar búsqueda SOLO en Fases 3 y 4 (PROHIBIDO en Fases 1 y 2)
         if (currentPhase === 3 || currentPhase === 4) {
           const directMatchIds = new Set(directFuzzyMatches.map(m => m.id));
 
           candidatePool = activeBusinesses.filter(b => {
-            if (directMatchIds.has(b.id)) return true;
+            const bCat = (b.category || '').toLowerCase();
+            const bName = (b.businessName || '').toLowerCase();
+            const bServ = (b.services || '').toLowerCase();
+
+            // REGLA CRÍTICA #1: BLINDAJE SEMÁNTICO DE COMIDA (CERO HERRERÍAS NI OFICIOS EN BÚSQUEDAS DE COMIDA)
+            if (isFoodFamily) {
+              const nonFoodTokens = [
+                "herrer", "plomer", "electric", "cerrajer", "carpinter", "mecanic", "taller", "grua",
+                "veterinar", "abogad", "contador", "medico", "dentist", "farmacia", "limpieza", "fumiga", "notar", "inmobiliaria"
+              ];
+              if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
+            }
+
+            // REGLA CRÍTICA #2: BLINDAJE DE OFICIOS (CERO SALTOS ABSURDOS)
+            if (isOficioFamily && userSession.giro_especifico) {
+              const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+              const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
+              const matchesThisOficio = bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
+                                        bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
+              if (!matchesThisOficio) return false;
+            }
+
+            // Coincidencia difusa directa
+            if (directMatchIds.has(b.id)) {
+              if (isFoodFamily) {
+                // Si la sesión es de comida, no puede ser una coincidencia de otro rubro ajeno
+                const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+                if (!isFoodCat) return false;
+              }
+              return true;
+            }
+
             if (!userSession.familia_giro) return true;
-            // Coincidencia exacta de categoría o pertenencia a la familia
-            const catMatches = allowedCategories.some(ac => (b.category || '').toLowerCase().includes(ac.toLowerCase()));
-            const nameOrServiceMatches = familyDef ? familyDef.keywords.some(kw => 
-              (b.businessName || '').toLowerCase().includes(kw) || (b.services || '').toLowerCase().includes(kw)
-            ) : false;
+
+            // Coincidencia exacta o parcial de categoría permitida en esta familia
+            const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+
+            // Coincidencia estricta de palabras clave (con límites de palabra \b para evitar que 'bar' coincida con 'barandales')
+            const nameOrServiceMatches = familyDef ? familyDef.keywords.some(kw => {
+              const kwRegex = new RegExp(`\\b${kw}\\b`, 'i');
+              return kwRegex.test(bName) || kwRegex.test(bServ);
+            }) : false;
+
             return catMatches || nameOrServiceMatches;
           });
-
-          // REGLA CRÍTICA DE OFICIOS: Cero saltos absurdos
-          // Si el usuario pidió un oficio específico (ej. cerrajero, mecánico, plomero),
-          // queda estrictamente prohibido incluir oficios no relacionados (ej. plomeros para cerrajero).
-          if (isOficioFamily && userSession.giro_especifico) {
-            const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
-            candidatePool = candidatePool.filter(b => {
-              if (directMatchIds.has(b.id)) return true;
-              const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              const bCat = (b.category || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              const bServ = (b.services || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              return bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
-                     bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
-            });
-          }
 
           // Deduplicación estricta: asegurar que cada negocio en candidatePool sea único
           const uniqueCandidatePool = [];
@@ -4827,7 +4858,9 @@ ${visualFormatRule}`;
           }
         }
 
-        // Selección máxima de 1 a 3 negocios con eliminación garantizada de duplicados
+        // ==============================================================
+        // REGLA DEL FLUJO INTERACTIVO: EXACTAMENTE 1 SOLO NEGOCIO A LA VEZ
+        // ==============================================================
         const sourcePool = (currentPhase === 3 && cercanos_2km.length > 0)
           ? cercanos_2km
           : (currentPhase === 4 && lejanos_mas_2km.length > 0)
@@ -4840,7 +4873,7 @@ ${visualFormatRule}`;
           if (!selectedIdSet.has(b.id) && !userSession.negocios_ya_mostrados.includes(b.id)) {
             selectedIdSet.add(b.id);
             selectedBusinesses.push(b);
-            if (selectedBusinesses.length >= 3) break;
+            break; // EXACTAMENTE 1 NEGOCIO POR TURNO (Paso 1)
           }
         }
         if (selectedBusinesses.length === 0 && sourcePool.length > 0) {
@@ -4848,7 +4881,7 @@ ${visualFormatRule}`;
             if (!selectedIdSet.has(b.id)) {
               selectedIdSet.add(b.id);
               selectedBusinesses.push(b);
-              if (selectedBusinesses.length >= 3) break;
+              break;
             }
           }
         }
@@ -4860,6 +4893,24 @@ ${visualFormatRule}`;
           }
         });
         userSession.lastBusinesses = selectedBusinesses;
+
+        // Construir Ficha Canónica Completa y Pregunta de Control
+        let canonicalCard = "";
+        let controlQuestion = "";
+        if (selectedBusinesses.length > 0) {
+          const b = selectedBusinesses[0];
+          const cleanP = String(b.phone || '').replace(/\D/g, '');
+          const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
+          canonicalCard = `🏢 ${b.businessName}\n` +
+            `✨ ${b.services || b.category}\n` +
+            `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
+            `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
+            `📍 Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
+            `📞 Teléfono: ${b.phone}\n` +
+            `💬 WhatsApp: ${waLink}`;
+
+          controlQuestion = `¿Qué tal se ve esta opción para ti? 😊 ¿Te gusta o prefieres que te busque algún otro lugar de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} aquí cerquita? 🙌`;
+        }
 
         // Construir Contexto Enriquecido para la IA
         const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
@@ -4900,24 +4951,18 @@ TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubi
           );
 
           if (selectedBusinesses.length > 0) {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADOS ENCONTRADOS EN BASE DE DATOS]
-Se encontraron ${selectedBusinesses.length} opciones verificadas en el sistema para "${userSession.giro_especifico}".
-REGLA DE CERO ALUCINACIÓN: ÚNICAMENTE puedes presentar estos negocios exactos de la lista. TIENES PROHIBIDO inventar negocios o datos.
-Debes usar OBLIGATORIAMENTE la etiqueta |||SEPARAR||| para enviar cada negocio en una burbuja de mensaje separada.
-Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
-              const cleanP = String(b.phone || '').replace(/\D/g, '');
-              const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
-              return {
-                nombre: b.businessName,
-                servicios: b.services || b.category,
-                estado: b.openInfo.label,
-                horario: b.openInfo.hoursDisplay,
-                dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
-                colonia: b.neighborhood || b.colonia || "CDMX",
-                telefono: b.phone,
-                enlaceWhatsApp: waLink
-              };
-            }), null, 2) + `\n\nAl final, en otra burbuja tras |||SEPARAR|||, pregunta amablemente si le agrada alguna opción o si desea ver más.`;
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADO INTERACTIVO (1 SOLA OPCIÓN)]
+Debes presentar ÚNICAMENTE a este negocio en una ficha limpia y completa. TIENES ESTRICTAMENTE PROHIBIDO mostrar más de un negocio en este mensaje.
+
+FICHA COMPLETA OBLIGATORIA (CON TODOS SUS 6 CAMPOS SIN RECORTAR):
+|||SEPARAR|||
+${canonicalCard}
+|||SEPARAR|||
+
+PREGUNTA DE CONTROL OBLIGATORIA AL FINAL:
+"${controlQuestion}"
+
+REGLA DE PAUSA INTERACTIVA: No muestres ninguna otra opción ni te adelantes. Detén la respuesta tras la pregunta de control.`;
           } else {
             if (isOficioFamily) {
               contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - OFICIO SIN COBERTURA EN 2 KM]
@@ -4928,30 +4973,20 @@ Debes responder con sinceridad, empatía y honestidad:
             } else {
               contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - SIN COBERTURA EN 2 KM (GASTRONOMÍA / COMERCIO)]
 NO hay opciones de "${userSession.giro_especifico}" a menos de 2 km registradas actualmente.
-Dile con amabilidad que en 2 km no hay opciones de ese platillo por ahora pero que muy pronto habrá más, y pregúntale amablemente si desea que le busques otras opciones deliciosas de ${userSession.familia_giro} (pizzas, hamburguesas, fondas, etc.) aunque estén a más de 2 km 🚗💨.`;
+Dile con amabilidad que en 2 km no hay opciones de ese platillo por ahora pero que muy pronto habrá más, y pregúntale amablemente si desea que le busques otras opciones deliciosas de comida aunque estén a más de 2 km 🚗💨.`;
             }
           }
         } else if (currentPhase === 4) {
           if (selectedBusinesses.length > 0) {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - EXPANSIÓN CONFIRMADA (MÁS DE 2 KM)]
-El usuario autorizó ver opciones a más de 2 km o solicitó más opciones de ${userSession.giro_especifico}.
-REGLA INQUEBRANTABLE: ÚNICAMENTE puedes recomendar estos negocios de la familia ${userSession.familia_giro}.
-Usa la etiqueta |||SEPARAR||| entre la introducción, entre cada negocio y en el cierre.
-Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
-              const cleanP = String(b.phone || '').replace(/\D/g, '');
-              const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
-              return {
-                nombre: b.businessName,
-                servicios: b.services || b.category,
-                estado: b.openInfo.label,
-                horario: b.openInfo.hoursDisplay,
-                dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
-                colonia: b.neighborhood || b.colonia || "CDMX",
-                distanciaKm: b.distanceKm,
-                telefono: b.phone,
-                enlaceWhatsApp: waLink
-              };
-            }), null, 2);
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - SIGUIENTE OPCIÓN (1 SOLA OPCIÓN)]
+El usuario solicitó ver otra opción de ${userSession.giro_especifico}.
+REGLA INQUEBRANTABLE DE FAMILIA: ÚNICAMENTE puedes recomendar un negocio de la familia ${userSession.familia_giro}.
+CERO HERRERÍAS NI OFICIOS SI EL USUARIO PIDIÓ COMIDA.
+Presenta ÚNICAMENTE este negocio con su ficha completa y haz la pregunta de control:
+|||SEPARAR|||
+${canonicalCard}
+|||SEPARAR|||
+"${controlQuestion}"`;
           } else {
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - TODAS LAS OPCIONES MOSTRADAS]
 Ya se mostraron todas las opciones registradas en la base de datos para ${userSession.giro_especifico} (${userSession.familia_giro}).
@@ -4982,6 +5017,24 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
           }
         }
 
+        // ==============================================================
+        // BLINDAJE DE FICHA COMPLETA: VALIDAR Y GARANTIZAR LOS 6 CAMPOS
+        // ==============================================================
+        if (selectedBusinesses.length > 0 && finalBotReplyText && canonicalCard) {
+          const b = selectedBusinesses[0];
+          const hasPhone = finalBotReplyText.includes(b.phone) || finalBotReplyText.includes("📞") || finalBotReplyText.includes("Teléfono");
+          const hasHours = finalBotReplyText.includes("⏰") || finalBotReplyText.includes("Horario") || finalBotReplyText.includes(b.openInfo.hoursDisplay);
+          const hasDays = finalBotReplyText.includes("📅") || (b.daysOpen && b.daysOpen.some(d => finalBotReplyText.includes(d)));
+          const hasServices = finalBotReplyText.includes("✨") || (b.services && b.services.split(',')[0] && finalBotReplyText.includes(b.services.split(',')[0].trim()));
+
+          // Si el modelo recortó la ficha o mandó menos de los 6 campos
+          if (!hasPhone || !hasHours || !hasDays || !hasServices) {
+            const parts = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(p => p.trim()).filter(Boolean);
+            const intro = (parts.length > 1 && !parts[0].includes("🏢")) ? parts[0] : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
+            finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
+          }
+        }
+
         // Fallbacks inteligentes por fase con enlace de atribución directa
         if (!finalBotReplyText) {
           if (currentPhase === 1) {
@@ -4991,23 +5044,14 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
           } else if (currentPhase === 2) {
             finalBotReplyText = `¡Claro que sí! Con gusto te ayudo a buscar las mejores opciones de ${userSession.giro_especifico || 'lo que necesitas'} 😊🙌 Para recomendarte los lugares abiertos a menos de 2 km de ti, ¿me compartes tu ubicación actual o en qué colonia estás? 📍✨`;
           } else if (selectedBusinesses.length > 0) {
-            const b = selectedBusinesses[0];
-            const cleanP = String(b.phone || '').replace(/\D/g, '');
-            const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
             finalBotReplyText = `¡Aquí tienes una excelente opción cerquita de ti! 😊👇\n|||SEPARAR|||\n` +
-              `🏢 ${b.businessName}\n` +
-              `✨ ${b.services || b.category}\n` +
-              `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
-              `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
-              `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-              `📞 Teléfono: ${b.phone}\n` +
-              `💬 WhatsApp: ${waLink}\n|||SEPARAR|||\n` +
-              `¿Te late esta opción o buscamos algo más? 🙌✨`;
+              `${canonicalCard}\n|||SEPARAR|||\n` +
+              `${controlQuestion}`;
           } else {
             if (isOficioFamily) {
               finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento no tenemos ese giro o establecimiento registrado 😔✨ ¡Pero muy pronto lo agregaremos! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente que sí tengamos disponible?`;
             } else {
-              finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de ${userSession.familia_giro || 'lo mismo'} aunque estén un poquito más retiradas? 🚗💨`;
+              finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de comida aunque estén un poquito más retiradas? 🚗💨`;
             }
           }
         }
