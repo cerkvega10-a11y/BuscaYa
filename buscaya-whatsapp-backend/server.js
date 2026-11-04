@@ -581,7 +581,22 @@ INSTRUCCIONES OBLIGATORIAS:
     systemInstruction: defaultSystemInstruction
   });
 
-  const replyText = aiResult.reply;
+  // Filtro limpiador de símbolos (#, *, [], ___) para entregar solo texto limpio y emojis
+  function cleanAiSymbols(text) {
+    if (!text) return "";
+    return text
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+      .replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2')
+      .replace(/[\[\]]/g, '')
+      .replace(/^[ \t]*[-•]\s*/gm, '')
+      .trim();
+  }
+
+  const replyText = cleanAiSymbols(aiResult.reply);
 
   // Actualizar historial conversacional (máx. 8 turnos)
   prevHistory.push({ role: 'user', content: userText });

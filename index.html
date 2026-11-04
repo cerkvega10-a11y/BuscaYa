@@ -965,6 +965,35 @@
             </div>
           </div>
 
+          <!-- MÓDULO 2: CAMPO DE CÓDIGO PROMOCIONAL Y DESCUENTO -->
+          <div class="bg-gradient-to-r from-amber-50 to-emerald-50 p-4 rounded-2xl border-2 border-emerald-400 space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="regCouponCode" class="block text-xs font-black text-[#075E54] uppercase flex items-center space-x-1.5">
+                <i class="fa-solid fa-ticket text-amber-500"></i>
+                <span>¿Tienes un código de promoción o cupón de descuento?</span>
+              </label>
+              <span class="text-[10px] text-emerald-800 bg-white border border-emerald-300 px-2 py-0.5 rounded-full font-bold">Opcional</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <input type="text" id="regCouponCode" placeholder="Ej. BUSCAYA-VIP30 o PROMOMAYO" class="flex-1 px-3.5 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#25D366]">
+              <button type="button" id="btnValidateCoupon" onclick="handleValidateCouponPublic()" class="px-4 py-2 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer">
+                <i class="fa-solid fa-circle-check text-[#25D366]"></i>
+                <span>Validar Código</span>
+              </button>
+            </div>
+
+            <div id="regCouponSuccessAlert" class="hidden bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs p-2.5 rounded-xl flex items-center space-x-2 font-bold animate-fade-in">
+              <i class="fa-solid fa-circle-check text-emerald-600 text-base flex-shrink-0"></i>
+              <span id="regCouponSuccessText">¡Código aplicado!</span>
+            </div>
+            
+            <div id="regCouponErrorAlert" class="hidden bg-red-100 border border-red-300 text-red-900 text-xs p-2 rounded-xl flex items-center space-x-1.5 font-bold animate-fade-in">
+              <i class="fa-solid fa-triangle-exclamation text-red-600 text-sm flex-shrink-0"></i>
+              <span id="regCouponErrorText">Código no válido</span>
+            </div>
+          </div>
+
           <!-- Payment Form Fields -->
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
             
@@ -1884,6 +1913,86 @@
 
       </div>
 
+      <!-- ============================================================== -->
+      <!-- 🤖 CENTRO DE MANDO: AGENTE BUSCAYA (ORQUESTACIÓN MULTI-AGENTE)  -->
+      <!-- ============================================================== -->
+      <div class="bg-gradient-to-r from-emerald-950 via-[#075E54] to-emerald-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border-2 border-[#25D366]/50 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-700/60 pb-5">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-[#25D366] text-[#075E54] flex items-center justify-center text-3xl shadow-lg border-2 border-white/20 animate-pulse flex-shrink-0">
+              <i class="fa-solid fa-brain"></i>
+            </div>
+            <div>
+              <div class="inline-flex items-center space-x-2 bg-white/10 px-3 py-0.5 rounded-full text-[11px] font-black text-[#25D366] uppercase tracking-wider mb-1">
+                <span class="w-2 h-2 rounded-full bg-[#25D366] animate-ping"></span>
+                <span>Enjambre de 7 Agentes Especializados</span>
+              </div>
+              <h3 class="text-xl sm:text-2xl font-black">Centro de Mando: Agente BuscaYa</h3>
+              <p class="text-xs text-gray-200">Orquestador Maestro y Supervisión Integral de IA, CRM, Cupones, Pagos y Salud del Ecosistema</p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <button type="button" onclick="runSwarmDiagnostics()" class="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-[#075E54] font-black text-xs transition-all shadow-md flex items-center space-x-2 cursor-pointer">
+              <i class="fa-solid fa-stethoscope text-base"></i>
+              <span>⚡ Diagnóstico del Enjambre</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 6 Sub-Agentes Badges Status Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5" id="swarmAgentsGrid">
+          <!-- Agente 1 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 1 - Arquitecto IA</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Reloj CDMX en vivo, Haversine 2 km, modismos mexicanos y temp 0.75.</p>
+          </div>
+          <!-- Agente 2 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 2 - QA Conversacional</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Cero repetición, filtro limpiador de símbolos (#, *, []) e identidad Neural Media.</p>
+          </div>
+          <!-- Agente 3 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 3 - Negocio & CRM</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Cupones 10%-50%, extensión de días gratis (+7, +15, +30d) y difusión masiva WhatsApp.</p>
+          </div>
+          <!-- Agente 4 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 4 - Auditor de Pagos</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Mercado Pago Preapproval, posposición de cobros al extender prueba y webhooks.</p>
+          </div>
+          <!-- Agente 5 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 5 - Bug Hunter</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Inspector continuo de eventos UI, botones, z-index y persistencia en DB.</p>
+          </div>
+          <!-- Agente 6 -->
+          <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border border-white/15 transition-all space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-[#25D366]">🟢 Agente 6 - Salud Global</span>
+              <span class="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">Activo</span>
+            </div>
+            <p class="text-[11px] text-gray-200 leading-snug">Diagnóstico integral end-to-end: Meta Cloud API, Groq LPU y Vercel Serverless.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- ========================================== -->
       <!-- BARRA DE PESTAÑAS SUB-TAB (CONTROL MAESTRO) -->
       <!-- ========================================== -->
@@ -1895,6 +2004,14 @@
         <button id="adminTabBtnAiTraining" onclick="switchAdminSubTab('ai-training')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-purple-700 hover:bg-purple-50 border border-gray-300">
           <i class="fa-solid fa-brain text-purple-600 text-base"></i>
           <span>🧠 Entrenamiento IA &amp; Sandbox</span>
+        </button>
+        <button id="adminTabBtnCoupons" onclick="switchAdminSubTab('coupons')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-amber-700 hover:bg-amber-50 border border-gray-300">
+          <i class="fa-solid fa-ticket text-amber-500 text-base"></i>
+          <span>🎟️ Cupones &amp; Promos</span>
+        </button>
+        <button id="adminTabBtnCrmBroadcast" onclick="switchAdminSubTab('crm-broadcast')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-emerald-700 hover:bg-emerald-50 border border-gray-300">
+          <i class="fa-solid fa-bullhorn text-emerald-600 text-base"></i>
+          <span>📢 CRM &amp; Difusión Masiva</span>
         </button>
         <button id="adminTabBtnRetargeting" onclick="switchAdminSubTab('retargeting')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-sky-700 hover:bg-sky-50 border border-gray-300">
           <i class="fa-solid fa-bullhorn text-sky-600 text-base"></i>
@@ -2510,7 +2627,7 @@
                 <th class="px-4 py-3.5">Horarios</th>
                 <th class="px-4 py-3.5">Suscripción</th>
                 <th class="px-4 py-3.5">Plan Plus (+ $300)</th>
-                <th class="px-4 py-3.5">Días Restantes</th>
+                <th class="px-4 py-3.5">Días Gratis / Vigencia</th>
                 <th class="px-4 py-3.5 text-center">Acciones de Control Maestro</th>
               </tr>
             </thead>
@@ -2925,6 +3042,338 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
 
       </div>
       <!-- FIN CONTENEDOR 2: CENTRO DE ENTRENAMIENTO DE IA -->
+
+      <!-- ============================================================== -->
+      <!-- MÓDULO 2: GENERADOR DE PROMOCIONES Y CUPONES DE DESCUENTO       -->
+      <!-- ============================================================== -->
+      <div id="adminTabContentCoupons" class="hidden space-y-8">
+        
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border-2 border-amber-400/40 shadow-md space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-amber-500/30">
+                <i class="fa-solid fa-ticket"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-black text-gray-900">🎟️ Generador de Promociones y Cupones</h3>
+                <p class="text-xs text-gray-500">Crea códigos para otorgar descuentos en Mercado Pago y extensiones de días de prueba gratuitos</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <button type="button" onclick="loadCouponsUI()" class="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Actualizar Lista</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Formulario Constructor de Cupones -->
+          <div class="bg-gradient-to-br from-amber-50/60 to-orange-50/40 p-5 rounded-2xl border border-amber-200 space-y-4">
+            <h4 class="text-sm font-black text-amber-900 flex items-center space-x-2">
+              <i class="fa-solid fa-plus-circle text-amber-600"></i>
+              <span>Crear Nuevo Código Promocional</span>
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Código -->
+              <div class="space-y-1">
+                <label class="block text-xs font-black text-gray-700 uppercase">Código del Cupón *</label>
+                <div class="flex items-center space-x-1.5">
+                  <input type="text" id="couponCodeInput" placeholder="Ej. BUSCAYA-VIP30" class="flex-1 px-3.5 py-2 rounded-xl border border-amber-300 bg-white font-mono font-bold text-xs uppercase focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <button type="button" onclick="generateRandomCouponCode()" title="Generar Código Aleatorio" class="px-2.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all">
+                    <i class="fa-solid fa-dice"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Descuento % -->
+              <div class="space-y-1">
+                <label class="block text-xs font-black text-gray-700 uppercase">Porcentaje de Descuento *</label>
+                <select id="couponDiscountSelect" class="w-full px-3.5 py-2 rounded-xl border border-amber-300 bg-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <option value="10">10% de descuento</option>
+                  <option value="15">15% de descuento</option>
+                  <option value="20" selected>20% de descuento (Recomendado)</option>
+                  <option value="30">30% de descuento</option>
+                  <option value="50">50% de descuento (Especial)</option>
+                </select>
+              </div>
+
+              <!-- Días Gratis -->
+              <div class="space-y-1">
+                <label class="block text-xs font-black text-gray-700 uppercase">Días Gratis Otorgados *</label>
+                <select id="couponTrialDaysSelect" class="w-full px-3.5 py-2 rounded-xl border border-amber-300 bg-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <option value="7">7 días gratis (Estándar)</option>
+                  <option value="15" selected>15 días gratis</option>
+                  <option value="20">20 días gratis</option>
+                  <option value="30">30 días gratis (1 Mes)</option>
+                </select>
+              </div>
+
+              <!-- Límite de Usos -->
+              <div class="space-y-1">
+                <label class="block text-xs font-black text-gray-700 uppercase">Límite de Redenciones</label>
+                <input type="number" id="couponMaxUsesInput" value="50" min="1" max="5000" class="w-full px-3.5 py-2 rounded-xl border border-amber-300 bg-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-amber-200/60">
+              <label class="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer">
+                <input type="checkbox" id="couponActiveCheck" checked class="w-4 h-4 text-amber-600 rounded">
+                <span>Cupón Activo de inmediato</span>
+              </label>
+
+              <button type="button" onclick="handleCreateCouponSubmit()" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md transition-all flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>💾 Guardar y Publicar Cupón</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Cupones -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-700">
+              <thead class="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">Código del Cupón</th>
+                  <th class="px-4 py-3">Descuento</th>
+                  <th class="px-4 py-3">Días Gratis</th>
+                  <th class="px-4 py-3">Usos / Límite</th>
+                  <th class="px-4 py-3">Estado</th>
+                  <th class="px-4 py-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="couponsTableBody" class="divide-y divide-gray-200">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- MÓDULO 3 & 4: CRM INTELIGENTE Y DIFUSIÓN WHATSAPP (CAMPAÑAS)     -->
+      <!-- ============================================================== -->
+      <div id="adminTabContentCrmBroadcast" class="hidden space-y-8">
+        
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border-2 border-[#25D366]/40 shadow-md space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-2xl bg-[#075E54] text-[#25D366] flex items-center justify-center text-2xl shadow-lg border-2 border-[#25D366]">
+                <i class="fa-solid fa-address-book"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-black text-gray-900">📇 CRM Inteligente de Audiencia &amp; Difusión WhatsApp</h3>
+                <p class="text-xs text-gray-500">Historial automático de personas que han escrito al bot, segmentación por giros y campañas masivas multimedia</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <button type="button" onclick="openAddContactModal()" class="px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-[#075E54] text-xs font-black transition-all flex items-center space-x-1.5 shadow-sm">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>+ Agregar Contacto Manual</span>
+              </button>
+              <button type="button" onclick="loadCrmAudienciaUI()" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Layout Dividido: Panel Izquierdo (Selector de Audiencia y Target) vs Panel Derecho (Constructor Multimedia) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- PANEL IZQUIERDO: SELECTOR DE AUDIENCIA Y FILTROS (7 columnas) -->
+            <div class="lg:col-span-7 space-y-4">
+              
+              <!-- Toolbar de Filtrado Avanzado Multicriterio -->
+              <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-gray-800 uppercase flex items-center space-x-1.5">
+                    <i class="fa-solid fa-filter text-[#075E54]"></i>
+                    <span>Filtros y Segmentación de Audiencia</span>
+                  </span>
+                  <span id="crmFilteredCountDisplay" class="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Cargando audiencia...
+                  </span>
+                </div>
+
+                <!-- Filtro por Giros Buscados (Checkboxes Multi-select) -->
+                <div>
+                  <span class="block text-[11px] font-bold text-gray-600 mb-1.5">Filtrar por Giros / Intereses Buscados:</span>
+                  <div class="flex flex-wrap gap-2 text-xs" id="crmGirosFilterWrap">
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Restaurantes" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>🌮 Restaurantes</span>
+                    </label>
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Plomeros" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>🔧 Plomeros</span>
+                    </label>
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Farmacias" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>💊 Farmacias</span>
+                    </label>
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Cerrajerías" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>🔑 Cerrajerías</span>
+                    </label>
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Veterinarias" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>🐶 Mascotas</span>
+                    </label>
+                    <label class="inline-flex items-center space-x-1 bg-white border border-gray-300 px-2.5 py-1 rounded-lg cursor-pointer hover:bg-emerald-50">
+                      <input type="checkbox" value="Electricistas" onchange="applyCrmFilters()" class="crm-giro-check rounded text-[#075E54]">
+                      <span>⚡ Electricistas</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Filtro por Tipo y Búsqueda de Texto -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Clasificación:</label>
+                    <select id="crmClassificationFilter" onchange="applyCrmFilters()" class="w-full px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-semibold focus:outline-none focus:border-[#075E54]">
+                      <option value="">-- Todos los Tipos --</option>
+                      <option value="Usuario Buscador">Usuario Buscador</option>
+                      <option value="Dueño de Negocio / Prospecto">Dueño de Negocio / Prospecto</option>
+                      <option value="Cliente Suscrito (B2B)">Cliente Suscrito (B2B)</option>
+                      <option value="VIP">VIP</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Buscar por Nombre o Teléfono:</label>
+                    <input type="text" id="crmSearchInput" oninput="applyCrmFilters()" placeholder="Ej. Carlos o 556326..." class="w-full px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs focus:outline-none focus:border-[#075E54]">
+                  </div>
+                </div>
+
+                <!-- Selección Masiva -->
+                <div class="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
+                  <label class="flex items-center space-x-2 font-bold text-gray-700 cursor-pointer">
+                    <input type="checkbox" id="crmSelectAllCheckbox" onchange="handleCrmToggleSelectAll(this.checked)" class="w-4 h-4 text-[#075E54] rounded">
+                    <span>Seleccionar todos los contactos filtrados</span>
+                  </label>
+                  <span id="crmSelectedCountBadge" class="font-black text-[#075E54] bg-[#25D366]/20 px-2.5 py-0.5 rounded-full text-[11px]">
+                    0 seleccionados para campaña
+                  </span>
+                </div>
+              </div>
+
+              <!-- Tabla de Contactos del CRM -->
+              <div class="overflow-x-auto max-h-[500px] overflow-y-auto rounded-2xl border border-gray-200">
+                <table class="w-full text-left text-xs text-gray-700">
+                  <thead class="bg-gray-100 sticky top-0 text-[11px] font-black text-gray-600 uppercase border-b border-gray-200 z-10">
+                    <tr>
+                      <th class="px-3 py-2.5 w-10 text-center">☑️</th>
+                      <th class="px-3 py-2.5">Contacto / Teléfono</th>
+                      <th class="px-3 py-2.5">Giros Buscados</th>
+                      <th class="px-3 py-2.5">Zona / Colonia</th>
+                      <th class="px-3 py-2.5">Última Actividad</th>
+                      <th class="px-3 py-2.5 text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmTableBody" class="divide-y divide-gray-200 bg-white">
+                    <!-- Rendered via JS -->
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+
+            <!-- PANEL DERECHO: CONSTRUCTOR MULTIMEDIA DE CAMPAÑAS (5 columnas) -->
+            <div class="lg:col-span-5 bg-gradient-to-b from-gray-50 to-white p-5 rounded-2xl border-2 border-emerald-300 shadow-sm space-y-4">
+              <div class="flex items-center space-x-2 pb-2 border-b border-gray-200">
+                <i class="fa-solid fa-paper-plane text-[#25D366] text-lg"></i>
+                <h4 class="text-sm font-black text-gray-900">Constructor Multimedia de Campaña</h4>
+              </div>
+
+              <!-- Selector de Tipo de Multimedia -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-gray-700 uppercase">Adjunto Multimedia (Opcional):</label>
+                <div class="grid grid-cols-4 gap-1.5 text-[11px] font-bold text-center">
+                  <button type="button" onclick="selectCampaignMediaType('none')" id="mediaTabNone" class="py-1.5 rounded-lg border bg-[#075E54] text-white">Ninguno</button>
+                  <button type="button" onclick="selectCampaignMediaType('image')" id="mediaTabImage" class="py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100">📷 Imagen</button>
+                  <button type="button" onclick="selectCampaignMediaType('video')" id="mediaTabVideo" class="py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100">🎥 Video</button>
+                  <button type="button" onclick="selectCampaignMediaType('audio')" id="mediaTabAudio" class="py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100">🎙️ Audio</button>
+                </div>
+                
+                <div id="campaignMediaUrlContainer" class="hidden pt-1.5">
+                  <input type="text" id="campaignMediaUrlInput" oninput="updateCampaignPreview()" placeholder="Pega URL pública de la imagen/video/audio (ej. https://...)" class="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs focus:outline-none focus:border-[#075E54]">
+                </div>
+              </div>
+
+              <!-- Cuerpo del Mensaje -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="block text-xs font-bold text-gray-700 uppercase">Cuerpo del Mensaje (Texto) *</label>
+                  <button type="button" onclick="insertDynamicVariable('{nombre}')" class="text-[10px] font-black text-[#075E54] bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded transition-all">
+                    + Insertar {nombre}
+                  </button>
+                </div>
+                <textarea id="campaignMessageText" rows="4" oninput="updateCampaignPreview()" placeholder="Escribe tu mensaje... ej: {nombre} Te saludamos de BuscaYa con una súper promo cerca de ti..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-xs focus:outline-none focus:border-[#075E54]"></textarea>
+                <p class="text-[10px] text-gray-400">Si el contacto tiene nombre dirá "¡Hola Carlos!", si no tiene dirá "¡Hola!".</p>
+              </div>
+
+              <!-- Constructor de Botones de Acción (Hasta 3) -->
+              <div class="space-y-2 pt-2 border-t border-gray-200">
+                <span class="block text-xs font-bold text-gray-700 uppercase">Botones Interactivos con Enlaces (Opcional):</span>
+                
+                <div class="space-y-2">
+                  <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="btn1Text" oninput="updateCampaignPreview()" placeholder="Texto botón 1 (ej. Ver Menú)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                    <input type="text" id="btn1Url" oninput="updateCampaignPreview()" placeholder="URL botón 1 (https://...)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="btn2Text" oninput="updateCampaignPreview()" placeholder="Texto botón 2 (ej. Contactar)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                    <input type="text" id="btn2Url" oninput="updateCampaignPreview()" placeholder="URL botón 2 (https://...)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="btn3Text" oninput="updateCampaignPreview()" placeholder="Texto botón 3 (ej. Ver Mapa)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                    <input type="text" id="btn3Url" oninput="updateCampaignPreview()" placeholder="URL botón 3 (https://...)" class="px-2.5 py-1.5 rounded-lg border border-gray-300 text-[11px]">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Vista Previa Estilo WhatsApp -->
+              <div class="space-y-1 pt-2 border-t border-gray-200">
+                <span class="block text-[11px] font-black text-gray-500 uppercase">Vista Previa en WhatsApp:</span>
+                <div class="bg-[#EFEAE2] p-3 rounded-2xl border border-gray-300 max-w-full space-y-2">
+                  <div class="bg-white p-3 rounded-xl shadow-xs text-xs space-y-2 max-w-[95%]">
+                    <div id="previewMediaWrap" class="hidden rounded-lg overflow-hidden max-h-36 bg-black flex items-center justify-center">
+                      <img id="previewMediaImg" src="" alt="Media" class="max-h-36 object-contain hidden">
+                    </div>
+                    <p id="previewMessageBody" class="text-gray-800 leading-snug whitespace-pre-wrap">¡Hola! Te saludamos de BuscaYa con una súper recomendación cerca de ti...</p>
+                    <span class="text-[9px] text-gray-400 float-right">12:00 PM <i class="fa-solid fa-check-double text-blue-500"></i></span>
+                  </div>
+                  <!-- Botones en Preview -->
+                  <div id="previewButtonsWrap" class="space-y-1"></div>
+                </div>
+              </div>
+
+              <!-- Barra de Progreso de Envío -->
+              <div id="broadcastProgressWrap" class="hidden bg-emerald-50 p-3 rounded-xl border border-emerald-300 space-y-1.5 animate-fade-in">
+                <div class="flex items-center justify-between text-xs font-bold text-emerald-900">
+                  <span id="broadcastProgressLabel">Despachando mensajes...</span>
+                  <span id="broadcastProgressPercent">0%</span>
+                </div>
+                <div class="w-full h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+                  <div id="broadcastProgressBar" class="h-full bg-[#25D366] transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p class="text-[10px] text-emerald-800">Intervalo de seguridad activo (1.2s entre mensajes) para evitar bloqueos por límite de velocidad.</p>
+              </div>
+
+              <!-- Botón de Envío Masivo -->
+              <button type="button" onclick="startBroadcastDispatch()" id="btnStartBroadcast" class="w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-[#075E54] font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                <i class="fa-solid fa-rocket text-base"></i>
+                <span id="btnStartBroadcastText">🚀 Enviar Campaña Masiva a Seleccionados (0)</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
 
       <!-- ============================================================== -->
       <!-- CONTENEDOR 3: CAMPAÑAS DE RETARGETING AUTORIZADAS (WHATSAPP)   -->
@@ -3398,10 +3847,13 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipo de Alta *</label>
-            <select id="adminAddSubscriptionType" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white">
-              <option value="demo">Demo Gratuita (7 días)</option>
-              <option value="active">Suscripción Pro (30 días)</option>
-              <option value="pro90">Suscripción Pro (90 días)</option>
+            <select id="adminAddSubscriptionType" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs bg-white font-bold">
+              <option value="demo7">Demo Gratuita (7 días - Estándar)</option>
+              <option value="demo15" selected>Demo Gratuita (15 días)</option>
+              <option value="demo20">Demo Gratuita (20 días)</option>
+              <option value="demo30">Demo Gratuita (30 días / 1 mes)</option>
+              <option value="active">Suscripción Pagada Activa (30 días)</option>
+              <option value="pro90">Suscripción Pagada Pro (90 días)</option>
             </select>
           </div>
         </div>
@@ -3825,8 +4277,265 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
   </div>
 
 
-  <!-- ========================================== -->
-  <!-- TOAST NOTIFICATIONS                        -->
+  <!-- ============================================================== -->
+  <!-- MODAL: EXTENDER O MODIFICAR DÍAS DE PRUEBA (MÓDULO 1)          -->
+  <!-- ============================================================== -->
+  <div id="extendDaysModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden transform transition-all animate-scale-up">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#25D366] text-[#075E54] flex items-center justify-center text-xl shadow-inner font-bold">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black">⚡ Extender / Modificar Días de Prueba</h3>
+            <p class="text-[11px] text-gray-200" id="extendDaysBizName">Ajuste de vigencia y posposición en Mercado Pago</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeExtendDaysModal()" class="text-gray-300 hover:text-white transition-colors cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="extendDaysBizId" value="">
+        
+        <div class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-1">
+          <span class="text-[11px] font-bold text-emerald-900 block">Vigencia Actual:</span>
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-extrabold text-emerald-800" id="extendDaysCurrentInfo">Cargando días...</span>
+            <span class="bg-emerald-200/80 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full" id="extendDaysStatusPill">Demo</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Selección Rápida de Días a Extender:</label>
+          <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+            <button type="button" onclick="applyQuickExtendDays(7)" class="py-2.5 px-3 rounded-xl border border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 text-gray-800 transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
+              <span>+7 Días (1 Sem)</span>
+            </button>
+            <button type="button" onclick="applyQuickExtendDays(15)" class="py-2.5 px-3 rounded-xl border border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 text-gray-800 transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
+              <span>+15 Días</span>
+            </button>
+            <button type="button" onclick="applyQuickExtendDays(20)" class="py-2.5 px-3 rounded-xl border border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 text-gray-800 transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
+              <span>+20 Días</span>
+            </button>
+            <button type="button" onclick="applyQuickExtendDays(30)" class="py-2.5 px-3 rounded-xl border border-emerald-500 bg-emerald-50/70 text-emerald-900 transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
+              <span class="text-amber-500">⭐</span>
+              <span>+30 Días (1 Mes)</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="customExtraDaysInput" class="block text-xs font-bold text-gray-700 uppercase mb-1">O asigna una cantidad personalizada de días:</label>
+          <div class="relative">
+            <input type="number" id="customExtraDaysInput" min="1" max="365" placeholder="Ej. 45" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#25D366]">
+            <span class="absolute right-3.5 top-2.5 text-xs text-gray-400 font-bold">días adicionales</span>
+          </div>
+          <p class="text-[10px] text-gray-500 mt-1">El primer cobro en Mercado Pago se pospondrá automáticamente para coincidir con la nueva fecha de vencimiento.</p>
+        </div>
+
+        <div class="pt-2 flex items-center space-x-2">
+          <button type="button" onclick="closeExtendDaysModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" onclick="submitExtendDaysForm()" class="flex-1 py-2.5 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-1 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Guardar Extensión</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR INFORMACIÓN DE CONTACTO EN CRM                   -->
+  <!-- ============================================================== -->
+  <div id="editContactModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-gray-200 overflow-hidden transform transition-all animate-scale-up">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#25D366] text-[#075E54] flex items-center justify-center text-xl shadow-inner font-bold">
+            <i class="fa-solid fa-user-pen"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black">✏️ Editar Ficha de Contacto (CRM)</h3>
+            <p class="text-[11px] text-gray-200" id="editContactPhoneTitle">+52 ...</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeEditContactModal()" class="text-gray-300 hover:text-white transition-colors cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="editContactPhoneHidden" value="">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre Oficial:</label>
+            <input type="text" id="editContactNameInput" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:outline-none focus:border-[#075E54]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alias / Empresa:</label>
+            <input type="text" id="editContactAliasInput" placeholder="Ej. Carlos M. (Plomería)" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Clasificación:</label>
+          <select id="editContactClassificationSelect" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:outline-none focus:border-[#075E54]">
+            <option value="Usuario Buscador">Usuario Buscador</option>
+            <option value="Dueño de Negocio / Prospecto">Dueño de Negocio / Prospecto</option>
+            <option value="Cliente Suscrito (B2B)">Cliente Suscrito (B2B)</option>
+            <option value="VIP">VIP</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ubicación / Colonia Detectada:</label>
+          <input type="text" id="editContactLocationInput" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Etiquetas Manuales (separadas por coma):</label>
+          <input type="text" id="editContactManualTagsInput" placeholder="Ej. Interesado en Promo, Zona Sur, Frecuente" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Notas Internas Privadas (Solo SuperAdmin):</label>
+          <textarea id="editContactNotesInput" rows="3" placeholder="Escribe notas privadas sobre este usuario..." class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center space-x-2">
+          <button type="button" onclick="closeEditContactModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" onclick="submitEditContactForm()" class="flex-1 py-2.5 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-1 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Guardar Contacto</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- MODAL: AGREGAR CONTACTO MANUAL AL CRM                         -->
+  <!-- ============================================================== -->
+  <div id="addContactModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden transform transition-all animate-scale-up">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#25D366] text-[#075E54] flex items-center justify-center text-xl shadow-inner font-bold">
+            <i class="fa-solid fa-user-plus"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black">+ Agregar Contacto Manual (CRM)</h3>
+            <p class="text-[11px] text-gray-200">Alta de número para campañas o prospección directa</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAddContactModal()" class="text-gray-300 hover:text-white transition-colors cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Teléfono (WhatsApp con Lada) *</label>
+          <input type="text" id="addContactPhoneInput" placeholder="Ej. 5215563266526" required class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono font-bold focus:outline-none focus:border-[#075E54]">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre:</label>
+            <input type="text" id="addContactNameInput" placeholder="Ej. Roberto Gómez" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Clasificación:</label>
+            <select id="addContactClassificationSelect" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:outline-none focus:border-[#075E54]">
+              <option value="Usuario Buscador">Usuario Buscador</option>
+              <option value="Dueño de Negocio / Prospecto" selected>Dueño de Negocio / Prospecto</option>
+              <option value="VIP">VIP</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Zona / Colonia:</label>
+          <input type="text" id="addContactLocationInput" placeholder="Ej. San Ángel, Álvaro Obregón" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Giros de Interés (separados por coma):</label>
+          <input type="text" id="addContactGirosInput" placeholder="Ej. Restaurantes, Cerrajerías" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]">
+        </div>
+
+        <div class="pt-2 flex items-center space-x-2">
+          <button type="button" onclick="closeAddContactModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" onclick="submitAddContactForm()" class="flex-1 py-2.5 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-1 cursor-pointer">
+            <i class="fa-solid fa-user-check"></i>
+            <span>Crear Contacto</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ENVIAR WHATSAPP 1 A 1 (CRM INDEPENDIENTE)                -->
+  <!-- ============================================================== -->
+  <div id="sendSingleWaModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden transform transition-all animate-scale-up">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#25D366] text-[#075E54] flex items-center justify-center text-xl shadow-inner font-bold">
+            <i class="fa-brands fa-whatsapp"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black">💬 Enviar WhatsApp Directo (1 a 1)</h3>
+            <p class="text-[11px] text-gray-200" id="sendSingleWaTargetTitle">+52 ...</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeSendSingleWaModal()" class="text-gray-300 hover:text-white transition-colors cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="sendSingleWaPhoneHidden" value="">
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Mensaje de WhatsApp *</label>
+          <textarea id="sendSingleWaMessageText" rows="4" placeholder="Escribe tu mensaje personalizado aquí..." class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-[#075E54]"></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-gray-700 uppercase">Enlace o Botón Acompañante (Opcional):</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="sendSingleBtnText" placeholder="Texto (ej. Ver Menú)" class="px-2.5 py-2 rounded-xl border border-gray-300 text-xs">
+            <input type="text" id="sendSingleBtnUrl" placeholder="URL (https://...)" class="px-2.5 py-2 rounded-xl border border-gray-300 text-xs">
+          </div>
+        </div>
+
+        <div class="pt-2 flex items-center space-x-2">
+          <button type="button" onclick="closeSendSingleWaModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" onclick="submitSendSingleWaForm()" id="btnSubmitSendSingleWa" class="flex-1 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-[#075E54] font-black text-xs shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
+            <i class="fa-brands fa-whatsapp text-base"></i>
+            <span>Enviar Ahora</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- ========================================== -->
   <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-32 transition-transform duration-300 max-w-sm bg-gray-900 text-white p-4 rounded-2xl shadow-2xl flex items-center space-x-3 border border-gray-700">
     <div id="toastIcon" class="w-8 h-8 rounded-full bg-[#25D366] text-[#075E54] flex items-center justify-center font-bold text-sm">

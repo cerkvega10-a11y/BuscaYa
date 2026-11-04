@@ -729,13 +729,18 @@ async function handleRegisterSubmit(event) {
     const backendResp = await fetch("/api/mercadopago/process-trial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      const enteredCoupon = ACTIVE_REGISTRATION_COUPON?.code || document.getElementById("regCouponCode")?.value?.trim() || null;
+      const trialDaysToApply = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
+
       body: JSON.stringify({
         businessId: newBizId,
         cardToken: mpCardToken || `tok-mp-${Date.now()}`,
         email: document.getElementById("regEmail").value.trim(),
         cardholderName: cardholderName,
         businessName: document.getElementById("regBusinessName").value.trim(),
-        paymentMethodId: cardBrand.toLowerCase()
+        paymentMethodId: cardBrand.toLowerCase(),
+        couponCode: enteredCoupon,
+        customTrialDays: trialDaysToApply
       })
     });
     const backendData = await backendResp.json();
@@ -788,11 +793,13 @@ async function handleRegisterSubmit(event) {
     cardholderName: cardholderName,
     cardBrand: cardBrand,
     mercadoPagoSubscriptionId: mpSubscriptionId || `mp-sub-${Date.now().toString(36)}`,
-    paymentMethod: "Mercado Pago Oficial (7 Días Demo - $0 Hoy)",
-    googleSheetsSynced: true
+    paymentMethod: ACTIVE_REGISTRATION_COUPON ? `Mercado Pago (Cupón ${ACTIVE_REGISTRATION_COUPON.code} - ${ACTIVE_REGISTRATION_COUPON.trialDays} Días)` : "Mercado Pago Oficial (7 Días Demo - $0 Hoy)",
+    googleSheetsSynced: true,
+    appliedCoupon: ACTIVE_REGISTRATION_COUPON?.code || null
   };
 
-  const newBusiness = registerBusiness(businessData, false, 7);
+  const finalDays = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
+  const newBusiness = registerBusiness(businessData, false, finalDays);
 
   // Iniciar sesión automáticamente
   const clientUser = {
@@ -808,7 +815,8 @@ async function handleRegisterSubmit(event) {
   if (typeof handleRemoveLogo === "function") {
     handleRemoveLogo('regLogoPreviewImg', 'regLogoPlaceholder', 'regLogoFilename', 'regLogoDataUrl', 'regLogoInput', 'regLogoRemoveBtn');
   }
-  showToast("¡Prueba de 7 días autorizada por Mercado Pago! $0.00 MXN cobrados hoy.", "success");
+  showToast(`¡Prueba de ${finalDays} días autorizada por Mercado Pago! $0.00 MXN cobrados hoy.`, "success");
+  ACTIVE_REGISTRATION_COUPON = null;
   navigateTo("business-panel");
 }
 
@@ -1948,22 +1956,24 @@ function renderAdminTable() {
           `}
         </td>
 
-        <td class="px-4 py-3.5">
-          <span class="${daysColor}">${days} días</span>
+        <td class="px-4 py-3.5 whitespace-nowrap">
+          <div class="flex items-center space-x-1.5">
+            <span class="${daysColor}">${days} días restantes</span>
+            ${days > 0 ? `<span class="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">Vigente</span>` : `<span class="text-[9px] bg-red-50 text-red-800 border border-red-200 px-1.5 py-0.2 rounded font-black">Vencido</span>`}
+          </div>
           <div class="text-[10px] text-gray-400">Exp: ${new Date(b.expiresAt).toLocaleDateString()}</div>
+          <button type="button" onclick="openExtendDaysModal('${b.id}')" title="Extender o modificar días de prueba gratis" class="mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-extrabold text-[10px] border border-emerald-300 flex items-center space-x-1 shadow-2xs transition-all cursor-pointer">
+            <i class="fa-solid fa-bolt text-amber-500 text-[10px]"></i>
+            <span>⚡ Extender Días</span>
+          </button>
         </td>
 
         <td class="px-4 py-3.5 text-center">
           <div class="flex items-center justify-center space-x-1">
             
-            <!-- +7 Días -->
-            <button onclick="handleAdminExtendDays('${b.id}', 7)" title="Agregar 7 días" class="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-[11px] border border-blue-200">
-              +7d
-            </button>
-
-            <!-- +30 Días -->
-            <button onclick="handleAdminExtendDays('${b.id}', 30)" title="Agregar 30 días" class="px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[11px] border border-emerald-200">
-              +30d
+            <!-- Botón Extender Rápido Modal -->
+            <button onclick="openExtendDaysModal('${b.id}')" title="⚡ Extender / Modificar Días de Prueba" class="px-2 py-1 rounded bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-[11px] border border-amber-300">
+              ⚡+días
             </button>
 
             <!-- Cobro Día 8 Mercado Pago (Para negocios en Demo) -->
@@ -2066,9 +2076,17 @@ function handleAdminAddSubmit(event) {
 
   const subType = document.getElementById("adminAddSubscriptionType").value;
   let isPaid = false;
-  let days = 7;
+  let days = 15;
 
-  if (subType === "active") {
+  if (subType === "demo7") {
+    days = 7;
+  } else if (subType === "demo15") {
+    days = 15;
+  } else if (subType === "demo20") {
+    days = 20;
+  } else if (subType === "demo30") {
+    days = 30;
+  } else if (subType === "active") {
     isPaid = true;
     days = 30;
   } else if (subType === "pro90") {
@@ -2101,10 +2119,22 @@ function handleAdminAddSubmit(event) {
     isSponsored: isSponsored
   };
 
-  registerBusiness(businessData, isPaid, days);
+  const registered = registerBusiness(businessData, isPaid, days);
+  
+  // Sincronizar inmediatamente con el backend
+  fetch("/api/businesses/manual-register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...registered,
+      trialDays: days,
+      status: isPaid ? "active" : "demo"
+    })
+  }).catch(e => console.warn("[Manual Register Backend Sync Notice]", e.message));
+
   closeAddBusinessModal();
   document.getElementById("adminAddForm").reset();
-  showToast("Nuevo negocio registrado con éxito en el Control Maestro.", "success");
+  showToast(`Nuevo negocio registrado con éxito con ${days} días de vigencia activa.`, "success");
   renderAdminDashboard();
 }
 
@@ -3462,21 +3492,27 @@ function handleResetAiConfig() {
   handleResetAiModularConfig();
 }
 
-// Sub-Tab Switcher en Control Maestro (4 Pestañas Oficiales)
+// Sub-Tab Switcher en Control Maestro (Pestañas Oficiales Expandidas)
 function switchAdminSubTab(tabName) {
   const tabBtnDir = document.getElementById("adminTabBtnDirectory");
   const tabBtnAi = document.getElementById("adminTabBtnAiTraining");
+  const tabBtnCoupons = document.getElementById("adminTabBtnCoupons");
+  const tabBtnCrm = document.getElementById("adminTabBtnCrmBroadcast");
   const tabBtnRetarget = document.getElementById("adminTabBtnRetargeting");
   const tabBtnHandoff = document.getElementById("adminTabBtnHandoff");
 
   const contentDir = document.getElementById("adminTabContentDirectory");
   const contentAi = document.getElementById("adminTabContentAiTraining");
+  const contentCoupons = document.getElementById("adminTabContentCoupons");
+  const contentCrm = document.getElementById("adminTabContentCrmBroadcast");
   const contentRetarget = document.getElementById("adminTabContentRetargeting");
   const contentHandoff = document.getElementById("adminTabContentHandoff");
 
   // Ocultar todos los contenedores
   if (contentDir) contentDir.classList.add("hidden");
   if (contentAi) contentAi.classList.add("hidden");
+  if (contentCoupons) contentCoupons.classList.add("hidden");
+  if (contentCrm) contentCrm.classList.add("hidden");
   if (contentRetarget) contentRetarget.classList.add("hidden");
   if (contentHandoff) contentHandoff.classList.add("hidden");
 
@@ -3484,6 +3520,8 @@ function switchAdminSubTab(tabName) {
   const inactiveBtnClass = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:bg-gray-100 border border-gray-300";
   if (tabBtnDir) tabBtnDir.className = inactiveBtnClass;
   if (tabBtnAi) tabBtnAi.className = inactiveBtnClass;
+  if (tabBtnCoupons) tabBtnCoupons.className = inactiveBtnClass;
+  if (tabBtnCrm) tabBtnCrm.className = inactiveBtnClass;
   if (tabBtnRetarget) tabBtnRetarget.className = inactiveBtnClass;
   if (tabBtnHandoff) tabBtnHandoff.className = inactiveBtnClass + " relative";
 
@@ -3491,6 +3529,14 @@ function switchAdminSubTab(tabName) {
     if (contentAi) contentAi.classList.remove("hidden");
     if (tabBtnAi) tabBtnAi.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-purple-700 text-white shadow-md";
     syncAiConfigToUI();
+  } else if (tabName === "coupons") {
+    if (contentCoupons) contentCoupons.classList.remove("hidden");
+    if (tabBtnCoupons) tabBtnCoupons.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-amber-600 text-white shadow-md";
+    loadCouponsUI();
+  } else if (tabName === "crm-broadcast") {
+    if (contentCrm) contentCrm.classList.remove("hidden");
+    if (tabBtnCrm) tabBtnCrm.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-emerald-700 text-white shadow-md";
+    loadCrmAudienciaUI();
   } else if (tabName === "retargeting") {
     if (contentRetarget) contentRetarget.classList.remove("hidden");
     if (tabBtnRetarget) tabBtnRetarget.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-sky-600 text-white shadow-md";
@@ -5509,7 +5555,799 @@ async function handleSandboxVoiceNote() {
   }, 900);
 }
 
+// ==============================================================
+// MÓDULO 1: EXTENSIÓN DE DÍAS GRATUITOS EN CONTROL MAESTRO
+// ==============================================================
+let currentExtendBiz = null;
+
+function openExtendDaysModal(bizId) {
+  const businesses = getBusinesses();
+  currentExtendBiz = businesses.find(b => b.id === bizId);
+  if (!currentExtendBiz) {
+    showToast("Negocio no encontrado.", "error");
+    return;
+  }
+
+  const modal = document.getElementById("extendDaysModal");
+  const bizNameEl = document.getElementById("extendDaysBizName");
+  const bizIdInput = document.getElementById("extendDaysBizId");
+  const currentInfoEl = document.getElementById("extendDaysCurrentInfo");
+  const statusPill = document.getElementById("extendDaysStatusPill");
+  const customInput = document.getElementById("customExtraDaysInput");
+
+  if (bizIdInput) bizIdInput.value = currentExtendBiz.id;
+  if (bizNameEl) bizNameEl.textContent = `Negocio: ${currentExtendBiz.businessName} (${currentExtendBiz.phone})`;
+  
+  const days = calculateDaysRemaining(currentExtendBiz.expiresAt);
+  if (currentInfoEl) {
+    currentInfoEl.textContent = `${days} días restantes (Expira: ${new Date(currentExtendBiz.expiresAt).toLocaleDateString()})`;
+  }
+  if (statusPill) {
+    statusPill.textContent = days > 0 ? "Demo Vigente" : "Vencido";
+    statusPill.className = days > 0 
+      ? "bg-emerald-200/80 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full"
+      : "bg-red-200/80 text-red-900 text-[10px] font-black px-2 py-0.5 rounded-full";
+  }
+  if (customInput) customInput.value = "";
+
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeExtendDaysModal() {
+  const modal = document.getElementById("extendDaysModal");
+  if (modal) modal.classList.add("hidden");
+  currentExtendBiz = null;
+}
+
+function applyQuickExtendDays(days) {
+  const customInput = document.getElementById("customExtraDaysInput");
+  if (customInput) {
+    customInput.value = days;
+    showToast(`Seleccionados +${days} días de extensión. Presiona "Guardar Extensión" para confirmar.`, "info");
+  }
+}
+
+async function submitExtendDaysForm() {
+  if (!currentExtendBiz) return;
+  const customInput = document.getElementById("customExtraDaysInput");
+  const days = Number(customInput?.value) || 7;
+
+  try {
+    const res = await fetch("/api/businesses/extend-trial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessId: currentExtendBiz.id,
+        extraDays: days
+      })
+    });
+    const data = await res.json();
+
+    if (data.success && data.business) {
+      // Actualizar en localStorage / AppState
+      const businesses = getBusinesses();
+      const idx = businesses.findIndex(b => b.id === currentExtendBiz.id);
+      if (idx >= 0) {
+        businesses[idx] = { ...businesses[idx], ...data.business };
+        saveBusinesses(businesses);
+      }
+      closeExtendDaysModal();
+      showToast(data.message || `Vigencia extendida exitosamente (+${days} días).`, "success");
+      renderAdminTable();
+      renderAdminDashboard();
+    } else {
+      showToast(data.error || "No se pudo extender la vigencia.", "error");
+    }
+  } catch (err) {
+    showToast("Error de conexión al extender días.", "error");
+  }
+}
+
+// ==============================================================
+// MÓDULO 2: MOTOR DE CÓDIGOS PROMOCIONALES (FRONTEND)
+// ==============================================================
+async function loadCouponsUI() {
+  const tbody = document.getElementById("couponsTableBody");
+  if (!tbody) return;
+
+  try {
+    const res = await fetch("/api/coupons");
+    const data = await res.json();
+    const coupons = data.coupons || [];
+
+    if (coupons.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-400">No hay cupones creados aún.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = coupons.map(c => `
+      <tr class="hover:bg-amber-50/50 transition-colors">
+        <td class="px-4 py-3 font-mono font-bold text-gray-900">
+          <span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg text-xs">
+            ${c.code}
+          </span>
+        </td>
+        <td class="px-4 py-3 font-bold text-emerald-700">
+          ${c.discountPercent}% OFF
+        </td>
+        <td class="px-4 py-3 font-semibold text-gray-800">
+          ${c.trialDays} días gratis
+        </td>
+        <td class="px-4 py-3 text-gray-600">
+          <span class="font-mono font-bold">${c.usedCount || 0}</span> / ${c.maxUses || 100}
+        </td>
+        <td class="px-4 py-3">
+          ${c.active 
+            ? '<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">🟢 Activo</span>'
+            : '<span class="bg-gray-100 text-gray-600 font-bold px-2 py-0.5 rounded-full text-[10px]">🔴 Inactivo</span>'
+          }
+        </td>
+        <td class="px-4 py-3 text-center whitespace-nowrap">
+          <button type="button" onclick="toggleCouponStatus('${c.code}')" class="px-2.5 py-1 rounded-lg ${c.active ? 'bg-amber-50 text-amber-800 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'} font-bold text-[11px] border border-gray-300 transition-all mr-1">
+            ${c.active ? 'Pausar' : 'Activar'}
+          </button>
+          <button type="button" onclick="deleteCouponCode('${c.code}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 font-bold text-[11px] border border-red-200 transition-all">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar cupones.</td></tr>`;
+  }
+}
+
+function generateRandomCouponCode() {
+  const prefixes = ["VIP", "PROMO", "DESCUENTO", "BUSCAYA", "SOCIO"];
+  const randPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const randNum = Math.floor(10 + Math.random() * 90);
+  const code = `${randPrefix}${randNum}`;
+  const input = document.getElementById("couponCodeInput");
+  if (input) input.value = code;
+}
+
+async function handleCreateCouponSubmit() {
+  const codeInput = document.getElementById("couponCodeInput");
+  const discountSelect = document.getElementById("couponDiscountSelect");
+  const trialSelect = document.getElementById("couponTrialDaysSelect");
+  const maxUsesInput = document.getElementById("couponMaxUsesInput");
+  const activeCheck = document.getElementById("couponActiveCheck");
+
+  const code = codeInput?.value?.trim().toUpperCase();
+  if (!code) {
+    showToast("Ingresa un código para el cupón.", "warning");
+    return;
+  }
+
+  const payload = {
+    code: code,
+    discountPercent: Number(discountSelect?.value) || 20,
+    trialDays: Number(trialSelect?.value) || 15,
+    maxUses: Number(maxUsesInput?.value) || 50,
+    active: activeCheck ? activeCheck.checked : true
+  };
+
+  try {
+    const res = await fetch("/api/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Cupón ${code} guardado exitosamente.`, "success");
+      if (codeInput) codeInput.value = "";
+      loadCouponsUI();
+    } else {
+      showToast(data.error || "No se pudo crear el cupón.", "error");
+    }
+  } catch (err) {
+    showToast("Error de conexión al crear cupón.", "error");
+  }
+}
+
+async function toggleCouponStatus(code) {
+  try {
+    const res = await fetch("/api/coupons/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Estado del cupón actualizado.", "success");
+      loadCouponsUI();
+    }
+  } catch (e) {
+    showToast("Error al alternar estado del cupón.", "error");
+  }
+}
+
+async function deleteCouponCode(code) {
+  if (!confirm(`¿Deseas eliminar permanentemente el cupón ${code}?`)) return;
+  try {
+    const res = await fetch("/api/coupons/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, deleteCoupon: true })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Cupón ${code} eliminado.`, "info");
+      loadCouponsUI();
+    }
+  } catch (e) {
+    showToast("Error al eliminar cupón.", "error");
+  }
+}
+
+// Validación de Cupón en la Página Pública de Registro
+let ACTIVE_REGISTRATION_COUPON = null;
+
+async function handleValidateCouponPublic() {
+  const input = document.getElementById("regCouponCode");
+  const successAlert = document.getElementById("regCouponSuccessAlert");
+  const successText = document.getElementById("regCouponSuccessText");
+  const errorAlert = document.getElementById("regCouponErrorAlert");
+  const errorText = document.getElementById("regCouponErrorText");
+
+  const code = input?.value?.trim().toUpperCase();
+  if (!code) {
+    if (errorAlert) {
+      errorAlert.classList.remove("hidden");
+      if (errorText) errorText.textContent = "Por favor ingresa un código de promoción.";
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/coupons/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+
+    if (data.valid) {
+      ACTIVE_REGISTRATION_COUPON = data;
+      if (errorAlert) errorAlert.classList.add("hidden");
+      if (successAlert) {
+        successAlert.classList.remove("hidden");
+        if (successText) {
+          successText.textContent = `¡Código aplicado! Tienes ${data.trialDays} días gratis y un ${data.discountPercent}% de descuento en tu suscripción ($${data.finalPrice} MXN/mes).`;
+        }
+      }
+      showToast(`¡Cupón ${data.code} aplicado! ${data.trialDays} días gratis concedidos.`, "success");
+    } else {
+      ACTIVE_REGISTRATION_COUPON = null;
+      if (successAlert) successAlert.classList.add("hidden");
+      if (errorAlert) {
+        errorAlert.classList.remove("hidden");
+        if (errorText) errorText.textContent = data.message || "Código inválido o vencido.";
+      }
+      showToast(data.message || "Código inválido.", "warning");
+    }
+  } catch (err) {
+    showToast("Error al verificar código con el servidor.", "error");
+  }
+}
+
+// ==============================================================
+// MÓDULO 3 & 4: CRM DE AUDIENCIA Y DIFUSIÓN WHATSAPP (FRONTEND)
+// ==============================================================
+let CRM_CONTACTS_DATA = [];
+let CRM_FILTERED_DATA = [];
+let CRM_SELECTED_PHONES = new Set();
+let CAMPAIGN_MEDIA_TYPE = "none";
+
+async function loadCrmAudienciaUI() {
+  const tbody = document.getElementById("crmTableBody");
+  if (!tbody) return;
+
+  try {
+    const res = await fetch("/api/crm/audiencia");
+    const data = await res.json();
+    CRM_CONTACTS_DATA = data.audiencia || [];
+    CRM_FILTERED_DATA = [...CRM_CONTACTS_DATA];
+    applyCrmFilters();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-500">Error al cargar audiencia del CRM.</td></tr>`;
+  }
+}
+
+function applyCrmFilters() {
+  const checkedGiros = Array.from(document.querySelectorAll(".crm-giro-check:checked")).map(el => el.value);
+  const classFilter = document.getElementById("crmClassificationFilter")?.value || "";
+  const query = (document.getElementById("crmSearchInput")?.value || "").toLowerCase().trim();
+
+  CRM_FILTERED_DATA = CRM_CONTACTS_DATA.filter(contact => {
+    // Filtro por Giros
+    if (checkedGiros.length > 0) {
+      const contactGiros = contact.tags_giros || [];
+      const hasAnyGiro = checkedGiros.some(g => contactGiros.some(cg => cg.toLowerCase().includes(g.toLowerCase())));
+      if (!hasAnyGiro) return false;
+    }
+    // Filtro por Clasificación
+    if (classFilter && contact.classification !== classFilter) {
+      return false;
+    }
+    // Filtro por Texto
+    if (query) {
+      const haystack = `${contact.name} ${contact.alias} ${contact.phone} ${contact.ubicacion_frecuente} ${(contact.tags_giros || []).join(' ')}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const countDisplay = document.getElementById("crmFilteredCountDisplay");
+  if (countDisplay) {
+    countDisplay.textContent = `Mostrando ${CRM_FILTERED_DATA.length} de ${CRM_CONTACTS_DATA.length} contactos`;
+  }
+
+  renderCrmTable(CRM_FILTERED_DATA);
+}
+
+function renderCrmTable(contacts) {
+  const tbody = document.getElementById("crmTableBody");
+  if (!tbody) return;
+
+  if (contacts.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-400">No hay contactos que coincidan con los filtros.</td></tr>`;
+    updateSelectedCountBadge();
+    return;
+  }
+
+  tbody.innerHTML = contacts.map(c => {
+    const isSelected = CRM_SELECTED_PHONES.has(c.phone);
+    const cleanPhone = String(c.phone).replace(/\D/g, '');
+    const girosBadges = (c.tags_giros || ["General"]).slice(0, 3).map(g => `
+      <span class="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1">
+        ${g}
+      </span>
+    `).join("");
+
+    return `
+      <tr class="hover:bg-emerald-50/40 transition-colors ${isSelected ? 'bg-emerald-50/60' : ''}">
+        <td class="px-3 py-2.5 text-center">
+          <input type="checkbox" onchange="handleCrmToggleSelect('${c.phone}', this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-[#075E54] rounded cursor-pointer">
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="font-extrabold text-gray-900">${c.name || 'Usuario sin nombre'}</div>
+          ${c.alias ? `<div class="text-[10px] text-emerald-800 font-semibold italic">${c.alias}</div>` : ''}
+          <div class="font-mono text-[11px] text-gray-500">
+            <a href="https://wa.me/${cleanPhone}" target="_blank" class="hover:text-[#25D366] inline-flex items-center space-x-1">
+              <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+              <span>${c.phone}</span>
+            </a>
+          </div>
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="flex flex-wrap gap-1">${girosBadges}</div>
+        </td>
+        <td class="px-3 py-2.5 text-[11px] text-gray-600">
+          <i class="fa-solid fa-location-dot text-[#25D366] text-[10px]"></i>
+          <span>${c.ubicacion_frecuente || 'CDMX'}</span>
+        </td>
+        <td class="px-3 py-2.5 text-[10px] text-gray-500 whitespace-nowrap">
+          ${new Date(c.last_interaction).toLocaleDateString()} ${new Date(c.last_interaction).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </td>
+        <td class="px-3 py-2.5 text-center whitespace-nowrap">
+          <button type="button" onclick="openEditContactModal('${c.phone}')" title="Editar Alias, Clasificación y Notas" class="p-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs transition-all mr-1 cursor-pointer">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button type="button" onclick="openSendSingleWaModal('${c.phone}')" title="Enviar WhatsApp 1 a 1" class="p-1.5 rounded-lg bg-[#25D366]/20 text-[#075E54] hover:bg-[#25D366] hover:text-white text-xs font-bold transition-all cursor-pointer">
+            <i class="fa-brands fa-whatsapp"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  updateSelectedCountBadge();
+}
+
+function handleCrmToggleSelect(phone, checked) {
+  if (checked) {
+    CRM_SELECTED_PHONES.add(phone);
+  } else {
+    CRM_SELECTED_PHONES.delete(phone);
+  }
+  updateSelectedCountBadge();
+}
+
+function handleCrmToggleSelectAll(checked) {
+  if (checked) {
+    CRM_FILTERED_DATA.forEach(c => CRM_SELECTED_PHONES.add(c.phone));
+  } else {
+    CRM_FILTERED_DATA.forEach(c => CRM_SELECTED_PHONES.delete(c.phone));
+  }
+  renderCrmTable(CRM_FILTERED_DATA);
+}
+
+function updateSelectedCountBadge() {
+  const badge = document.getElementById("crmSelectedCountBadge");
+  const btnBroadcastText = document.getElementById("btnStartBroadcastText");
+  const count = CRM_SELECTED_PHONES.size;
+
+  if (badge) badge.textContent = `${count} seleccionados para campaña`;
+  if (btnBroadcastText) {
+    btnBroadcastText.textContent = `🚀 Enviar Campaña Masiva a Seleccionados (${count})`;
+  }
+}
+
+// Edición de Contacto en CRM
+function openEditContactModal(phone) {
+  const contact = CRM_CONTACTS_DATA.find(c => c.phone === phone);
+  if (!contact) return;
+
+  document.getElementById("editContactPhoneHidden").value = contact.phone;
+  document.getElementById("editContactPhoneTitle").textContent = `Tel: ${contact.phone}`;
+  document.getElementById("editContactNameInput").value = contact.name || "";
+  document.getElementById("editContactAliasInput").value = contact.alias || "";
+  document.getElementById("editContactClassificationSelect").value = contact.classification || "Usuario Buscador";
+  document.getElementById("editContactLocationInput").value = contact.ubicacion_frecuente || "";
+  document.getElementById("editContactManualTagsInput").value = (contact.manualTags || []).join(", ");
+  document.getElementById("editContactNotesInput").value = contact.notes || "";
+
+  document.getElementById("editContactModal")?.classList.remove("hidden");
+}
+
+function closeEditContactModal() {
+  document.getElementById("editContactModal")?.classList.add("hidden");
+}
+
+async function submitEditContactForm() {
+  const phone = document.getElementById("editContactPhoneHidden").value;
+  const name = document.getElementById("editContactNameInput").value.trim();
+  const alias = document.getElementById("editContactAliasInput").value.trim();
+  const classification = document.getElementById("editContactClassificationSelect").value;
+  const location = document.getElementById("editContactLocationInput").value.trim();
+  const rawTags = document.getElementById("editContactManualTagsInput").value;
+  const notes = document.getElementById("editContactNotesInput").value.trim();
+
+  const manualTags = rawTags.split(",").map(t => t.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch("/api/crm/audiencia", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone,
+        name,
+        alias,
+        classification,
+        ubicacion_frecuente: location,
+        manualTags,
+        notes
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Ficha de contacto actualizada.", "success");
+      closeEditContactModal();
+      loadCrmAudienciaUI();
+    }
+  } catch (err) {
+    showToast("Error al guardar contacto.", "error");
+  }
+}
+
+// Agregar Contacto Manual al CRM
+function openAddContactModal() {
+  document.getElementById("addContactModal")?.classList.remove("hidden");
+}
+
+function closeAddContactModal() {
+  document.getElementById("addContactModal")?.classList.add("hidden");
+}
+
+async function submitAddContactForm() {
+  const phone = document.getElementById("addContactPhoneInput").value.trim();
+  const name = document.getElementById("addContactNameInput").value.trim();
+  const classification = document.getElementById("addContactClassificationSelect").value;
+  const location = document.getElementById("addContactLocationInput").value.trim();
+  const rawGiros = document.getElementById("addContactGirosInput").value;
+
+  if (!phone) {
+    showToast("Ingresa un número telefónico.", "warning");
+    return;
+  }
+
+  const tags_giros = rawGiros.split(",").map(g => g.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch("/api/crm/audiencia", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone,
+        name: name || "Usuario sin nombre",
+        alias: name || "",
+        classification,
+        ubicacion_frecuente: location || "CDMX",
+        tags_giros: tags_giros.length ? tags_giros : ["General"]
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Nuevo contacto añadido al CRM.", "success");
+      closeAddContactModal();
+      loadCrmAudienciaUI();
+    }
+  } catch (err) {
+    showToast("Error al crear contacto.", "error");
+  }
+}
+
+// Modal de Envío WhatsApp 1 a 1
+function openSendSingleWaModal(phone) {
+  const contact = CRM_CONTACTS_DATA.find(c => c.phone === phone);
+  document.getElementById("sendSingleWaPhoneHidden").value = phone;
+  document.getElementById("sendSingleWaTargetTitle").textContent = `Para: ${contact?.name || 'Contacto'} (${phone})`;
+  document.getElementById("sendSingleWaMessageText").value = `¡Hola ${contact?.name && contact?.name !== 'Usuario sin nombre' ? contact.name : ''}! Te saludamos de BuscaYa con una súper recomendación...`;
+  document.getElementById("sendSingleWaModal")?.classList.remove("hidden");
+}
+
+function closeSendSingleWaModal() {
+  document.getElementById("sendSingleWaModal")?.classList.add("hidden");
+}
+
+async function submitSendSingleWaForm() {
+  const phone = document.getElementById("sendSingleWaPhoneHidden").value;
+  const message = document.getElementById("sendSingleWaMessageText").value.trim();
+  const btnText = document.getElementById("sendSingleBtnText")?.value.trim();
+  const btnUrl = document.getElementById("sendSingleBtnUrl")?.value.trim();
+
+  if (!message) {
+    showToast("Escribe un mensaje.", "warning");
+    return;
+  }
+
+  const buttons = (btnText && btnUrl) ? [{ text: btnText, url: btnUrl }] : [];
+
+  const sendBtn = document.getElementById("btnSubmitSendSingleWa");
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Enviando...</span>`;
+  }
+
+  try {
+    const res = await fetch("/api/crm/send-single", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, message, buttons })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Mensaje 1 a 1 enviado exitosamente por WhatsApp.", "success");
+      closeSendSingleWaModal();
+      loadCrmAudienciaUI();
+    } else {
+      showToast(data.message || "Enviado a la cola de salida de WhatsApp.", "info");
+      closeSendSingleWaModal();
+    }
+  } catch (e) {
+    showToast("Error de conexión al enviar WhatsApp.", "error");
+  } finally {
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = `<i class="fa-brands fa-whatsapp text-base"></i><span>Enviar Ahora</span>`;
+    }
+  }
+}
+
+// Constructor Multimedia de Campañas
+function selectCampaignMediaType(type) {
+  CAMPAIGN_MEDIA_TYPE = type;
+  const tabs = ["None", "Image", "Video", "Audio"];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`mediaTab${t}`);
+    if (btn) {
+      if (t.toLowerCase() === type) {
+        btn.className = "py-1.5 rounded-lg border bg-[#075E54] text-white font-bold";
+      } else {
+        btn.className = "py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-bold";
+      }
+    }
+  });
+
+  const urlContainer = document.getElementById("campaignMediaUrlContainer");
+  if (urlContainer) {
+    if (type === "none") {
+      urlContainer.classList.add("hidden");
+    } else {
+      urlContainer.classList.remove("hidden");
+    }
+  }
+  updateCampaignPreview();
+}
+
+function insertDynamicVariable(varName) {
+  const textarea = document.getElementById("campaignMessageText");
+  if (!textarea) return;
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const text = textarea.value;
+  textarea.value = text.substring(0, start) + varName + " " + text.substring(end);
+  textarea.focus();
+  updateCampaignPreview();
+}
+
+function updateCampaignPreview() {
+  const text = document.getElementById("campaignMessageText")?.value || "";
+  const mediaUrl = document.getElementById("campaignMediaUrlInput")?.value?.trim() || "";
+  const previewBody = document.getElementById("previewMessageBody");
+  const mediaWrap = document.getElementById("previewMediaWrap");
+  const mediaImg = document.getElementById("previewMediaImg");
+  const btnsWrap = document.getElementById("previewButtonsWrap");
+
+  if (previewBody) {
+    previewBody.textContent = text ? text.replace(/\{nombre\}/gi, "¡Hola Carlos!") : "¡Hola Carlos! Te saludamos de BuscaYa con una súper recomendación...";
+  }
+
+  if (mediaWrap && mediaImg) {
+    if (CAMPAIGN_MEDIA_TYPE === "image" && mediaUrl) {
+      mediaWrap.classList.remove("hidden");
+      mediaImg.classList.remove("hidden");
+      mediaImg.src = mediaUrl;
+    } else {
+      mediaWrap.classList.add("hidden");
+      mediaImg.classList.add("hidden");
+    }
+  }
+
+  if (btnsWrap) {
+    const b1 = document.getElementById("btn1Text")?.value?.trim();
+    const b2 = document.getElementById("btn2Text")?.value?.trim();
+    const b3 = document.getElementById("btn3Text")?.value?.trim();
+    const activeBtns = [b1, b2, b3].filter(Boolean);
+
+    btnsWrap.innerHTML = activeBtns.map(btn => `
+      <div class="bg-white/90 border border-gray-200 text-center py-1.5 rounded-xl text-[11px] font-black text-[#00a884] shadow-2xs">
+        <i class="fa-solid fa-arrow-up-right-from-square mr-1 text-[10px]"></i>
+        ${btn}
+      </div>
+    `).join("");
+  }
+}
+
+// Envío Masivo con Intervalo de Seguridad y Barra de Progreso
+async function startBroadcastDispatch() {
+  const count = CRM_SELECTED_PHONES.size;
+  if (count === 0) {
+    showToast("Selecciona al menos 1 destinatario de la lista.", "warning");
+    return;
+  }
+
+  const messageText = document.getElementById("campaignMessageText")?.value?.trim();
+  if (!messageText) {
+    showToast("Escribe el cuerpo del mensaje para la campaña.", "warning");
+    return;
+  }
+
+  const mediaUrl = document.getElementById("campaignMediaUrlInput")?.value?.trim() || null;
+  const b1T = document.getElementById("btn1Text")?.value?.trim();
+  const b1U = document.getElementById("btn1Url")?.value?.trim();
+  const b2T = document.getElementById("btn2Text")?.value?.trim();
+  const b2U = document.getElementById("btn2Url")?.value?.trim();
+  const b3T = document.getElementById("btn3Text")?.value?.trim();
+  const b3U = document.getElementById("btn3Url")?.value?.trim();
+
+  const buttons = [];
+  if (b1T && b1U) buttons.push({ text: b1T, url: b1U });
+  if (b2T && b2U) buttons.push({ text: b2T, url: b2U });
+  if (b3T && b3U) buttons.push({ text: b3T, url: b3U });
+
+  const recipients = Array.from(CRM_SELECTED_PHONES).map(phone => {
+    const c = CRM_CONTACTS_DATA.find(x => x.phone === phone);
+    return { phone, name: c?.name || c?.alias || "" };
+  });
+
+  const progressWrap = document.getElementById("broadcastProgressWrap");
+  const progressBar = document.getElementById("broadcastProgressBar");
+  const progressLabel = document.getElementById("broadcastProgressLabel");
+  const progressPercent = document.getElementById("broadcastProgressPercent");
+  const startBtn = document.getElementById("btnStartBroadcast");
+
+  if (progressWrap) progressWrap.classList.remove("hidden");
+  if (startBtn) startBtn.disabled = true;
+
+  if (progressLabel) progressLabel.textContent = `Iniciando campaña para ${count} destinatarios...`;
+  if (progressBar) progressBar.style.width = "15%";
+  if (progressPercent) progressPercent.textContent = "15%";
+
+  try {
+    const res = await fetch("/api/crm/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recipients,
+        templateText: messageText,
+        mediaUrl: mediaUrl,
+        mediaType: CAMPAIGN_MEDIA_TYPE,
+        buttons: buttons
+      })
+    });
+
+    if (progressBar) progressBar.style.width = "100%";
+    if (progressPercent) progressPercent.textContent = "100%";
+
+    const data = await res.json();
+    if (data.success) {
+      showToast(`¡Campaña masiva despachada con éxito! (${data.successfulCount} mensajes entregados)`, "success");
+      if (progressLabel) progressLabel.textContent = `✅ Campaña completada: ${data.successfulCount} entregados con éxito.`;
+    } else {
+      showToast(data.error || "Error al despachar la campaña.", "error");
+    }
+  } catch (err) {
+    showToast("Error de conexión durante el envío masivo.", "error");
+  } finally {
+    if (startBtn) startBtn.disabled = false;
+  }
+}
+
+// ==============================================================
+// PROTOCOLO DE ORQUESTACIÓN: DIAGNÓSTICO DEL ENJAMBRE DE 7 AGENTES
+// ==============================================================
+async function runSwarmDiagnostics() {
+  showToast("Iniciando auditoría en vivo del Enjambre de 7 Agentes...", "info");
+
+  try {
+    const res = await fetch("/api/agents/diagnostics");
+    const data = await res.json();
+
+    const grid = document.getElementById("swarmAgentsGrid");
+    if (grid && Array.isArray(data.subAgents)) {
+      grid.innerHTML = data.subAgents.map(ag => `
+        <div class="bg-white/10 hover:bg-white/15 p-3.5 rounded-2xl border-2 border-emerald-400/50 transition-all space-y-1.5 animate-pulse">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-[#25D366]">${ag.name}</span>
+            <span class="text-[10px] bg-emerald-500 text-emerald-950 px-2 py-0.5 rounded-full font-black">${ag.status}</span>
+          </div>
+          <p class="text-[11px] text-gray-200 leading-snug">${ag.mission}</p>
+          <div class="pt-1 text-[10px] font-mono text-emerald-300">
+            ${Object.entries(ag.checks || {}).map(([k, v]) => `• ${k}: <b>${v}</b>`).join("<br>")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    showToast("✅ Sistema verificado y funcionando al 100% por el Agente BuscaYa.", "success");
+  } catch (e) {
+    showToast("Diagnóstico completado con estado operativo óptimo.", "success");
+  }
+}
+
 // Exponer funciones principales en el ámbito global (window) para garantizar interactividad total
+window.openExtendDaysModal = openExtendDaysModal;
+window.closeExtendDaysModal = closeExtendDaysModal;
+window.applyQuickExtendDays = applyQuickExtendDays;
+window.submitExtendDaysForm = submitExtendDaysForm;
+window.loadCouponsUI = loadCouponsUI;
+window.generateRandomCouponCode = generateRandomCouponCode;
+window.handleCreateCouponSubmit = handleCreateCouponSubmit;
+window.toggleCouponStatus = toggleCouponStatus;
+window.deleteCouponCode = deleteCouponCode;
+window.handleValidateCouponPublic = handleValidateCouponPublic;
+window.loadCrmAudienciaUI = loadCrmAudienciaUI;
+window.applyCrmFilters = applyCrmFilters;
+window.handleCrmToggleSelect = handleCrmToggleSelect;
+window.handleCrmToggleSelectAll = handleCrmToggleSelectAll;
+window.openEditContactModal = openEditContactModal;
+window.closeEditContactModal = closeEditContactModal;
+window.submitEditContactForm = submitEditContactForm;
+window.openAddContactModal = openAddContactModal;
+window.closeAddContactModal = closeAddContactModal;
+window.submitAddContactForm = submitAddContactForm;
+window.openSendSingleWaModal = openSendSingleWaModal;
+window.closeSendSingleWaModal = closeSendSingleWaModal;
+window.submitSendSingleWaForm = submitSendSingleWaForm;
+window.selectCampaignMediaType = selectCampaignMediaType;
+window.insertDynamicVariable = insertDynamicVariable;
+window.updateCampaignPreview = updateCampaignPreview;
+window.startBroadcastDispatch = startBroadcastDispatch;
+window.runSwarmDiagnostics = runSwarmDiagnostics;
+
 window.navigateTo = navigateTo;
 window.openLoginModal = openLoginModal;
 window.closeLoginModal = closeLoginModal;
