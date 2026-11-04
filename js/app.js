@@ -2175,10 +2175,6 @@ function handleAdminAddSubmit(event) {
       "Content-Type": "application/json",
       ...(token ? { "Authorization": `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ ...businessData, trialDays: days })
-  }).catch(() => {});
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ...registered,
       trialDays: days,

@@ -533,9 +533,18 @@ async function transcribeAudioData(audioBufferOrBase64, mimeType = "audio/ogg") 
 
 // Catálogo de referencia geográfico CDMX en servidor
 const SERVER_CDMX_POINTS = [
+  { neighborhood: "Parque La Mexicana", municipality: "Cuajimalpa / Álvaro Obregón", lat: 19.3585, lng: -99.2675 },
+  { neighborhood: "La Mexicana", municipality: "Cuajimalpa / Álvaro Obregón", lat: 19.3585, lng: -99.2675 },
+  { neighborhood: "Santa Fe", municipality: "Álvaro Obregón / Cuajimalpa", lat: 19.3600, lng: -99.2600 },
+  { neighborhood: "Lomas de Santa Fe", municipality: "Álvaro Obregón", lat: 19.3610, lng: -99.2580 },
+  { neighborhood: "Centro Santa Fe", municipality: "Cuajimalpa", lat: 19.3650, lng: -99.2630 },
+  { neighborhood: "Samara", municipality: "Álvaro Obregón", lat: 19.3620, lng: -99.2590 },
+  { neighborhood: "Garden Santa Fe", municipality: "Álvaro Obregón", lat: 19.3595, lng: -99.2625 },
+  { neighborhood: "Cruz Manca", municipality: "Cuajimalpa", lat: 19.3550, lng: -99.2690 },
+  { neighborhood: "Zavaleta", municipality: "Álvaro Obregón", lat: 19.3680, lng: -99.2450 },
+  { neighborhood: "Prolongación Reforma", municipality: "Álvaro Obregón", lat: 19.3685, lng: -99.2520 },
   { neighborhood: "San Ángel", municipality: "Álvaro Obregón", lat: 19.3496, lng: -99.1915 },
   { neighborhood: "San Ángel Inn", municipality: "Álvaro Obregón", lat: 19.3524, lng: -99.1963 },
-  { neighborhood: "Santa Fe", municipality: "Álvaro Obregón", lat: 19.3600, lng: -99.2600 },
   { neighborhood: "Las Águilas", municipality: "Álvaro Obregón", lat: 19.3564, lng: -99.2155 },
   { neighborhood: "Olivar de los Padres", municipality: "Álvaro Obregón", lat: 19.3361, lng: -99.2238 },
   { neighborhood: "Jalalpa", municipality: "Álvaro Obregón", lat: 19.3635, lng: -99.2312 },
@@ -615,11 +624,51 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
   const prefixMatch = t.match(/(?:mi\s+direcci[oó]n\s+es|estoy\s+en|vivo\s+en|ubicaci[oó]n(?:\s+es)?|aqu[ií]\s+en|por\s+la|cerca\s+de|en\s+la\s+calle|en\s+colonia|en\s+col\.?|en|colonia|col\.?|alcald[ií]a|calle|av\.?|avenida)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ0-9\s#.,-]{3,80})/i);
   let candidate = prefixMatch ? prefixMatch[1].trim() : t;
   const cClean = candidate.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const tClean = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // 2. Coincidencia con colonias y alcaldías conocidas en CDMX
-  for (const pt of SERVER_CDMX_POINTS) {
+  // 1.1 Mapeo estricto prioritario para Santa Fe y Parque La Mexicana (Blindaje Anti-Alucinación)
+  if (cClean.includes("la mexicana") || tClean.includes("la mexicana") || cClean.includes("mexicana") || tClean.includes("mexicana")) {
+    return {
+      neighborhood: "Santa Fe (La Mexicana)",
+      municipality: "Cuajimalpa / Álvaro Obregón",
+      lat: 19.3585,
+      lng: -99.2675,
+      matched: true
+    };
+  }
+  if (cClean.includes("santa fe") || tClean.includes("santa fe")) {
+    return {
+      neighborhood: "Santa Fe",
+      municipality: "Álvaro Obregón / Cuajimalpa",
+      lat: 19.3600,
+      lng: -99.2600,
+      matched: true
+    };
+  }
+
+  // 2. Coincidencia con colonias y alcaldías conocidas en CDMX (ordenadas de mayor a menor longitud)
+  const sortedPoints = [...SERVER_CDMX_POINTS].sort((a, b) => b.neighborhood.length - a.neighborhood.length);
+  for (const pt of sortedPoints) {
     const ptNorm = pt.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (cClean === ptNorm || cClean.includes(ptNorm) || ptNorm.includes(cClean)) {
+    if (cClean === ptNorm || tClean === ptNorm) {
+      return {
+        neighborhood: pt.neighborhood,
+        municipality: pt.municipality || "Álvaro Obregón",
+        lat: pt.lat,
+        lng: pt.lng,
+        matched: true
+      };
+    }
+    if (ptNorm.length >= 4 && (cClean.includes(ptNorm) || tClean.includes(ptNorm))) {
+      return {
+        neighborhood: pt.neighborhood,
+        municipality: pt.municipality || "Álvaro Obregón",
+        lat: pt.lat,
+        lng: pt.lng,
+        matched: true
+      };
+    }
+    if (cClean.length >= 5 && ptNorm.includes(cClean)) {
       return {
         neighborhood: pt.neighborhood,
         municipality: pt.municipality || "Álvaro Obregón",
@@ -635,7 +684,7 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
     for (const b of SERVER_BUSINESSES) {
       if (b.neighborhood) {
         const bColNorm = b.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (cClean === bColNorm || cClean.includes(bColNorm) || bColNorm.includes(cClean)) {
+        if (cClean === bColNorm || cClean.includes(bColNorm) || (cClean.length >= 5 && bColNorm.includes(cClean))) {
           return {
             neighborhood: b.neighborhood,
             municipality: b.municipality || "Álvaro Obregón",
@@ -649,15 +698,23 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
   }
 
   // 4. Indicadores de calle, avenida, calzada, número o si la sesión estaba esperando ubicación
-  const isAddressPattern = /(?:av\.?|avenida|calle|cerrada|calzada|prolongaci[oó]n|paseo|camino|carretera|blvd|boulevard|perif[eé]rico|revoluci[oó]n|insurgentes|desierto|santa\s+fe|aguilas|padres|pedregal|san\s+[a-z]+|alvaro\s+obregon|\bcp\b|\b[#\d]{1,5}\b)/i.test(t);
+  const isAddressPattern = /(?:av\.?|avenida|calle|cerrada|calzada|prolongaci[oó]n|paseo|camino|carretera|blvd|boulevard|perif[eé]rico|revoluci[oó]n|insurgentes|desierto|santa\s+fe|mexicana|aguilas|padres|pedregal|san\s+[a-z]+|alvaro\s+obregon|\bcp\b|\b[#\d]{1,5}\b)/i.test(t);
 
   if (isAddressPattern || isWaitingForLocation) {
     const cleanLabel = candidate.replace(/^(?:en|por|estoy\s+en)\s+/i, '').trim();
+    let defLat = 19.3496;
+    let defLng = -99.1915;
+    let defMuni = "Álvaro Obregón";
+    if (/mexicana|santa\s*fe/i.test(t)) {
+      defLat = 19.3585;
+      defLng = -99.2675;
+      defMuni = "Cuajimalpa / Álvaro Obregón";
+    }
     return {
       neighborhood: cleanLabel.slice(0, 50),
-      municipality: "Álvaro Obregón",
-      lat: 19.3496,
-      lng: -99.1915,
+      municipality: defMuni,
+      lat: defLat,
+      lng: defLng,
       matched: true
     };
   }
@@ -930,9 +987,10 @@ function searchBusinessesFuzzy(query, businesses) {
 
   const stopWords = new Set([
     "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "en", "para", "por",
-    "con", "y", "o", "a", "al", "que", "tendras", "tendras", "tienen", "tiene", "hay",
+    "con", "y", "o", "a", "al", "que", "tendras", "tienen", "tiene", "hay",
     "busco", "necesito", "quiero", "algun", "alguna", "algunos", "algunas", "cerca", "aqui",
-    "aqui", "porfa", "favor", "hola", "buenas", "buenos", "dias", "tardes", "noches"
+    "porfa", "favor", "hola", "buenas", "buenos", "dias", "tardes", "noches",
+    "estoy", "vivo", "colonia", "calle", "avenida", "santa", "fe", "mexicana", "alvaro", "obregon", "cdmx", "mexico"
   ]);
   const tokens = qClean.split(/[\s,.-]+/).filter(w => w.length > 2 && !stopWords.has(w));
 
@@ -5676,21 +5734,25 @@ ${visualFormatRule}`;
         }
 
         const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver|^1$)/i.test((messageText || '').trim()));
+        const NEGATIVE_CONFIRMATION_REGEX = /^(?:no|nel|no\s+gracias|no\s+por\s+favor|para\s+nada|tampoco|ninguno|ninguna|no\s+quiero|est[aá]\s+muy\s+lejos|me\s+queda\s+muy\s+lejos|demasiado\s+lejos|no\s+me\s+sirve|no\s+me\s+late)[!.\s]*$/i;
+        const isNegativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && NEGATIVE_CONFIRMATION_REGEX.test((messageText || "").trim()));
         const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
         const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
-        const isAffirmative = !isLocationMessage && !isCategoryCorrection && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
+        const isAffirmative = !isLocationMessage && !isCategoryCorrection && !isNegativeExpansion && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
 
         // 4. Sincronización con BD: Negocios activos o en demo vigente
         const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
         // Búsqueda Difusa Flexible en Base de Datos en Tiempo Real
-        const directFuzzyMatches = (!isLocationMessage && !isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
+        // Blindaje Geográfico: Si el mensaje contiene una colonia o dirección (ej. "Santa Fe"), NO debe interpretarse como búsqueda comercial
+        const isAddressMessage = Boolean(detectedAddressInfo);
+        const directFuzzyMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
           ? searchBusinessesFuzzy(textForCategoryDetection, activeBusinesses)
           : [];
 
         // Búsqueda Directa Estricta por Nombre de Negocio / Marca Comercial
         const qCleanForName = (textForCategoryDetection || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        const directBusinessNameMatches = (!isLocationMessage && !isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
+        const directBusinessNameMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
           ? activeBusinesses.filter(b => {
               const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
               if (!bName || qCleanForName.length < 3) return false;
@@ -5827,6 +5889,12 @@ ${visualFormatRule}`;
           // NO inventar posición, NO reiniciar sesión, NO saludar de nuevo, conservar la categoría activa
           currentPhase = 2;
           userSession.intencion_actual = "esperando_ubicacion";
+        } else if (userSession.esperando_confirmacion_expansion_2km && isNegativeExpansion) {
+          // Rechazo honesto de negocio lejano: Cero bucles, no buscar 'no' en el catálogo
+          currentPhase = 4;
+          userSession.esperando_confirmacion_expansion_2km = false;
+          userSession.negocio_lejano_pendiente = null;
+          userSession.intencion_actual = "rechazo_expansion";
         } else if (userSession.esperando_confirmacion_expansion_2km && (isAffirmative || isAffirmativeExpansion)) {
           // Confirmación de expansión a negocio lejano (> 2 km)
           currentPhase = 4;
@@ -5848,11 +5916,16 @@ ${visualFormatRule}`;
           userSession.intencion_actual = isFeedbackOnPrevious ? "feedback_resultado_anterior" : "ver_mas_opciones";
         } else if (isLocationMessage || (!locationIsFromMemory && (userLocationColonia || detectedAddressInfo))) {
           // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR (CAPA 2 - PASO 2):
-          // En cuanto el usuario comparte ubicación o colonia nueva en este mensaje, transicionar de inmediato
-          if (userSession.familia_giro || userSession.giro_especifico) {
-            currentPhase = 3; // Ejecutar inmediatamente la recomendación de la categoría pendiente
-            detectedFamilyName = userSession.familia_giro;
-            detectedSpecificGiro = userSession.giro_especifico;
+          // Si el usuario mencionó un giro en este mismo mensaje O ya tenía uno activo en memoria de sesión,
+          // jamás volver a preguntar "¿qué buscas?". Ir DIRECTO a Fase 3 y recomendar los negocios de la zona.
+          const activeFamily = detectedFamilyName || userSession.familia_giro;
+          const activeSpecific = detectedSpecificGiro || userSession.giro_especifico || activeFamily;
+          if (activeFamily || activeSpecific) {
+            currentPhase = 3; // Ejecutar inmediatamente la recomendación de la categoría
+            userSession.familia_giro = activeFamily;
+            userSession.giro_especifico = activeSpecific;
+            detectedFamilyName = activeFamily;
+            detectedSpecificGiro = activeSpecific;
             userSession.intencion_actual = "buscar_negocio";
           } else {
             currentPhase = 1; // Guardar ubicación y preguntar qué desea buscar cerca de ahí
@@ -6061,7 +6134,9 @@ ${visualFormatRule}`;
         // REGLA DEL FLUJO INTERACTIVO: EXACTAMENTE 1 SOLO NEGOCIO A LA VEZ
         // ==============================================================
         let sourcePool = [];
-        if (currentPhase === 3) {
+        if (userSession.intencion_actual === "rechazo_expansion") {
+          sourcePool = [];
+        } else if (currentPhase === 3) {
           sourcePool = cercanos_2km;
         } else if (currentPhase === 4) {
           if (userSession.negocio_lejano_pendiente) {
@@ -6225,7 +6300,11 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
             }
           }
         } else if (currentPhase === 4) {
-          if (selectedFromOffered && canonicalCard) {
+          if (userSession.intencion_actual === "rechazo_expansion") {
+            const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese giro";
+            const colLabel = userLocationColonia || "tu zona";
+            finalBotReplyText = `¡Entendido perfectamente! 😊 Sin problema. Por el momento son todos los negocios de ${giroLabel} que tenemos registrados cerquita de ${colLabel} 📍✨ ¡Muy pronto sumaremos nuevos establecimientos en tu calle! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algún otro servicio? 🙌`;
+          } else if (selectedFromOffered && canonicalCard) {
             finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
           } else if (selectedBusinesses.length > 0 && canonicalCard) {
             const intro = isFeedbackOnPrevious
@@ -6276,7 +6355,7 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
         // BLINDAJE DE FICHA COMPLETA: VALIDAR Y GARANTIZAR LOS 6 CAMPOS
         // (Aplica únicamente al entregar la ficha completa, no al listar opciones resumidas)
         // ==============================================================
-        const isDeliveringFullCard = Boolean(selectedFromOffered || directBusinessNameMatches.length > 0 || currentPhase === 4);
+        const isDeliveringFullCard = Boolean(userSession.intencion_actual !== "rechazo_expansion" && (selectedFromOffered || directBusinessNameMatches.length > 0 || currentPhase === 4));
         if (isDeliveringFullCard && selectedBusinesses.length > 0 && finalBotReplyText && canonicalCard) {
           const b = selectedBusinesses[0];
           const hasPhone = finalBotReplyText.includes(b.phone) || finalBotReplyText.includes("📞") || finalBotReplyText.includes("Teléfono");
@@ -6358,7 +6437,9 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
             finalBotReplyText.trim() === userSession.lastBotReplyText.trim() && 
             (Date.now() - (userSession.lastBotReplyTimestamp || 0) < 60000)) {
           console.log(`[Anti-Bucle Activado] Mensaje duplicado suprimido para ${senderPhone}`);
-          finalBotReplyText = `¡Sigo aquí contigo${userSession.name ? ' ' + userSession.name : ''}! 😊 ¿Te gustaría ver más opciones o prefieres que busquemos otra categoría? 📍✨`;
+          const activeG = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
+          const activeC = userLocationColonia || "tu zona";
+          finalBotReplyText = `¡Sigo aquí contigo${userSession.name ? ' ' + userSession.name : ''}! 😊 ¿Te gustaría consultar opciones de ${activeG} en otra colonia cercana, o prefieres buscar otro tipo de negocio o servicio? 📍✨`;
         }
         userSession.lastBotReplyText = finalBotReplyText;
         userSession.lastBotReplyTimestamp = Date.now();
