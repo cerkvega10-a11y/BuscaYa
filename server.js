@@ -1035,11 +1035,13 @@ Debes seguir estrictamente este orden lógico en cada conversación. JAMÁS te s
 - FASE 2: DETECCIÓN DE NECESIDAD Y EMPATÍA + SOLICITUD DE UBICACIÓN
   - Cuando el usuario te diga qué necesita (ej. "tengo hambre", "quiero una pizza", "me siento mal", "necesito un plomero"):
     1. Primero responde con empatía genuina (compasivo si se siente mal 🥺🙏, entusiasmado si tiene hambre 🤤🍕, tranquilizador si tiene una urgencia en casa o en el auto 🛠️💪).
-    2. Si aún NO tienes su ubicación o colonia en la sesión actual, pídele amablemente que toque el botón para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍. (Aún NO muestres negocios hasta tener su ubicación).
-    3. Si el usuario YA envió su ubicación junto con lo que busca, pasa directo a la Fase 3.
+    2. Si aún NO tienes su ubicación o colonia en la sesión actual, pídele amablemente que toque el botón para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍✨. (Aún NO muestres negocios hasta tener su ubicación).
+    3. PROHIBICIÓN ESTRICTA DE FÓRMULAS ROBÓTICAS: Queda terminantemente prohibido usar frases acartonadas o de bot como "Para recomendarte los lugares abiertos a menos de 2 km de ti...", "Para brindarte un mejor servicio...", "¿En qué te puedo colaborar hoy?". Exprésate como un anfitrión local cálido y cercano de Ciudad de México (Álvaro Obregón / Poniente).
+    4. Si el usuario YA envió su ubicación junto con lo que busca, pasa directo a la Fase 3.
 
 - FASE 3: BÚSQUEDA EXACTA A 2 KILÓMETROS A LA REDONDA Y FLUJO INTERACTIVO (1 NEGOCIO A LA VEZ)
   - Conociendo QUÉ busca y DÓNDE está, revisa los negocios dentro de un radio de 2 km que correspondan EXACTAMENTE a la necesidad solicitada.
+  - Conexión Humana al recibir ubicación: Inicia fluidamente diciendo: "¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇".
   - REGLA DE ORO DEL FLUJO INTERACTIVO (PASO A PASO):
     1. Paso 1: Presenta ÚNICAMENTE la primera mejor opción (1 solo negocio) en su propia burbuja con su FICHA COMPLETA Y LIMPIA (los 6 campos obligatorios).
     2. Paso 2 (La Pausa Oculta / Interrogación): Detén por completo la entrega de negocios y haz obligatoriamente la pregunta de control:
@@ -1136,7 +1138,28 @@ Regla de Oro en Enlaces: Siempre que se hable de diseño, registro, cómo sumars
 
 CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
 
-const USER_SESSION_MEMORY = new Map(); // phone -> { name, intencion_actual, familia_giro, giro_especifico, lastLocation, esperando_confirmacion_expansion_2km, negocios_ya_mostrados, lastBusinesses, history, lastSeen }
+const USER_SESSION_MEMORY = new Map(); // phone -> { name, intencion_actual, familia_giro, giro_especifico, lastLocation, esperando_confirmacion_expansion_2km, negocios_ya_mostrados, lastBusinesses, history, saludo_enviado, lastInteractionTime, lastSeen }
+
+// ==============================================================
+// DEDUPLICACIÓN DE WEBHOOKS Y CONTROL ANTIRÁFAGAS (CAPA 1)
+// ==============================================================
+const PROCESSED_WEBHOOK_MESSAGE_IDS = new Map(); // messageId -> timestamp
+const IN_FLIGHT_WEBHOOK_USERS = new Set(); // phone -> boolean
+
+/**
+ * Filtro de Seguridad Post-Procesamiento (Capa 1):
+ * Si la sesión ya está activa (< 4 hrs), remueve estrictamente cualquier
+ * saludo repetido de inicio de mensaje (Hola, Buenos días/tardes/noches, Bienvenido)
+ */
+function stripGreetingsIfSessionActive(text, isSessionActive) {
+  if (!isSessionActive || !text) return text;
+  const greetingPattern = /^(?:¡?\s*(?:buenos?\s+d[ií]as|buenas?\s+tardes|buenas?\s+noches|hola|qu[eé]\s+tal|bienvenid[oa]s?\s+(?:a\s+buscaya|de\s+vuelta)?)[!.,\s]*(?:☀️|🌤️|🌙|✨|😊|🙌|👋|🤖)*\s*)+/i;
+  let cleaned = text.replace(greetingPattern, '').trim();
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return cleaned || text;
+}
 
 // Cupones Semilla Oficiales (Descuentos y Días Gratuitos)
 const DEFAULT_SEED_COUPONS = [
@@ -4802,6 +4825,26 @@ ${visualFormatRule}`;
           return;
         }
 
+        // ==============================================================
+        // CAPA 1: DEDUPLICACIÓN DE MENSAJES Y FRENO CONTRA DOBLE RESPUESTA
+        // ==============================================================
+        const incomingMsgId = (messages && messages[0] && messages[0].id) || payload.id || payload.messageId || null;
+        if (incomingMsgId) {
+          if (PROCESSED_WEBHOOK_MESSAGE_IDS.has(incomingMsgId)) {
+            console.log(`[Webhook Deduplication] Mensaje duplicado ${incomingMsgId} ya procesado. Retornando ACK sin reprocesar.`);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: true, duplicate: true, status: "duplicate_ignored" }));
+            return;
+          }
+          PROCESSED_WEBHOOK_MESSAGE_IDS.set(incomingMsgId, Date.now());
+          if (PROCESSED_WEBHOOK_MESSAGE_IDS.size > 2000) {
+            const now = Date.now();
+            for (const [mid, ts] of PROCESSED_WEBHOOK_MESSAGE_IDS.entries()) {
+              if (now - ts > 10 * 60 * 1000) PROCESSED_WEBHOOK_MESSAGE_IDS.delete(mid);
+            }
+          }
+        }
+
         if (messages && messages[0]) {
           const msg = messages[0];
           senderPhone = msg.from || senderPhone;
@@ -5528,10 +5571,11 @@ ${visualFormatRule}`;
 
         if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
           currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
-        } else if (isLocationMessage && (!messageText || !messageText.trim())) {
-          // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR: El usuario acaba de mandar un pin de ubicación puro
+        } else if (isLocationMessage || ((userLocationColonia || locationIsFromMemory) && (userSession.intencion_actual === "esperando_ubicacion" || userSession.familia_giro))) {
+          // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR (CAPA 2 - PASO 2):
+          // En cuanto el usuario comparte ubicación o colonia, transicionar de inmediato a la búsqueda
           if (userSession.familia_giro || userSession.giro_especifico) {
-            currentPhase = 3; // Ejecutar inmediatamente la búsqueda de la categoría pendiente
+            currentPhase = 3; // Ejecutar inmediatamente la recomendación de la categoría pendiente
             detectedFamilyName = userSession.familia_giro;
             detectedSpecificGiro = userSession.giro_especifico;
             userSession.intencion_actual = "buscar_negocio";
@@ -5789,19 +5833,25 @@ ${visualFormatRule}`;
 
         // Construir Contexto Enriquecido para la IA
         const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
-        const isSessionAlreadyActive = userSession.saludo_enviado && (Date.now() - (userSession.lastInteractionTime || 0) < FOUR_HOURS_MS);
-        userSession.lastInteractionTime = Date.now();
+        const nowMs = Date.now();
+        if (userSession.lastInteractionTime && (nowMs - userSession.lastInteractionTime > FOUR_HOURS_MS)) {
+          userSession.saludo_enviado = false;
+        }
+        const isSessionAlreadyActive = !!userSession.saludo_enviado;
+        userSession.lastInteractionTime = nowMs;
 
-        let contextualPrompt = `HORA EXACTA EN CIUDAD DE MÉXICO: ${mexTime.fullTimeStr} hrs (${mexTime.weekday}, ${mexTime.dateStr}).
-SALUDO CORRESPONDIENTE: "${mexTime.greeting} ${mexTime.icon}"
-USUARIO: ${userSession.name ? userSession.name : "Usuario WhatsApp (aún no registrado por nombre)"} (Tel: ${senderPhone})
-MENSAJE RECIBIDO DEL USUARIO: "${messageText}"`;
-
+        let greetingDirective = "";
         if (isSessionAlreadyActive) {
-          contextualPrompt += `\n[REGLA DE SALUDO ÚNICO ACTIVA]: Esta sesión ya está en curso y activa (hace menos de 4 horas). TIENES ESTRICTAMENTE PROHIBIDO volver a saludar, decir "Hola", "Buenos días", "Buenas tardes" o "Buenas noches". Ve DIRECTO al grano con empatía y fluidez sin fórmulas de bienvenida repetitivas.`;
+          greetingDirective = `SALUDO CORRESPONDIENTE: [NO APLICA - SESIÓN YA ACTIVA]\n[REGLA ESTRICTA DE SALUDO ÚNICO]: La sesión ya está en curso y activa (hace menos de 4 horas). TIENES ESTRICTAMENTE PROHIBIDO volver a saludar, dar la bienvenida o decir "${mexTime.greeting}", "Hola", "Buenos días", "Buenas tardes" o "Buenas noches". Ve DIRECTO a atender lo que solicita con empatía y cercanía sin fórmulas de bienvenida repetitivas.`;
         } else {
           userSession.saludo_enviado = true;
+          greetingDirective = `SALUDO CORRESPONDIENTE (SOLO MENSAJE #1 DE LA CONVERSACIÓN): "${mexTime.greeting} ${mexTime.icon}"\n[PRIMER MENSAJE]: Saluda con cordialidad y calidez acorde al horario de CDMX.`;
         }
+
+        let contextualPrompt = `HORA EXACTA EN CIUDAD DE MÉXICO: ${mexTime.fullTimeStr} hrs (${mexTime.weekday}, ${mexTime.dateStr}).
+${greetingDirective}
+USUARIO: ${userSession.name ? userSession.name : "Usuario WhatsApp (aún no registrado por nombre)"} (Tel: ${senderPhone})
+MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicación GPS compartida]' : '')}"`;
 
         if (isAudioMessage) {
           contextualPrompt += `\n[NOTA IMPORTANTE]: El usuario envió una NOTA DE VOZ transcrita. Saluda diciendo: "¡Ya escuché tu audio, claro que sí! 🎧😊"`;
@@ -5818,8 +5868,9 @@ El usuario solo ha enviado un saludo. TIENES ESTRICTAMENTE PROHIBIDO mostrar o r
         } else if (currentPhase === 2) {
           contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
 El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.familia_giro}). Aún NO tenemos su ubicación exacta o colonia.
-1. Responde primero con empatía genuina a lo que busca.
-2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍.
+1. Responde con calidez y entusiasmo de anfitrión local de CDMX a lo que busca.
+2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍✨.
+PROHIBICIÓN ESTRICTA: Cero frases robóticas ("Para recomendarte los lugares abiertos a menos de 2 km de ti...", "Para brindarte un mejor servicio...").
 TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubicación.`;
         } else if (currentPhase === 3) {
           // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
@@ -5831,8 +5882,13 @@ TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubi
           );
 
           if (selectedBusinesses.length > 0) {
+            const locationConnectPhrase = isLocationMessage
+              ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
+              : `¡Perfecto! Buscando en ${userLocationColonia || 'tu zona'} 📍✨ Aquí tienes la mejor opción abierta cerquita de ti... 👇`;
+
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADO INTERACTIVO (1 SOLA OPCIÓN)]
-Debes presentar ÚNICAMENTE a este negocio en una ficha limpia y completa. TIENES ESTRICTAMENTE PROHIBIDO mostrar más de un negocio en este mensaje.
+El usuario ya compartió su ubicación. Debes presentar ÚNICAMENTE a este negocio en una ficha limpia y completa. TIENES ESTRICTAMENTE PROHIBIDO mostrar más de un negocio en este mensaje.
+Conéctate con calidez y fluidez humana: "${locationConnectPhrase}"
 
 FICHA COMPLETA OBLIGATORIA (CON TODOS SUS 6 CAMPOS SIN RECORTAR):
 |||SEPARAR|||
@@ -5923,7 +5979,10 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
           // Si el modelo recortó la ficha o mandó menos de los 6 campos
           if (!hasPhone || !hasHours || !hasDays || !hasServices) {
             const parts = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(p => p.trim()).filter(Boolean);
-            const intro = (parts.length > 1 && !parts[0].includes("🏢")) ? parts[0] : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
+            const defaultIntro = isLocationMessage
+              ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
+              : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
+            const intro = (parts.length > 1 && !parts[0].includes("🏢")) ? parts[0] : defaultIntro;
             finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
           }
         }
@@ -5939,12 +5998,14 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
                 : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
             }
           } else if (currentPhase === 2) {
-            finalBotReplyText = `¡Claro que sí! Con gusto te ayudo a buscar las mejores opciones de ${userSession.giro_especifico || 'lo que necesitas'} 😊🙌 Para recomendarte los lugares abiertos a menos de 2 km de ti, ¿me compartes tu ubicación actual o en qué colonia estás? 📍✨`;
+            const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
+            const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
+            finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿me compartes tu ubicación actual con el botón de abajo o en qué colonia estás? 📍✨`;
           } else if (selectedBusinesses.length > 0) {
             const introPrefix = isCategoryCorrection
               ? `¡Entendido! Cambiamos de inmediato a ${userSession.giro_especifico || userSession.familia_giro} cerca de tu ubicación 📍✨ Aquí tienes esta opción:`
-              : (isLocationMessage && !messageText)
-                ? `¡Gracias por tu ubicación! 📍 Buscando ${userSession.giro_especifico || userSession.familia_giro} cerca de ti:`
+              : (isLocationMessage)
+                ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
                 : (isFeedbackOnPrevious)
                   ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
                   : `¡Aquí tienes una excelente opción cerquita de ti! 😊👇`;
@@ -5960,6 +6021,13 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
               finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de comida aunque estén un poquito más retiradas? 🚗💨`;
             }
           }
+        }
+
+        // ==============================================================
+        // CAPA 1: BLINDAJE DE SALUDO ÚNICO EN SESIÓN ACTIVA (ELIMINACIÓN DE BUCLES)
+        // ==============================================================
+        if (isSessionAlreadyActive) {
+          finalBotReplyText = stripGreetingsIfSessionActive(finalBotReplyText, true);
         }
 
         // ==============================================================

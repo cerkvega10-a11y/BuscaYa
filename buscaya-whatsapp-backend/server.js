@@ -481,6 +481,67 @@ async function handleIncomingMessage(sock, msg) {
     return;
   }
 
+  // Delegar al Servidor Maestro de BuscaYa (port 3000) para unificar la Máquina de Estados, Ficha Canónica y Memoria
+  try {
+    const payload = {
+      id: msg?.key?.id,
+      from: `+${phone}`,
+      name: pushName,
+      text: isLocation ? "" : userText,
+      location: (isLocation && typeof lat === 'number' && typeof lng === 'number') ? { latitude: lat, longitude: lng } : null
+    };
+
+    const masterRes = await fetch("http://localhost:3000/api/whatsapp/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (masterRes.ok) {
+      const data = await masterRes.json();
+      if (data && data.botReply && data.botReply.responseMessage) {
+        const fullReply = data.botReply.responseMessage;
+        const cleanAiSymbolsLocal = (txt) => (txt || '')
+          .replace(/```[\s\S]*?```/g, '')
+          .replace(/`([^`]+)`/g, '$1')
+          .replace(/#{1,6}\s?/g, '')
+          .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+          .replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2')
+          .replace(/[\[\]]/g, '')
+          .replace(/^[ \t]*[-•]\s*/gm, '')
+          .trim();
+
+        const rawBubbles = fullReply.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbolsLocal(b.trim())).filter(Boolean);
+        const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbolsLocal(fullReply)];
+
+        for (let i = 0; i < bubbles.length; i++) {
+          const bubbleText = bubbles[i];
+          const sentMsg = await sock.sendMessage(remoteJid, { text: bubbleText });
+          if (sentMsg?.key?.id) {
+            sentBotMessageIds.add(sentMsg.key.id);
+            if (sentBotMessageIds.size > 2000) sentBotMessageIds.clear();
+          }
+          if (i < bubbles.length - 1) {
+            await new Promise(r => setTimeout(r, 700));
+          }
+        }
+
+        waState.messagesLog.unshift({
+          id: `reply-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          to: `+${phone}`,
+          type: 'bot_reply',
+          text: fullReply
+        });
+        if (waState.messagesLog.length > 80) waState.messagesLog.pop();
+        return;
+      }
+    }
+  } catch (masterErr) {
+    console.warn("[Baileys -> Port 3000 Master Webhook Warning]:", masterErr.message);
+  }
+
   console.log(`[WhatsApp Persistent Recibido de +${phone} (${pushName})]:`, userText);
 
   // Registrar en bitácora en memoria
