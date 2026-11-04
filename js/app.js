@@ -3857,54 +3857,37 @@ function removeSandboxTypingIndicator(indicatorId) {
 }
 
 /**
- * Maneja el envío de mensajes en Sandbox con renderizado DOM instantáneo y manejo de errores estricto
+ * Maneja el envío de mensajes en Sandbox (Sincronizado 1:1 con el Webhook de WhatsApp Real)
+ * Ejecuta exactamente processBuscaYaMessage con el mismo motor, bloqueo de giro y base de datos
  */
 async function handleSandboxSend() {
   const input = document.getElementById("sandboxChatInput");
   if (!input || !input.value.trim()) return;
 
   const query = input.value.trim();
-  // 1. Limpieza inmediata del input
   input.value = "";
 
-  // 2. Renderizado DOM Inmediato del mensaje de usuario
+  // 1. Renderizado DOM Inmediato del mensaje de usuario
   appendSandboxMessage("user", query);
 
-  // 3. Indicador de "IA Escribiendo..."
+  // 2. Indicador de "IA Escribiendo..."
   const typingId = "sandboxTyping_" + Date.now();
   appendSandboxTypingIndicator(typingId);
 
   const startTime = Date.now();
 
-  // 4. Compilación del System Prompt en tiempo real
-  const currentModularConfig = getCurrentModularFormValues();
-  const compiledPrompt = compileModularSystemPrompt(currentModularConfig);
-
-  // 5. Catálogo de negocios activos para Grounding
-  const allBusinesses = getBusinesses();
-  const activeBusinesses = allBusinesses.filter(b => {
-    const days = calculateDaysRemaining(b.expiresAt);
-    const effStatus = getEffectiveStatus(b);
-    return effStatus !== "expired" && days > 0;
-  });
-
-  // 6. Timeout de seguridad para evitar congelamiento
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => abortController.abort(), 20000);
 
   try {
-    const resp = await fetch("/api/ai/chat", {
+    const resp = await fetch("/api/admin/ai-sandbox/chat", {
       method: "POST",
       signal: abortController.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: query,
-        history: sandboxConversationHistory.slice(-8),
-        systemInstruction: compiledPrompt,
-        model: currentModularConfig.model || "openai/gpt-oss-120b",
-        apiKey: currentModularConfig.apiKey || OFFICIAL_GROQ_API_KEY,
-        temperature: currentModularConfig.temperature || 0.4,
-        businesses: activeBusinesses
+        phone: "+52 55 0000 0001",
+        name: "SuperAdmin (Sandbox)"
       })
     });
 
@@ -3917,66 +3900,171 @@ async function handleSandboxSend() {
 
     const data = await resp.json();
 
-    if (data.success && data.reply) {
-      sandboxConversationHistory.push({ role: "user", content: query });
-      sandboxConversationHistory.push({ role: "assistant", content: data.reply });
-      if (sandboxConversationHistory.length > 10) sandboxConversationHistory = sandboxConversationHistory.slice(-10);
+    if (data.success && (data.reply || data.bubbles)) {
+      const bubbles = (Array.isArray(data.bubbles) && data.bubbles.length > 0)
+        ? data.bubbles
+        : [data.reply];
 
-      // 7. Renderizado dinámico de la respuesta conversacional de Groq (Texto limpio y fluido)
-      const formattedHtml = formatGeminiResponseToHtml(data.reply);
-      appendSandboxMessage("ai", formattedHtml, true);
+      bubbles.forEach(bubbleText => {
+        const formattedHtml = formatGeminiResponseToHtml(bubbleText);
+        appendSandboxMessage("ai", formattedHtml, true);
+      });
 
-      // Registrar impresiones automáticas para negocios lanzados/recomendados por la IA
-      if (Array.isArray(data.recommendedBusinessIds) && data.recommendedBusinessIds.length > 0) {
-        data.recommendedBusinessIds.forEach(bizId => {
-          if (typeof trackBusinessEvent === 'function') {
-            trackBusinessEvent(bizId, 'impression');
-          }
-        });
-      } else if (data.reply) {
-        activeBusinesses.forEach(b => {
-          if (b.businessName && data.reply.toLowerCase().includes(b.businessName.toLowerCase())) {
-            if (typeof trackBusinessEvent === 'function') {
-              trackBusinessEvent(b.id, 'impression');
-            }
-          }
-        });
+      // Actualizar Barra de Telemetría y Debug Bar (1:1 con WhatsApp)
+      if (data.debugState) {
+        const lockedEl = document.getElementById("sandboxDebugLockedGiro");
+        if (lockedEl) {
+          lockedEl.textContent = data.debugState.lockedCategory || data.debugState.lockedFamily || "Ninguno";
+        }
+        const colEl = document.getElementById("sandboxDebugColonia");
+        if (colEl) {
+          colEl.textContent = data.debugState.detectedNeighborhood || "No detectada";
+        }
+        const countEl = document.getElementById("sandboxDebugBizCount");
+        if (countEl) {
+          countEl.textContent = data.debugState.matchingBusinessesCount !== undefined ? data.debugState.matchingBusinessesCount : "0";
+        }
       }
 
-      const elapsed = data.latencyMs || (Date.now() - startTime);
+      const elapsed = Date.now() - startTime;
       const teleMatch = document.getElementById("sandboxTelemetryMatch");
       const teleLat = document.getElementById("sandboxTelemetryLatency");
       if (teleMatch) {
-        teleMatch.innerHTML = `🎯 <b>${data.modelUsed || 'Groq AI'}</b> • System Prompt Modular (${compiledPrompt.length} chars)`;
+        const bizName = data.debugState?.selectedBusiness || "Consulta procesada";
+        teleMatch.innerHTML = `🎯 <b>Sincronizado 1:1 con WhatsApp</b> • ${bizName}`;
       }
       if (teleLat) {
-        teleLat.textContent = `⚡ Latencia: ${elapsed} ms (Groq LPU)`;
+        teleLat.textContent = `⚡ Latencia: ${elapsed} ms`;
       }
     } else {
-      // Error reportado por la API
-      const errDetail = data.error || "No se recibió respuesta válida del motor de Groq AI.";
-      console.error("🔴 Error de conexión con Groq API:", errDetail);
-      appendSandboxErrorMessage(`🔴 Error de conexión con Groq API: ${errDetail}`);
-
-      const teleMatch = document.getElementById("sandboxTelemetryMatch");
-      if (teleMatch) teleMatch.innerHTML = `<span class="text-red-600 font-bold">🔴 Fallo en Groq API</span>`;
+      const errDetail = data.error || "No se recibió respuesta válida del motor unificado BuscaYa.";
+      appendSandboxErrorMessage(`🔴 Error: ${errDetail}`);
     }
   } catch (err) {
     clearTimeout(timeoutId);
     removeSandboxTypingIndicator(typingId);
-
     const isAbort = err.name === "AbortError";
     const errDetail = isAbort 
-      ? "Tiempo de espera agotado (Timeout 20s). Groq AI tardó más de lo esperado. Por favor reintenta."
+      ? "Tiempo de espera agotado (Timeout 20s). Por favor reintenta."
       : err.message;
+    appendSandboxErrorMessage(`🔴 Error de conexión con el motor BuscaYa: ${errDetail}`);
+  }
+}
 
-    console.error("🔴 Error de conexión con Groq API:", err);
-    appendSandboxErrorMessage(`🔴 Error de conexión con Groq API: ${errDetail}`);
+/**
+ * Reinicia la sesión de prueba de la caja de pruebas de Control Maestro
+ */
+async function handleResetSandboxSession() {
+  try {
+    const res = await fetch("/api/admin/ai-sandbox/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "+52 55 0000 0001" })
+    });
+    const data = await res.json();
+    clearSandboxChat();
+    
+    // Restablecer Barra de Debug
+    const lockedEl = document.getElementById("sandboxDebugLockedGiro");
+    if (lockedEl) lockedEl.textContent = "Ninguno";
+    const colEl = document.getElementById("sandboxDebugColonia");
+    if (colEl) colEl.textContent = "No detectada";
+    const countEl = document.getElementById("sandboxDebugBizCount");
+    if (countEl) countEl.textContent = "0";
 
-    const teleMatch = document.getElementById("sandboxTelemetryMatch");
-    if (teleMatch) {
-      teleMatch.innerHTML = `<span class="text-red-600 font-bold">🔴 Error de red / Timeout</span>`;
+    if (typeof showToastNotification === 'function') {
+      showToastNotification("🔄 Sesión de prueba reiniciada exitosamente (Memoria limpia)");
     }
+  } catch (err) {
+    console.error("Error al reiniciar sandbox:", err);
+  }
+}
+
+/**
+ * Guarda en tiempo real el System Prompt Maestro
+ */
+async function handleSaveMasterPrompt() {
+  const editor = document.getElementById("aiMasterPromptEditor");
+  if (!editor) return;
+  const promptVal = editor.value.trim();
+  try {
+    const res = await fetch("/api/admin/ai-training/master-prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ masterPrompt: promptVal })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (typeof showToastNotification === 'function') {
+        showToastNotification("💾 System Prompt Maestro guardado y sincronizado con éxito");
+      }
+    }
+  } catch (e) {
+    console.error("Error al guardar Master Prompt:", e);
+  }
+}
+
+/**
+ * Recompila el System Prompt Maestro desde las tareas y reglas
+ */
+async function handleResetMasterPrompt() {
+  try {
+    const res = await fetch("/api/ai/training-config");
+    const data = await res.json();
+    if (data.success && data.compiledPrompt) {
+      const editor = document.getElementById("aiMasterPromptEditor");
+      if (editor) editor.value = data.compiledPrompt;
+      if (typeof showToastNotification === 'function') {
+        showToastNotification("🔄 System Prompt Maestro recompilado desde tareas y reglas");
+      }
+    }
+  } catch (e) {
+    console.error("Error al recompilar Master Prompt:", e);
+  }
+}
+
+/**
+ * Aplica feedback directo / corrección rápida de errores en 1 clic
+ */
+async function handleApplyQuickFix() {
+  const userSaysInput = document.getElementById("quickFixUserSays");
+  const botDidInput = document.getElementById("quickFixBotDid");
+  const botShouldInput = document.getElementById("quickFixBotShould");
+
+  const userSays = (userSaysInput ? userSaysInput.value.trim() : "");
+  const botDid = (botDidInput ? botDidInput.value.trim() : "");
+  const botShould = (botShouldInput ? botShouldInput.value.trim() : "");
+
+  if (!userSays && !botShould) {
+    alert("Por favor escribe qué dijo el usuario y cómo debe responder el bot.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/admin/ai-training/quick-fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userSays, botDid, botShould })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (userSaysInput) userSaysInput.value = "";
+      if (botDidInput) botDidInput.value = "";
+      if (botShouldInput) botShouldInput.value = "";
+
+      const editor = document.getElementById("aiMasterPromptEditor");
+      if (editor && data.compiledPrompt) editor.value = data.compiledPrompt;
+
+      if (typeof renderAiQuickRulesChips === 'function' && Array.isArray(data.quickRules)) {
+        renderAiQuickRulesChips(data.quickRules);
+      }
+
+      if (typeof showToastNotification === 'function') {
+        showToastNotification("⚡ Corrección aplicada inmediatamente a la IA");
+      }
+    }
+  } catch (e) {
+    console.error("Error aplicando quick fix:", e);
   }
 }
 
@@ -7038,6 +7126,10 @@ async function loadAiTrainingConfigUI() {
       if (promptView && data.compiledPrompt) {
         promptView.value = data.compiledPrompt;
       }
+      const promptEditor = document.getElementById("aiMasterPromptEditor");
+      if (promptEditor && data.compiledPrompt) {
+        promptEditor.value = data.compiledPrompt;
+      }
     }
   } catch (err) {
     console.warn("[AI Training UI Load Notice]:", err.message);
@@ -7204,6 +7296,10 @@ async function handleSaveAiTrainingConfig() {
       const promptView = document.getElementById("aiPromptCompiledView");
       if (promptView && data.compiledPrompt) {
         promptView.value = data.compiledPrompt;
+      }
+      const promptEditor = document.getElementById("aiMasterPromptEditor");
+      if (promptEditor && data.compiledPrompt) {
+        promptEditor.value = data.compiledPrompt;
       }
       showToast("Configuración de IA compilada y activa.", "success");
     }
@@ -7896,6 +7992,10 @@ window.handleAddQuickRule = handleAddQuickRule;
 window.handleDeleteQuickRule = handleDeleteQuickRule;
 window.handleSaveAiTrainingConfig = handleSaveAiTrainingConfig;
 window.handleResetAiTrainingConfig = handleResetAiTrainingConfig;
+window.handleResetSandboxSession = handleResetSandboxSession;
+window.handleSaveMasterPrompt = handleSaveMasterPrompt;
+window.handleResetMasterPrompt = handleResetMasterPrompt;
+window.handleApplyQuickFix = handleApplyQuickFix;
 
 // Exportaciones de Memoria Conversacional Profunda
 window.loadMemorySettingsUI = loadMemorySettingsUI;

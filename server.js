@@ -1189,7 +1189,13 @@ Presenta siempre la información completa del negocio en una sola ficha limpia y
 - ¿Cómo registro mi negocio / cómo funciona BuscaYa?: Explica con entusiasmo cómo conectamos clientes por WhatsApp, menciona los días de prueba gratis y comparte siempre el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀
 - Solicitud de Asistencia Humana: Si el usuario pide hablar con una persona real o requiere soporte directo, proporciónale con mucha amabilidad el número oficial de atención personalizada: 5645234452 📱🤝.
 - Groserías o Temas Ajenos: Ante insultos o preguntas fuera de tema (política, tareas, chistes), responde con educación impecable recordando que tu única función es ayudar a encontrar negocios, comida y servicios locales en BuscaYa 😊🙏.
-- Cero Alucinación: Prohibido inventar negocios, teléfonos o horarios que no existan en los datos reales inyectados por la base de datos.${tasksPrompt}${rulesPrompt}`;
+- Cero Alucinación: Prohibido inventar negocios, teléfonos o horarios que no existan en los datos reales inyectados por la base de datos.
+
+## 6. BLOQUEO INQUEBRANTABLE DE GIRO / FAMILIA Y RESPUESTA CERRADA (REGLA DE HIERRO)
+- Persistencia Estricta de Giro: En cuanto el usuario pida un giro o categoría (ej. "Comida", "Tacos", "Plomero"), queda terminantemente prohibido recomendar negocios de otro giro. Si pidió Comida, jamás en la vida devolver una veterinaria, cerrajería o herrería.
+- Al expandir la distancia o pedir más opciones ("busca más lejos", "dame otra opción", "¿no tienes otro más cerca?", "muéstrame los que tengas aunque estén lejos"), el sistema ÚNICAMENTE puede buscar negocios que pertenezcan a la misma categoría o familia solicitada.
+- Respuesta Cerrada al agotar opciones: Si después de ampliar la distancia en la base de datos hay 0 negocios adicionales de ese mismo giro, responde de forma cerrada, directa y amable:
+  "Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de [Giro solicitado] registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌"${tasksPrompt}${rulesPrompt}`;
 }
 
 CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
@@ -2292,6 +2298,902 @@ function scheduleMidnightCron() {
   }, msUntilMidnight);
 }
 scheduleMidnightCron();
+
+
+// ==============================================================
+// MOTOR UNIFICADO DE PROCESAMIENTO BUSCAYA (WHATSAPP & SANDBOX)
+// Atribuido a: Neural Media House
+// Bloqueo inquebrantable de categoría/familia (lockedCategory/lockedFamily)
+// ==============================================================
+async function processBuscaYaMessage({
+  phone = "+52 55 1234 5678",
+  name = "Usuario WhatsApp",
+  text = "",
+  type = "text",
+  latitude = null,
+  longitude = null,
+  location = null,
+  isAudio = false,
+  audioTranscription = null,
+  audioBase64 = null,
+  audioMime = "audio/ogg",
+  isSandbox = false,
+  rawMsg = null,
+  rawPayload = null
+}) {
+  const timestamp = new Date().toISOString();
+  let senderPhone = phone || "+52 55 1234 5678";
+  let senderName = name || "Usuario WhatsApp";
+  let messageText = text ? String(text).trim() : "";
+  let isLocationMessage = false;
+  let isLocationWithoutCoords = false;
+  let isAudioMessage = isAudio;
+  let currentPhase = 1;
+  let finalBotReplyText = "";
+
+  // 1. DEDUPLICACIÓN DE MENSAJES (solo para WhatsApp real)
+  const incomingMsgId = (rawMsg && rawMsg.id) || (rawPayload && (rawPayload.id || rawPayload.messageId)) || null;
+  if (!isSandbox && incomingMsgId) {
+    if (PROCESSED_WEBHOOK_MESSAGE_IDS.has(incomingMsgId)) {
+      console.log(`[Webhook Deduplication] Mensaje ${incomingMsgId} ya procesado.`);
+      return {
+        duplicate: true,
+        replyText: "",
+        bubbles: [],
+        debugState: { duplicate: true }
+      };
+    }
+    PROCESSED_WEBHOOK_MESSAGE_IDS.set(incomingMsgId, Date.now());
+  }
+
+  // 2. RECUPERAR / CREAR SESIÓN DE MEMORIA
+  let userSession = USER_SESSION_MEMORY.get(senderPhone);
+  if (!userSession) {
+    userSession = {
+      name: null,
+      intencion_actual: null,
+      giro_buscado: null,
+      familia_giro: null,
+      giro_especifico: null,
+      lockedFamily: null,
+      lockedCategory: null,
+      ubicacion: null,
+      lastLocation: null,
+      saludo_enviado: false,
+      esperando_confirmacion_expansion_2km: false,
+      negocio_lejano_pendiente: null,
+      negocios_ya_mostrados: [],
+      opciones_ofrecidas: [],
+      esperando_mas_opciones: false,
+      lastBusinesses: [],
+      history: [],
+      lastInteractionTime: Date.now(),
+      lastSeen: Date.now()
+    };
+    USER_SESSION_MEMORY.set(senderPhone, userSession);
+  }
+  userSession.lastSeen = Date.now();
+  if (!Array.isArray(userSession.negocios_ya_mostrados)) userSession.negocios_ya_mostrados = [];
+  if (!Array.isArray(userSession.opciones_ofrecidas)) userSession.opciones_ofrecidas = [];
+  if (!Array.isArray(userSession.history)) userSession.history = [];
+
+  // 3. CLASIFICACIÓN DE TIPO DE MENSAJE
+  let incomingType = type || "text";
+  if (rawMsg) {
+    if (['image', 'video', 'document', 'sticker'].includes(rawMsg.type)) incomingType = "media";
+    else if (rawMsg.type === 'audio') incomingType = "audio";
+    else if (rawMsg.type === 'location' || rawMsg.type === 'live_location') incomingType = "location";
+  } else if (rawPayload) {
+    if (['image', 'video', 'document', 'sticker'].includes(rawPayload.type) || rawPayload.image || rawPayload.video || rawPayload.document) incomingType = "media";
+    else if (rawPayload.type === 'audio' || rawPayload.audio || rawPayload.audioBase64) incomingType = "audio";
+    else if (rawPayload.type === 'location' || rawPayload.type === 'live_location' || rawPayload.location || (typeof rawPayload.latitude === 'number' && typeof rawPayload.longitude === 'number')) incomingType = "location";
+  }
+
+  // A. Medios (imágenes, video)
+  if (incomingType === "media") {
+    const mediaReplyText = "¡Muchas gracias por enviarme tu imagen! 📸😊 Por el momento todavía no tengo activada la lectura de imágenes en el sistema, ¡pero muy pronto podré verlas para ayudarte aún mejor! 🚀✨ Mientras tanto, ¿me podrías escribir por aquí o mandarme en una nota de voz qué negocio, producto o servicio estás buscando? 🙌";
+    return {
+      replyText: mediaReplyText,
+      bubbles: [mediaReplyText],
+      debugState: { mediaAcknowledged: true, currentPhase: 1 },
+      botReply: { recipient: senderPhone, responseMessage: mediaReplyText, timestamp }
+    };
+  }
+
+  // B. Audio / Notas de voz
+  if (incomingType === "audio") {
+    isAudioMessage = true;
+    if (audioTranscription && String(audioTranscription).trim()) {
+      messageText = String(audioTranscription).trim();
+    } else {
+      const audioData = (rawMsg && rawMsg.audio?.data) || audioBase64 || (rawPayload && (rawPayload.audioBase64 || rawPayload.audio)) || null;
+      const transResult = await transcribeAudioData(audioData, (rawMsg && rawMsg.audio?.mime_type) || audioMime || "audio/ogg");
+      if (transResult.success && transResult.text) {
+        messageText = transResult.text.trim();
+        audioTranscription = messageText;
+      }
+    }
+
+    if (!messageText) {
+      const audioFailText = "Fíjate que no pude escuchar con claridad tu nota de voz 😔🎧 ¿Serías tan amable de escribirme por mensaje de texto qué negocio o servicio estás buscando? Con mucho gusto te ayudo de inmediato 😊🙌";
+      return {
+        replyText: audioFailText,
+        bubbles: [audioFailText],
+        debugState: { audioTranscriptionFailed: true, currentPhase: 1 },
+        botReply: { recipient: senderPhone, isAudio: true, responseMessage: audioFailText, timestamp }
+      };
+    }
+  }
+
+  // C. Ubicación GPS o Location
+  let rawLat = latitude;
+  let rawLng = longitude;
+  if (location && typeof location.latitude === 'number' && typeof location.longitude === 'number') {
+    rawLat = location.latitude;
+    rawLng = location.longitude;
+  } else if (rawMsg && rawMsg.location) {
+    rawLat = Number(rawMsg.location.latitude);
+    rawLng = Number(rawMsg.location.longitude);
+  } else if (rawPayload && rawPayload.location) {
+    rawLat = Number(rawPayload.location.latitude);
+    rawLng = Number(rawPayload.location.longitude);
+  }
+
+  if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
+    latitude = rawLat;
+    longitude = rawLng;
+    isLocationMessage = true;
+    const geo = reverseGeocodeServer(latitude, longitude);
+    userSession.ubicacion = { lat: latitude, lng: longitude, tipo: "gps", timestamp: Date.now() };
+    userSession.lastLocation = {
+      latitude: latitude,
+      longitude: longitude,
+      neighborhood: geo?.neighborhood || "Álvaro Obregón",
+      municipality: geo?.municipality || "Álvaro Obregón",
+      timestamp: Date.now()
+    };
+    userSession.saludo_enviado = true;
+
+    if (!userSession.lockedFamily && !userSession.familia_giro && !userSession.giro_especifico) {
+      const locOnlyReplyText = "¡Súper, ya recibí tu ubicación exacta! 📍😊 Ahora cuéntame, ¿qué comida, oficio, médico o negocio te gustaría buscar hoy cerquita de ti? ✨";
+      return {
+        replyText: locOnlyReplyText,
+        bubbles: [locOnlyReplyText],
+        debugState: { locationReceived: true, detectedNeighborhood: geo?.neighborhood, currentPhase: 1 },
+        botReply: { recipient: senderPhone, responseMessage: locOnlyReplyText, timestamp }
+      };
+    }
+
+    currentPhase = 3;
+    userSession.intencion_actual = "buscar_negocio";
+  }
+
+  // D. Coordenadas en texto
+  if (!latitude && messageText) {
+    const coordMatch = messageText.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
+    if (coordMatch) {
+      latitude = parseFloat(coordMatch[1]);
+      longitude = parseFloat(coordMatch[2]);
+      isLocationMessage = true;
+      userSession.saludo_enviado = true;
+    }
+  }
+
+  // 4. INTERCEPTOR DE DESPEDIDAS / GRACIAS
+  const CLOSING_FAREWELL_REGEX = /^(?:gracias|muchas\s+gracias|mil\s+gracias|te\s+lo\s+agradezco|perfecto\s+gracias|ok\s+gracias|muy\s+amable|adi[oó]s|adios|bye|chao|hasta\s+luego|nos\s+vemos|excelente(?:\s+gracias)?|much[ií]simas\s+gracias|muchisimas\s+gracias|vale\s+gracias|sale\s+bye|va\s+gracias|de\s+acuerdo(?:\s+gracias)?|sale\s+gracias|ok\s+perfecto|perfecto)[!.\s]*$/i;
+  if (messageText && CLOSING_FAREWELL_REGEX.test(messageText.trim())) {
+    userSession.esperando_mas_opciones = false;
+    userSession.esperando_confirmacion_expansion_2km = false;
+    userSession.negocio_lejano_pendiente = null;
+    userSession.intencion_actual = "despedida";
+    const farewellText = "¡No hay de qué, fue un verdadero placer ayudarte! 😊🙌 Espero que te atiendan increíble ✨ Recuerda que aquí en BuscaYa estoy disponible para ti las 24 horas cuando necesites encontrar otro negocio o servicio cerca de ti 📍 ¡Que pases un excelente día! 🌟";
+    return {
+      replyText: farewellText,
+      bubbles: [farewellText],
+      debugState: { isFarewell: true, currentPhase: 1 },
+      botReply: { recipient: senderPhone, responseMessage: farewellText, timestamp }
+    };
+  }
+
+  // 5. BAJA / OPT-OUT
+  if (/^(baja|darme\s+de\s+baja|no\s+quiero\s+promociones|cancelar\s+promociones|cancelar\s+suscripci[oó]n|stop|desuscribir)[!.\s]*$/i.test(messageText.trim())) {
+    const cleanSender = String(senderPhone).replace(/\D/g, '');
+    let crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
+    if (crmUser) {
+      crmUser.optOut = true;
+      crmUser.receiveMassCampaigns = false;
+    } else {
+      AUDIENCIA_WHATSAPP.unshift({
+        phone: senderPhone,
+        name: senderName || "Usuario WhatsApp",
+        alias: "",
+        classification: "Baja Voluntaria",
+        tags_giros: [],
+        manualTags: ["Opt-Out"],
+        ubicacion_frecuente: "CDMX",
+        notes: "Solicitó baja de mensajes promocionales.",
+        first_interaction: timestamp,
+        last_interaction: timestamp,
+        optOut: true,
+        receiveMassCampaigns: false
+      });
+    }
+    saveServerDatabase();
+    const optOutReplyText = "Has sido dado de baja de nuestras promociones y mensajes masivos ✅. Recuerda que puedes seguir usando BuscaYa para encontrar cualquier negocio o servicio cuando lo necesites. ¡Que tengas un excelente día! 🙌✨";
+    return {
+      replyText: optOutReplyText,
+      bubbles: [optOutReplyText],
+      debugState: { optOut: true, currentPhase: 1 },
+      botReply: { recipient: senderPhone, responseMessage: optOutReplyText, timestamp }
+    };
+  }
+
+  // 6. EMERGENCIAS MÉDICAS
+  const MEDICAL_EMERGENCY_REGEX = /(?:emergencia\s+m[eé]dica|infarto|ataque\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|accidente\s+grave|hemorragia|convulsi[oó]n|me\s+duele\s+el\s+pecho\s+fuerte|peligro\s+de\s+muerte)/i;
+  if (messageText && MEDICAL_EMERGENCY_REGEX.test(messageText)) {
+    const emergencyText = "⚠️ Si te encuentras ante una emergencia médica o de seguridad que pone en riesgo la vida, por favor comunícate de inmediato al 911 (Emergencias Ciudad de México) o a la Cruz Roja al 55 5395 1111 para recibir auxilio urgente.\n\nSi además necesitas localizar una farmacia, clínica o médico de guardia en tu colonia, confírmame tu ubicación y te paso los datos enseguida.";
+    return {
+      replyText: emergencyText,
+      bubbles: [emergencyText],
+      debugState: { emergencyDetected: true, currentPhase: 1 },
+      botReply: { recipient: senderPhone, responseMessage: emergencyText, timestamp }
+    };
+  }
+
+  // 7. PRE-PROCESAMIENTO Y GEOLOCALIZACIÓN
+  const mexTime = getMexicoCityTime();
+  let geoResult = null;
+  if (latitude && longitude) {
+    geoResult = reverseGeocodeServer(latitude, longitude);
+  } else {
+    geoResult = reverseGeocodeServer(19.3496, -99.1915);
+  }
+
+  if (!isSandbox) {
+    recordAudienceInteraction(senderPhone, senderName, messageText, geoResult);
+  }
+
+  // PushName
+  if (senderName && senderName !== "Usuario WhatsApp" && !senderName.includes("Sandbox")) {
+    const cleanPush = senderName.replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/)[0];
+    if (cleanPush && cleanPush.length >= 2 && !userSession.name) {
+      userSession.name = cleanPush.charAt(0).toUpperCase() + cleanPush.slice(1).toLowerCase();
+    }
+  }
+  const nameMatch = messageText.match(/(?:soy|me llamo|mi nombre es)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
+  if (nameMatch && nameMatch[1]) {
+    userSession.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
+  }
+
+  userSession.history.push({ role: "user", text: messageText, timestamp: Date.now() });
+  if (userSession.history.length > 15) userSession.history = userSession.history.slice(-15);
+
+  let userLat = latitude;
+  let userLng = longitude;
+  let userLocationColonia = (isLocationMessage && geoResult?.neighborhood) ? geoResult.neighborhood : null;
+  let locationIsFromMemory = false;
+
+  if (isLocationMessage && latitude && longitude) {
+    userSession.lastLocation = {
+      latitude: latitude,
+      longitude: longitude,
+      neighborhood: geoResult?.neighborhood,
+      municipality: geoResult?.municipality,
+      timestamp: Date.now()
+    };
+  } else if ((!userLat || userLat === 19.3496) && userSession.lastLocation && (Date.now() - userSession.lastLocation.timestamp < 24 * 3600 * 1000)) {
+    userLat = userSession.lastLocation.latitude;
+    userLng = userSession.lastLocation.longitude;
+    userLocationColonia = userSession.lastLocation.neighborhood;
+    locationIsFromMemory = true;
+  }
+
+  // Detección de Dirección / Colonia en Texto
+  const isWaitingForLocation = (userSession.intencion_actual === "esperando_ubicacion");
+  let detectedAddressInfo = null;
+  if (!isLocationMessage && messageText) {
+    detectedAddressInfo = resolveAddressOrColonia(messageText, isWaitingForLocation);
+    if (detectedAddressInfo) {
+      userLocationColonia = detectedAddressInfo.neighborhood;
+      userLat = detectedAddressInfo.lat || userLat || 19.3496;
+      userLng = detectedAddressInfo.lng || userLng || -99.1915;
+      userSession.lastLocation = {
+        latitude: userLat,
+        longitude: userLng,
+        neighborhood: userLocationColonia,
+        municipality: detectedAddressInfo.municipality || "Álvaro Obregón",
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  // FAQ, Registro B2B y Soporte Humano
+  const REGISTRATION_INTENT_REGEX = /(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i;
+  const HUMAN_SUPPORT_REGEX = /(?:necesito\s+(?:hablar\s+con\s+una\s+persona|ayuda\s+humana|un\s+humano)|quiero\s+que\s+me\s+atienda\s+alguien\s+real|oye[,.]?\s+necesito\s+ayuda\s+humana|hablar\s+con\s+(?:un\s+)?(?:asesor|humano|persona)|soporte\s+humano|asistencia\s+personalizada|atenci[oó]n\s+humana|atencion\s+humana)/i;
+  const SYSTEM_FAQ_REGEX = /(?:tengo\s+(?:una\s+)?duda[s]?|qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona|c[oó]mo\s+opera|c[oó]mo\s+se\s+usa|de\s+qu[eé]\s+trata|para\s+qu[eé]\s+sirve|c[oó]mo\s+me\s+(?:pueden?\s+)?ayudar|no\s+entiendo\s+(?:bien\s+)?c[oó]mo\s+(?:opera|funciona)|qu[eé]\s+(?:hace|hacen)|qu[eé]\s+puedes\s+hacer|qu[eé]\s+pueden\s+hacer\s+por\s+m[ií])/i;
+
+  const isRegistrationIntent = REGISTRATION_INTENT_REGEX.test(messageText);
+  const isHumanSupportIntent = HUMAN_SUPPORT_REGEX.test(messageText);
+  const isSystemFaqIntent = SYSTEM_FAQ_REGEX.test(messageText);
+
+  // Expresiones conversacionales
+  const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
+  const AFFIRMATIVE_REGEX = /^(?:s[ií]|claro(?:\s+que\s+s[ií])?|por\s+favor|m[aá]ndal[oa](?:me)?|m[aá]ndamel[oa]s?|m[aá]ndame\s+otr[oa]|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|otr[oa]|algun\s+otr[oa]|mu[eé]strame\s+otr[oa]|mu[eé]strame\s+m[aá]s|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|qu[eé]\s+m[aá]s\s+tienes|s[ií][,.\s]+.*)[!.\s]*$/i;
+  const MORE_OPTIONS_REGEX = /(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas)/i;
+  const FEEDBACK_REGEX = /^(?:est[aá]\s+(?:muy\s+)?lejos|me\s+queda\s+(?:muy\s+)?lejos|algo\s+m[aá]s\s+cerca|est[aá]\s+(?:muy\s+)?caro|no\s+me\s+(?:gusta|convence|late)|ya\s+cerr[oó]|est[aá]\s+cerrado|no\s+contestan|muy\s+retirado|otro\s+m[aá]s\s+cerquita)[!.\s]*$/i;
+  const CORRECTION_REGEX = /(?:no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ\s]+[,;.]?\s*(?:quiero|busco|necesito|sino)\s+|quiero\s+(?:un|una)?\s*[a-záéíóúñ\s]+,\s*no\s+[a-záéíóúñ\s]+|te\s+ped[ií]\s+|dije\s+)/i;
+
+  let textForCategoryDetection = messageText || "";
+  const isCategoryCorrection = CORRECTION_REGEX.test(textForCategoryDetection);
+  if (isCategoryCorrection) {
+    textForCategoryDetection = textForCategoryDetection
+      .replace(/,\s*no\s+[a-záéíóúñ\s]+$/i, "")
+      .replace(/no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ]+[,;.\s]*/i, "")
+      .trim();
+  }
+
+  const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver|^1$)/i.test((messageText || '').trim()));
+  const NEGATIVE_CONFIRMATION_REGEX = /^(?:no|nel|no\s+gracias|no\s+por\s+favor|para\s+nada|tampoco|ninguno|ninguna|no\s+quiero|est[aá]\s+muy\s+lejos|me\s+queda\s+muy\s+lejos|demasiado\s+lejos|no\s+me\s+sirve|no\s+me\s+late)[!.\s]*$/i;
+  const isNegativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && NEGATIVE_CONFIRMATION_REGEX.test((messageText || "").trim()));
+  const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
+  const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
+  const isAffirmative = !isLocationMessage && !isCategoryCorrection && !isNegativeExpansion && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
+
+  const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
+  const isAddressMessage = Boolean(detectedAddressInfo);
+
+  // Búsqueda comercial directa
+  const directFuzzyMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
+    ? searchBusinessesFuzzy(textForCategoryDetection, activeBusinesses)
+    : [];
+
+  const qCleanForName = (textForCategoryDetection || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const directBusinessNameMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
+    ? activeBusinesses.filter(b => {
+        const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (!bName || qCleanForName.length < 3) return false;
+        const bCore = bName.replace(/^(?:restaurante|pizzer[ií]a|consultor[ií]a|despacho\s+jur[ií]dico|cl[ií]nica\s+veterinaria)\s+(?:&|y)?\s*/i, '').trim();
+        if (bCore.length >= 4 && qCleanForName.includes(bCore)) return true;
+        return qCleanForName.includes(bName) || bName.includes(qCleanForName);
+      })
+    : [];
+
+  // Modismos mexicanos
+  let matchedIdiom = null;
+  let deducedCategoryFromIdiom = null;
+  for (const item of MEXICAN_IDIOMS_MAP) {
+    if (item.regex.test(textForCategoryDetection)) {
+      deducedCategoryFromIdiom = item.category;
+      matchedIdiom = item.tag;
+      break;
+    }
+  }
+
+  // Detección de Categoría y Familia Semántica
+  let detectedFamilyKey = null;
+  let detectedFamilyName = null;
+  let detectedSpecificGiro = null;
+
+  for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+    const kwHit = fData.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection));
+    if (kwHit) {
+      detectedFamilyKey = fKey;
+      detectedFamilyName = fData.name;
+      for (const kw of fData.keywords) {
+        if (new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection)) {
+          detectedSpecificGiro = kw.charAt(0).toUpperCase() + kw.slice(1);
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  if (!detectedFamilyKey && matchedIdiom) {
+    if (deducedCategoryFromIdiom.includes("Mecánicos") || deducedCategoryFromIdiom.includes("Automotriz")) {
+      detectedFamilyKey = "AUTOMOTRIZ";
+      detectedFamilyName = "Automotriz y Movilidad";
+      detectedSpecificGiro = matchedIdiom;
+    } else if (deducedCategoryFromIdiom.includes("Restaurantes") || deducedCategoryFromIdiom.includes("Alimentos")) {
+      detectedFamilyKey = "ALIMENTOS_Y_BEBIDAS";
+      detectedFamilyName = "Alimentos y Bebidas";
+      detectedSpecificGiro = matchedIdiom;
+    } else if (deducedCategoryFromIdiom.includes("Salud")) {
+      detectedFamilyKey = "SALUD";
+      detectedFamilyName = "Salud y Bienestar";
+      detectedSpecificGiro = matchedIdiom;
+    } else if (deducedCategoryFromIdiom.includes("Plomeros") || deducedCategoryFromIdiom.includes("Electricistas") || deducedCategoryFromIdiom.includes("Cerrajerías")) {
+      detectedFamilyKey = "OFICIOS_DEL_HOGAR";
+      detectedFamilyName = "Oficios del Hogar y Mantenimiento";
+      detectedSpecificGiro = matchedIdiom;
+    } else if (deducedCategoryFromIdiom.includes("Veterinarios") || deducedCategoryFromIdiom.includes("Mascotas")) {
+      detectedFamilyKey = "MASCOTAS";
+      detectedFamilyName = "Mascotas y Cuidado Animal";
+      detectedSpecificGiro = matchedIdiom;
+    }
+  }
+
+  if (!detectedFamilyKey && (directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
+    const topMatch = directBusinessNameMatches.length > 0 ? directBusinessNameMatches[0] : directFuzzyMatches[0];
+    for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+      const catHit = fData.categories.some(c => 
+        (topMatch.category || '').toLowerCase().includes(c.toLowerCase()) || 
+        c.toLowerCase().includes((topMatch.category || '').toLowerCase())
+      );
+      if (catHit) {
+        detectedFamilyKey = fKey;
+        detectedFamilyName = fData.name;
+        break;
+      }
+    }
+    if (!detectedFamilyName) {
+      detectedFamilyName = topMatch.category || "Servicios Locales";
+    }
+    detectedSpecificGiro = topMatch.businessName || topMatch.category;
+  }
+
+  // ==========================================================
+  // BLOQUEO INQUEBRANTABLE DE GIRO / CATEGORÍA (LOCKED CATEGORY & FAMILY)
+  // ==========================================================
+  if (isCategoryCorrection && (detectedFamilyName || directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
+    userSession.lockedFamily = detectedFamilyKey || "ALIMENTOS_Y_BEBIDAS";
+    userSession.lockedCategory = detectedSpecificGiro || textForCategoryDetection;
+    userSession.familia_giro = detectedFamilyName || "Servicios Locales";
+    userSession.giro_especifico = detectedSpecificGiro || textForCategoryDetection;
+    userSession.negocios_ya_mostrados = [];
+    userSession.esperando_confirmacion_expansion_2km = false;
+  } else if (detectedFamilyKey) {
+    if (userSession.lockedFamily && userSession.lockedFamily !== detectedFamilyKey) {
+      userSession.negocios_ya_mostrados = [];
+    }
+    userSession.lockedFamily = detectedFamilyKey;
+    userSession.lockedCategory = detectedSpecificGiro || detectedFamilyName;
+    userSession.familia_giro = detectedFamilyName;
+    userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
+  }
+
+  // Comprobar selecciones de opciones ofrecidas
+  let selectedFromOffered = null;
+  if (Array.isArray(userSession.opciones_ofrecidas) && userSession.opciones_ofrecidas.length > 0) {
+    const normText = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (/^(?:1|el\s+1|la\s+1|opci[oó]n\s+1|el\s+primer[oa]|la\s+primer[oa]|primero|primera)[.,!]*$/i.test(normText)) {
+      selectedFromOffered = userSession.opciones_ofrecidas[0];
+    } else if (/^(?:2|el\s+2|la\s+2|opci[oó]n\s+2|el\s+segund[oa]|la\s+segund[oa]|segundo|segunda)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[1]) {
+      selectedFromOffered = userSession.opciones_ofrecidas[1];
+    } else if (/^(?:3|el\s+3|la\s+3|opci[oó]n\s+3|el\s+tercer[oa]|la\s+tercer[oa]|tercero|tercera)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[2]) {
+      selectedFromOffered = userSession.opciones_ofrecidas[2];
+    } else if ((isAffirmative || isAffirmativeExpansion) && userSession.opciones_ofrecidas.length === 1) {
+      selectedFromOffered = userSession.opciones_ofrecidas[0];
+    } else {
+      for (const b of userSession.opciones_ofrecidas) {
+        const bNameNorm = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const bWords = bNameNorm.split(/\s+/).filter(w => w.length > 3 && !["restaurante", "pizzeria", "herreria", "plomeria", "taller", "trattoria"].includes(w));
+        if (bNameNorm.includes(normText) || normText.includes(bNameNorm) || (bWords.length > 0 && bWords.some(w => normText.includes(w)))) {
+          selectedFromOffered = b;
+          break;
+        }
+      }
+    }
+  }
+
+  const hasValidActiveLocation = Boolean(isLocationMessage || userLocationColonia || locationIsFromMemory || (userSession.lastLocation && userSession.lastLocation.latitude));
+
+  // Determinar fase actual
+  if (selectedFromOffered) {
+    currentPhase = 4;
+    userSession.intencion_actual = "entrega_ficha_completa";
+    detectedFamilyName = userSession.familia_giro || selectedFromOffered.category || "Servicios Locales";
+    detectedSpecificGiro = selectedFromOffered.businessName;
+  } else if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
+    currentPhase = 5;
+  } else if (isLocationWithoutCoords) {
+    currentPhase = 2;
+    userSession.intencion_actual = "esperando_ubicacion";
+  } else if (userSession.esperando_confirmacion_expansion_2km && isNegativeExpansion) {
+    currentPhase = 4;
+    userSession.esperando_confirmacion_expansion_2km = false;
+    userSession.negocio_lejano_pendiente = null;
+    userSession.intencion_actual = "rechazo_expansion";
+  } else if (userSession.esperando_confirmacion_expansion_2km && (isAffirmative || isAffirmativeExpansion)) {
+    currentPhase = 4;
+    detectedFamilyName = userSession.familia_giro || "Servicios Locales";
+    detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
+    userSession.intencion_actual = "confirmacion_expansion";
+  } else if (isCategoryCorrection && (userSession.familia_giro || detectedFamilyKey)) {
+    if (hasValidActiveLocation) {
+      currentPhase = 3;
+      userSession.intencion_actual = "correccion_categoria";
+    } else {
+      currentPhase = 2;
+      userSession.intencion_actual = "esperando_ubicacion";
+    }
+  } else if (isAffirmative && (userSession.familia_giro || userSession.lockedFamily)) {
+    currentPhase = 4;
+    detectedFamilyName = userSession.familia_giro;
+    detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
+    userSession.intencion_actual = isFeedbackOnPrevious ? "feedback_resultado_anterior" : "ver_mas_opciones";
+  } else if (isLocationMessage || (!locationIsFromMemory && (userLocationColonia || detectedAddressInfo))) {
+    const activeFamily = detectedFamilyName || userSession.familia_giro || userSession.lockedFamily;
+    const activeSpecific = detectedSpecificGiro || userSession.giro_especifico || activeFamily;
+    if (activeFamily || activeSpecific) {
+      currentPhase = 3;
+      userSession.familia_giro = activeFamily;
+      userSession.giro_especifico = activeSpecific;
+      detectedFamilyName = activeFamily;
+      detectedSpecificGiro = activeSpecific;
+      userSession.intencion_actual = "buscar_negocio";
+    } else {
+      currentPhase = 1;
+      userSession.intencion_actual = "ubicacion_guardada_esperando_giro";
+    }
+  } else if (isGreetingOnly && !detectedFamilyKey && directBusinessNameMatches.length === 0) {
+    currentPhase = 1;
+    userSession.intencion_actual = "saludo";
+  } else if (directBusinessNameMatches.length > 0) {
+    if (userSession.familia_giro !== detectedFamilyName) {
+      userSession.negocios_ya_mostrados = [];
+    }
+    userSession.familia_giro = detectedFamilyName || directBusinessNameMatches[0].category || "Servicios Locales";
+    userSession.giro_especifico = directBusinessNameMatches[0].businessName;
+    userSession.lockedCategory = directBusinessNameMatches[0].businessName;
+    currentPhase = 3;
+    userSession.intencion_actual = "buscar_negocio";
+  } else if (detectedFamilyKey) {
+    if (userSession.familia_giro !== detectedFamilyName) {
+      userSession.negocios_ya_mostrados = [];
+    }
+    userSession.familia_giro = detectedFamilyName;
+    userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
+    if (!hasValidActiveLocation) {
+      currentPhase = 2;
+      userSession.intencion_actual = "esperando_ubicacion";
+    } else {
+      currentPhase = 3;
+      userSession.intencion_actual = "buscar_negocio";
+    }
+  } else if ((isLocationMessage || userLocationColonia || detectedAddressInfo) && (userSession.familia_giro || userSession.lockedFamily)) {
+    currentPhase = 3;
+    userSession.intencion_actual = "buscar_negocio";
+    detectedFamilyName = userSession.familia_giro;
+    detectedSpecificGiro = userSession.giro_especifico;
+  } else if (!isGreetingOnly && userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || isLocationMessage || detectedAddressInfo)) {
+    currentPhase = 3;
+    userSession.intencion_actual = "buscar_negocio";
+    detectedFamilyName = userSession.familia_giro;
+    detectedSpecificGiro = userSession.giro_especifico;
+  } else if (!isGreetingOnly && messageText && messageText.trim()) {
+    if (userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || detectedAddressInfo)) {
+      currentPhase = 3;
+      userSession.intencion_actual = "buscar_negocio";
+      detectedFamilyName = userSession.familia_giro;
+      detectedSpecificGiro = userSession.giro_especifico;
+    } else {
+      userSession.familia_giro = userSession.familia_giro || "Servicios Locales";
+      userSession.giro_especifico = messageText.trim();
+      if (!hasValidActiveLocation) {
+        currentPhase = 2;
+        userSession.intencion_actual = "esperando_ubicacion";
+      } else {
+        currentPhase = 3;
+        userSession.intencion_actual = "buscar_negocio";
+      }
+    }
+  }
+
+  // ==============================================================
+  // MOTOR DE BÚSQUEDA Y FILTRADO CON BLOQUEO ESTRICTO DE FAMILIA
+  // ==============================================================
+  let cercanos_2km = [];
+  let lejanos_mas_2km = [];
+  let candidatePool = [];
+
+  const effectiveFamilyKey = userSession.lockedFamily || detectedFamilyKey;
+  const effectiveFamilyName = userSession.familia_giro || detectedFamilyName;
+  const familyDef = effectiveFamilyKey ? GIRO_FAMILIES[effectiveFamilyKey] : Object.values(GIRO_FAMILIES).find(f => f.name === effectiveFamilyName);
+  const allowedCategories = familyDef ? familyDef.categories : [];
+  const isOficioFamily = familyDef?.isOficio || false;
+  const isFoodFamily = (effectiveFamilyKey === "ALIMENTOS_Y_BEBIDAS" || effectiveFamilyName === "Alimentos y Bebidas");
+
+  if (currentPhase === 3 || currentPhase === 4) {
+    const directMatchIds = new Set(
+      (directBusinessNameMatches.length > 0 ? directBusinessNameMatches : []).map(m => m.id)
+    );
+
+    candidatePool = activeBusinesses.filter(b => {
+      const bCat = (b.category || '').toLowerCase();
+      const bName = (b.businessName || '').toLowerCase();
+      const bServ = (b.services || '').toLowerCase();
+
+      // REGLA CRÍTICA #1: BLINDAJE SEMÁNTICO DE COMIDA
+      if (isFoodFamily) {
+        const nonFoodTokens = [
+          "herrer", "plomer", "electric", "cerrajer", "carpinter", "mecanic", "taller", "grua",
+          "veterinar", "abogad", "contador", "medico", "dentist", "farmacia", "limpieza", "fumiga", "notar", "inmobiliaria"
+        ];
+        if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
+        const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+        const isFoodKw = familyDef ? familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ)) : false;
+        if (!isFoodCat && !isFoodKw) return false;
+      } else if (familyDef) {
+        const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+        const kwMatches = familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ));
+        if (!catMatches && !kwMatches) return false;
+
+        if (isOficioFamily && userSession.giro_especifico) {
+          const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
+          const matchesThisOficio = bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
+                                    bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
+          if (!matchesThisOficio) return false;
+        }
+      } else {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Deduplicación estricta
+    const uniquePool = [];
+    const seenIds = new Set();
+    for (const b of candidatePool) {
+      if (!seenIds.has(b.id)) {
+        seenIds.add(b.id);
+        uniquePool.push(b);
+      }
+    }
+    candidatePool = uniquePool;
+
+    const scored = candidatePool.map(b => {
+      let bLat = b.latitude ? Number(b.latitude) : 19.3496;
+      let bLng = b.longitude ? Number(b.longitude) : -99.1915;
+      const distKm = (userLat && userLng) ? haversineDistanceKm(userLat, userLng, bLat, bLng) : 1.2;
+      const openInfo = isBusinessOpenNow(b, mexTime);
+
+      let score = 0;
+      if (directMatchIds.has(b.id)) score += 200;
+      if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
+      if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 80;
+      if (openInfo.isOpen) score += 30;
+      if (b.isSponsored || b.plan === "plus" || b.featured) score += 35;
+
+      return {
+        ...b,
+        distanceKm: distKm,
+        openInfo: openInfo,
+        matchScore: score
+      };
+    });
+
+    const isSameColonia = (b) => {
+      if (!userLocationColonia || !b.neighborhood) return false;
+      const uNorm = userLocationColonia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const bNorm = b.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      return uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm);
+    };
+
+    cercanos_2km = scored
+      .filter(b => b.distanceKm <= 2.0 || isSameColonia(b) || directMatchIds.has(b.id))
+      .sort((a, b) => {
+        const aSponsored = a.isSponsored || a.plan === "plus";
+        const bSponsored = b.isSponsored || b.plan === "plus";
+        if (directMatchIds.has(a.id) && !directMatchIds.has(b.id)) return -1;
+        if (!directMatchIds.has(a.id) && directMatchIds.has(b.id)) return 1;
+        if (aSponsored && !bSponsored) return -1;
+        if (!aSponsored && bSponsored) return 1;
+        return b.matchScore - a.matchScore;
+      });
+
+    lejanos_mas_2km = scored
+      .filter(b => b.distanceKm > 2.0 && !isSameColonia(b) && !directMatchIds.has(b.id))
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    if (currentPhase === 3) {
+      if (cercanos_2km.length === 0 && lejanos_mas_2km.length > 0) {
+        const farBiz = lejanos_mas_2km.find(b => !userSession.negocios_ya_mostrados.includes(b.id)) || lejanos_mas_2km[0];
+        userSession.negocio_lejano_pendiente = farBiz;
+        userSession.esperando_confirmacion_expansion_2km = true;
+        userSession.intencion_actual = "esperando_expansion";
+      }
+    }
+  }
+
+  // ==============================================================
+  // ELECCIÓN DE CANDIDATO Y BLOQUEO DE DISTANCIA
+  // ==============================================================
+  let sourcePool = [];
+  if (userSession.intencion_actual === "rechazo_expansion") {
+    sourcePool = [];
+  } else if (currentPhase === 3) {
+    sourcePool = cercanos_2km;
+  } else if (currentPhase === 4) {
+    if (userSession.negocio_lejano_pendiente) {
+      sourcePool = [userSession.negocio_lejano_pendiente];
+      userSession.esperando_confirmacion_expansion_2km = false;
+      userSession.negocio_lejano_pendiente = null;
+    } else {
+      sourcePool = lejanos_mas_2km.concat(cercanos_2km);
+    }
+  }
+
+  const unshownCandidates = sourcePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
+  const selectedBusinesses = unshownCandidates.slice(0, 1);
+
+  if (selectedBusinesses.length > 0) {
+    userSession.negocios_ya_mostrados.push(selectedBusinesses[0].id);
+  }
+
+  userSession.lastBusinesses = selectedBusinesses;
+  userSession.categoria_activa = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || null;
+  userSession.ubicacion_activa = userSession.lastLocation || (userLocationColonia ? { neighborhood: userLocationColonia, latitude: userLat, longitude: userLng } : null);
+
+  // Ficha canónica
+  let canonicalCard = "";
+  let controlQuestion = "";
+  if (selectedBusinesses.length > 0) {
+    const b = selectedBusinesses[0];
+    const cleanP = String(b.phone || '').replace(/\D/g, '');
+    const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
+    const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
+    const sponsorTag = (b.isSponsored || b.plan === "plus") ? `👑 [Opción VIP Patrocinada${distLabel}]\n` : "";
+    const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
+
+    canonicalCard = `${sponsorTag}🏢 *${b.businessName}*\n` +
+      `✨ Especialidad: ${b.services || b.category}\n` +
+      `${b.openInfo?.isOpen ? '🟢 Estado: Abierto ahora' : '🔴 Estado: Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar horario'}\n` +
+      `📅 Días: ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
+      `📍 Zona: Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
+      `🗺️ Ver en Google Maps: ${mapsLink}\n` +
+      `📞 Teléfono: ${b.phone}\n` +
+      `💬 WhatsApp: ${waLink}`;
+
+    controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o quieres que te busque otra alternativa por la zona? 🙌";
+  }
+
+  // Generación del texto de respuesta
+  const isSessionAlreadyActive = !!userSession.saludo_enviado;
+  userSession.saludo_enviado = true;
+
+  if (currentPhase === 1) {
+    if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
+      finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
+    } else {
+      finalBotReplyText = isSessionAlreadyActive
+        ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
+        : `${mexTime.greeting} ${mexTime.icon} ¡Bienvenido a BuscaYa! 😊✨ Me da mucho gusto saludarte. Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 📍`;
+    }
+  } else if (currentPhase === 2) {
+    if (isLocationWithoutCoords) {
+      finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación 📍🤔 ¿Podrías escribirme en qué colonia o zona estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
+    } else {
+      const giroTxt = userSession.giro_especifico ? ` de ${userSession.giro_especifico}` : "";
+      finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
+    }
+  } else if (currentPhase === 3) {
+    if (!isSandbox) {
+      recordMarketDemand(
+        userSession.giro_especifico || detectedSpecificGiro,
+        userLocationColonia,
+        senderPhone,
+        selectedBusinesses
+      );
+    }
+
+    if (directBusinessNameMatches.length > 0 && selectedBusinesses.length > 0) {
+      finalBotReplyText = `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
+    } else if (cercanos_2km.length > 0) {
+      userSession.opciones_ofrecidas = cercanos_2km.slice(0, 3);
+      if (userSession.opciones_ofrecidas.length === 1) {
+        const b = userSession.opciones_ofrecidas[0];
+        const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
+        const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
+        const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
+        finalBotReplyText = `¡Perfecto! Encontré esta excelente opción abierta cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
+          `🏢 *${b.businessName}*${sponsorTag}\n` +
+          `✨ ${b.services || b.category}\n` +
+          `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
+          `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
+          `🗺️ Ver en Google Maps: ${mapsLink}\n\n` +
+          `¿Te gustaría que te mande su teléfono, WhatsApp directo y ubicación completa? 😊🙌`;
+      } else {
+        const listItems = userSession.opciones_ofrecidas.map((b, idx) => {
+          const numEmoji = ["1️⃣", "2️⃣", "3️⃣"][idx] || `•`;
+          const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
+          const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km` : "";
+          const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
+          return `${numEmoji} *${b.businessName}*${sponsorTag}\n` +
+            `✨ ${b.services || b.category}\n` +
+            `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
+            `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
+            `🗺️ Ver en Google Maps: ${mapsLink}`;
+        }).join("\n\n");
+
+        finalBotReplyText = `¡Perfecto! Encontré estas opciones cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
+          `${listItems}\n\n` +
+          `¿Cuál de estas opciones te interesa más? 😊 Escríbeme el nombre o número y te paso de inmediato su ficha completa con teléfono, WhatsApp directo y mapa 🙌✨`;
+      }
+    } else {
+      if (lejanos_mas_2km.length > 0) {
+        const farBiz = userSession.negocio_lejano_pendiente || lejanos_mas_2km[0];
+        const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese servicio";
+        const colLabel = farBiz.neighborhood || farBiz.colonia || "la zona poniente";
+        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${farBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${colLabel}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
+      } else {
+        const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese servicio";
+        finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
+      }
+    }
+  } else if (currentPhase === 4) {
+    if (userSession.intencion_actual === "rechazo_expansion") {
+      const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese giro";
+      finalBotReplyText = `¡Entendido perfectamente! 😊 Sin problema. Por el momento son todos los negocios de ${giroLabel} que tenemos registrados cerquita de tu ubicación 📍✨ ¡Muy pronto sumaremos nuevos establecimientos en tu calle! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algún otro servicio? 🙌`;
+    } else if (selectedFromOffered && canonicalCard) {
+      finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
+    } else if (selectedBusinesses.length > 0 && canonicalCard) {
+      const intro = isFeedbackOnPrevious
+        ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro}:`
+        : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
+      finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
+    } else {
+      // RESPUESTA CERRADA OBLIGATORIA
+      const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese giro";
+      finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
+    }
+  }
+
+  // Interceptores rápidos prioritarios
+  if (isHumanSupportIntent) {
+    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
+  } else if (isRegistrationIntent) {
+    finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
+  } else if (isSystemFaqIntent) {
+    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 😊🙌 BuscaYa es tu directorio inteligente directo aquí en WhatsApp. Solo nos dices qué necesitas (comida, un médico, un plomero o servicio) junto con tu ubicación, y nuestra Inteligencia Artificial te encuentra al instante los mejores negocios verificados que están abiertos cerquita de ti 📍✨ Si quieres conocer a fondo cómo está diseñado o registrar tu propio establecimiento, puedes entrar aquí: https://buscaya.neuralmediahouse.com/ 🚀";
+  }
+
+  // Desdoblar burbujas
+  const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbols(b.trim())).filter(Boolean);
+  const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbols(finalBotReplyText)];
+
+  userSession.lastBotReplyText = finalBotReplyText;
+  userSession.lastBotReplyTimestamp = Date.now();
+  userSession.history.push({ role: "assistant", text: finalBotReplyText, timestamp: Date.now() });
+  if (userSession.history.length > 15) userSession.history = userSession.history.slice(-15);
+  saveServerDatabase();
+
+  const botReply = {
+    recipient: senderPhone,
+    agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+    isAudio: isAudioMessage,
+    audioTranscription: audioTranscription,
+    locationDetected: {
+      latitude: latitude,
+      longitude: longitude,
+      neighborhood: geoResult?.neighborhood,
+      municipality: geoResult?.municipality,
+      state: geoResult?.state,
+      formattedAddress: geoResult?.formattedAddress
+    },
+    responseMessage: finalBotReplyText,
+    timestamp: timestamp
+  };
+
+  return {
+    replyText: finalBotReplyText,
+    bubbles: bubbles,
+    debugState: {
+      lockedFamily: userSession.lockedFamily || effectiveFamilyKey || null,
+      lockedCategory: userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || null,
+      detectedNeighborhood: userLocationColonia || userSession.lastLocation?.neighborhood || null,
+      matchingBusinessesCount: candidatePool ? candidatePool.length : 0,
+      unshownCandidatesCount: unshownCandidates ? unshownCandidates.length : 0,
+      selectedBusiness: selectedBusinesses[0] ? selectedBusinesses[0].businessName : null,
+      currentPhase: currentPhase,
+      activeIntention: userSession.intencion_actual
+    },
+    botReply: botReply,
+    session: userSession
+  };
+}
 
 const server = http.createServer(async (req, res) => {
   // Configuración de CORS estricta y segura
@@ -3419,6 +4321,130 @@ const server = http.createServer(async (req, res) => {
           quickRules: SERVER_AI_TRAINING_CONFIG.quickRules,
           compiledPrompt: CURRENT_SYSTEM_PROMPT
         }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // ENDPOINTS DE CONTROL MAESTRO: ENTRENAMIENTO & MASTER PROMPT
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/admin/ai-training/master-prompt') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, masterPrompt: CURRENT_SYSTEM_PROMPT }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/ai-training/master-prompt') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        if (payload.masterPrompt && payload.masterPrompt.trim()) {
+          CURRENT_SYSTEM_PROMPT = payload.masterPrompt.trim();
+          saveServerDatabase();
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, masterPrompt: CURRENT_SYSTEM_PROMPT }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/ai-training/quick-fix') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { userSays, botDid, botShould, feedback } = JSON.parse(body || '{}');
+        let newRule = "";
+        if (feedback && feedback.trim()) {
+          newRule = feedback.trim();
+        } else if (userSays || botShould) {
+          newRule = `Cuando el usuario diga "${userSays || ''}", en vez de "${botDid || ''}", debes responder: "${botShould || ''}".`;
+        }
+        if (newRule) {
+          if (!Array.isArray(SERVER_AI_TRAINING_CONFIG.quickRules)) SERVER_AI_TRAINING_CONFIG.quickRules = [];
+          SERVER_AI_TRAINING_CONFIG.quickRules.unshift(newRule);
+          SERVER_AI_TRAINING_CONFIG.updatedAt = new Date().toISOString();
+          CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
+          saveServerDatabase();
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          ruleAdded: newRule,
+          compiledPrompt: CURRENT_SYSTEM_PROMPT,
+          quickRules: SERVER_AI_TRAINING_CONFIG.quickRules
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // ENDPOINTS DE SANDBOX EN VIVO (1:1 CON WHATSAPP)
+  // ==============================================================
+  if (req.method === 'POST' && pathname === '/api/admin/ai-sandbox/chat') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const phone = payload.phone || "+52 55 0000 0001";
+        const name = payload.name || "SuperAdmin (Sandbox)";
+        const text = payload.query || payload.text || "";
+
+        const result = await processBuscaYaMessage({
+          phone: phone,
+          name: name,
+          text: text,
+          type: payload.type || "text",
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          location: payload.location,
+          isAudio: payload.isAudio,
+          audioTranscription: payload.audioTranscription,
+          isSandbox: true,
+          rawPayload: payload
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          reply: result.replyText,
+          bubbles: result.bubbles,
+          debugState: result.debugState,
+          botReply: result.botReply
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/ai-sandbox/reset') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const phone = payload.phone || "+52 55 0000 0001";
+        USER_SESSION_MEMORY.delete(phone);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, message: "Sesión de prueba reiniciada exitosamente", phone }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: err.message }));
@@ -4860,19 +5886,6 @@ ${visualFormatRule}`;
 
         console.log('[WhatsApp Webhook Inbound]', JSON.stringify(payload).slice(0, 200));
 
-        let latitude = null;
-        let longitude = null;
-        let senderPhone = "+52 55 1234 5678";
-        let senderName = payload.name || "Usuario WhatsApp";
-        let messageText = "";
-        let isLocationMessage = false;
-        let isLocationWithoutCoords = false;
-        let isAudioMessage = false;
-        let audioTranscription = null;
-        let currentPhase = 1;
-        let finalBotReplyText = "";
-
-        // Formato 1: WhatsApp Cloud API estándar
         const entry = payload.entry && payload.entry[0];
         const changes = entry && entry.changes && entry.changes[0];
         const messages = changes && changes.value && changes.value.messages;
@@ -4884,1594 +5897,41 @@ ${visualFormatRule}`;
           return;
         }
 
-        // ==============================================================
-        // CAPA 1: DEDUPLICACIÓN DE MENSAJES Y FRENO CONTRA DOBLE RESPUESTA
-        // ==============================================================
-        const incomingMsgId = (messages && messages[0] && messages[0].id) || payload.id || payload.messageId || null;
-        if (incomingMsgId) {
-          if (PROCESSED_WEBHOOK_MESSAGE_IDS.has(incomingMsgId)) {
-            console.log(`[Webhook Deduplication] Mensaje duplicado ${incomingMsgId} ya procesado. Retornando ACK sin reprocesar.`);
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ success: true, duplicate: true, status: "duplicate_ignored" }));
-            return;
-          }
-          PROCESSED_WEBHOOK_MESSAGE_IDS.set(incomingMsgId, Date.now());
-          if (PROCESSED_WEBHOOK_MESSAGE_IDS.size > 2000) {
-            const now = Date.now();
-            for (const [mid, ts] of PROCESSED_WEBHOOK_MESSAGE_IDS.entries()) {
-              if (now - ts > 10 * 60 * 1000) PROCESSED_WEBHOOK_MESSAGE_IDS.delete(mid);
-            }
-          }
-        }
-
         const msg = (messages && messages[0]) ? messages[0] : null;
-        if (msg) {
-          senderPhone = msg.from || senderPhone;
-          senderName = (changes?.value?.contacts && changes?.value?.contacts[0]?.profile?.name) || senderName;
-        } else {
-          senderPhone = payload.from || senderPhone;
-          senderName = payload.name || senderName;
-        }
+        let senderPhone = (msg && msg.from) || payload.from || payload.phone || "+52 55 1234 5678";
+        let senderName = (changes?.value?.contacts && changes?.value?.contacts[0]?.profile?.name) || payload.name || "Usuario WhatsApp";
+        let messageText = (msg && msg.text && msg.text.body) || payload.query || payload.text || "";
+        let latitude = (msg && msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
+        let longitude = (msg && msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
 
-        // ==============================================================
-        // FASE 1: MEMORIA LIMPIA DE SESIÓN (USER_SESSION_MEMORY)
-        // ==============================================================
-        let userSession = USER_SESSION_MEMORY.get(senderPhone);
-        if (!userSession) {
-          userSession = {
-            name: null,
-            intencion_actual: null,
-            giro_buscado: null,
-            familia_giro: null,
-            giro_especifico: null,
-            ubicacion: null,
-            lastLocation: null,
-            saludo_enviado: false,
-            esperando_confirmacion_expansion_2km: false,
-            negocio_lejano_pendiente: null,
-            negocios_ya_mostrados: [],
-            esperando_mas_opciones: false,
-            lastBusinesses: [],
-            history: [],
-            lastInteractionTime: Date.now(),
-            lastSeen: Date.now()
-          };
-          USER_SESSION_MEMORY.set(senderPhone, userSession);
-        }
-        userSession.lastSeen = Date.now();
-        if (!Array.isArray(userSession.negocios_ya_mostrados)) userSession.negocios_ya_mostrados = [];
-        if (!Array.isArray(userSession.history)) userSession.history = [];
-
-        // ==============================================================
-        // FASE 2: CLASIFICACIÓN DE TIPO ANTES DE ENVIAR A IA O BD
-        // ==============================================================
-        let incomingType = "text";
-        if (msg) {
-          if (['image', 'video', 'document', 'sticker'].includes(msg.type)) incomingType = "media";
-          else if (msg.type === 'audio') incomingType = "audio";
-          else if (msg.type === 'location' || msg.type === 'live_location') incomingType = "location";
-        } else {
-          if (['image', 'video', 'document', 'sticker'].includes(payload.type) || payload.image || payload.video || payload.document) incomingType = "media";
-          else if (payload.type === 'audio' || payload.audio || payload.audioBase64) incomingType = "audio";
-          else if (payload.type === 'location' || payload.type === 'live_location' || payload.location || (typeof payload.latitude === 'number' && typeof payload.longitude === 'number')) incomingType = "location";
-        }
-
-        // 1. RECEPTOR DE IMÁGENES / VIDEOS / DOCUMENTOS
-        if (incomingType === "media") {
-          const mediaReplyText = "¡Muchas gracias por enviarme tu imagen! 📸😊 Por el momento todavía no tengo activada la lectura de imágenes en el sistema, ¡pero muy pronto podré verlas para ayudarte aún mejor! 🚀✨ Mientras tanto, ¿me podrías escribir por aquí o mandarme en una nota de voz qué negocio, producto o servicio estás buscando? 🙌";
-          const mediaReply = {
-            recipient: senderPhone,
-            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-            responseMessage: mediaReplyText,
-            timestamp: timestamp
-          };
-
-          if (msg && META_CLOUD_ACCESS_TOKEN) {
-            try {
-              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: String(senderPhone).replace(/\D/g, ''),
-                  type: "text",
-                  text: { preview_url: true, body: mediaReplyText }
-                })
-              });
-            } catch (e) { console.warn("[Media Reply Send Error]", e.message); }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            processed: true,
-            mediaAcknowledged: true,
-            botReply: mediaReply
-          }));
-          return;
-        }
-
-        // 2. RECEPTOR Y TRANSCRIPTOR DE AUDIO / NOTAS DE VOZ
-        if (incomingType === "audio") {
-          isAudioMessage = true;
-          if (payload.query && String(payload.query).trim()) {
-            audioTranscription = String(payload.query).trim();
-          } else if (payload.audioTranscription && String(payload.audioTranscription).trim()) {
-            audioTranscription = String(payload.audioTranscription).trim();
-          } else if (payload.text && String(payload.text).trim()) {
-            audioTranscription = String(payload.text).trim();
-          } else {
-            const audioData = (msg && msg.audio?.data) || payload.audioBase64 || payload.audio || null;
-            const transResult = await transcribeAudioData(audioData, (msg && msg.audio?.mime_type) || "audio/ogg");
-            audioTranscription = transResult.success ? transResult.text : null;
-          }
-
-          if (!audioTranscription || !audioTranscription.trim()) {
-            const audioFailText = "Fíjate que no pude escuchar con claridad tu nota de voz 😔🎧 ¿Serías tan amable de escribirme por mensaje de texto qué negocio o servicio estás buscando? Con mucho gusto te ayudo de inmediato 😊🙌";
-            const audioFailReply = {
-              recipient: senderPhone,
-              agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-              isAudio: true,
-              audioTranscription: null,
-              responseMessage: audioFailText,
-              timestamp: timestamp
-            };
-            if (msg && META_CLOUD_ACCESS_TOKEN) {
-              try {
-                const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-                await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                  method: "POST",
-                  headers: { "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: String(senderPhone).replace(/\D/g, ''),
-                    type: "text",
-                    text: { preview_url: true, body: audioFailText }
-                  })
-                });
-              } catch (e) { console.warn("[Audio Fail Reply Warning]", e.message); }
-            }
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-              success: true,
-              processed: true,
-              isAudio: true,
-              audioTranscriptionFailed: true,
-              botReply: audioFailReply
-            }));
-            return;
-          }
-
-          messageText = audioTranscription;
-        }
-
-        // 3. RECEPTOR DE UBICACIÓN (PIN GPS O LIVE LOCATION)
-        if (incomingType === "location") {
-          let rawLat = null;
-          let rawLng = null;
-          if (msg && msg.location) {
-            rawLat = Number(msg.location.latitude);
-            rawLng = Number(msg.location.longitude);
-          } else if (payload.location) {
-            rawLat = Number(payload.location.latitude);
-            rawLng = Number(payload.location.longitude);
-          } else if (typeof payload.latitude === 'number' && typeof payload.longitude === 'number') {
-            rawLat = payload.latitude;
-            rawLng = payload.longitude;
-          }
-
-          if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
-            latitude = rawLat;
-            longitude = rawLng;
-            isLocationMessage = true;
-
-            const geo = reverseGeocodeServer(latitude, longitude);
-            userSession.ubicacion = { lat: latitude, lng: longitude, tipo: "gps", timestamp: Date.now() };
-            userSession.lastLocation = {
-              latitude: latitude,
-              longitude: longitude,
-              neighborhood: geo?.neighborhood || "Álvaro Obregón",
-              municipality: geo?.municipality || "Álvaro Obregón",
-              timestamp: Date.now()
-            };
-            userSession.saludo_enviado = true; // PROHIBIDO mandar saludo de bienvenida cuando entra una ubicación
-
-            // Si el usuario mandó primero su ubicación sin haber dicho qué busca:
-            if (!userSession.giro_buscado && !userSession.familia_giro && !userSession.giro_especifico) {
-              const locOnlyReplyText = "¡Súper, ya recibí tu ubicación exacta! 📍😊 Ahora cuéntame, ¿qué comida, oficio, médico o negocio te gustaría buscar hoy cerquita de ti? ✨";
-              const locOnlyReply = {
-                recipient: senderPhone,
-                agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-                responseMessage: locOnlyReplyText,
-                timestamp: timestamp
-              };
-
-              if (msg && META_CLOUD_ACCESS_TOKEN) {
-                try {
-                  const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      messaging_product: "whatsapp",
-                      recipient_type: "individual",
-                      to: String(senderPhone).replace(/\D/g, ''),
-                      type: "text",
-                      text: { preview_url: true, body: locOnlyReplyText }
-                    })
-                  });
-                } catch (e) { console.warn("[Loc Only Reply Warning]", e.message); }
-              }
-
-              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-              res.end(JSON.stringify({
-                success: true,
-                processed: true,
-                locationReceived: true,
-                botReply: locOnlyReply
-              }));
-              return;
-            }
-
-            // Si sessionState[phone].giro_buscado ya existe, pasa DIRECTO al Motor de Búsqueda de 2 km
-            currentPhase = 3;
-            userSession.intencion_actual = "buscar_negocio";
-          } else {
-            isLocationWithoutCoords = true;
-          }
-        }
-
-        // 4. RECEPTOR DE TEXTO
-        if (incomingType === "text" && !messageText) {
-          messageText = (msg && msg.text && msg.text.body) || payload.query || payload.text || "";
-          if (/ubicaci[oó]n.*(?:finalizada|sin\s+coordenadas)/i.test(messageText)) {
-            isLocationWithoutCoords = true;
-          }
-        }
-
-        // Si el texto contiene coordenadas directas
-        if (!latitude && messageText) {
-          const coordMatch = messageText.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
-          if (coordMatch) {
-            latitude = parseFloat(coordMatch[1]);
-            longitude = parseFloat(coordMatch[2]);
-            isLocationMessage = true;
-            userSession.saludo_enviado = true;
-          }
-        }
-
-        // ==============================================================
-        // FASE 3.1: INTERCEPTOR DE CIERRE Y CORTESÍA (ANTI-BUCLE EN GRACIAS)
-        // ==============================================================
-        const CLOSING_FAREWELL_REGEX = /^(?:gracias|muchas\s+gracias|mil\s+gracias|te\s+lo\s+agradezco|perfecto\s+gracias|ok\s+gracias|muy\s+amable|adi[oó]s|adios|bye|chao|hasta\s+luego|nos\s+vemos|excelente(?:\s+gracias)?|much[ií]simas\s+gracias|muchisimas\s+gracias|vale\s+gracias|sale\s+bye|va\s+gracias|de\s+acuerdo(?:\s+gracias)?|sale\s+gracias|ok\s+perfecto|perfecto)[!.\s]*$/i;
-
-        if (messageText && CLOSING_FAREWELL_REGEX.test(messageText.trim())) {
-          // PROHIBIDO consultar la base de datos y PROHIBIDO volver a enviar fichas de negocios o VIPs
-          userSession.esperando_mas_opciones = false;
-          userSession.giro_buscado = null;
-          userSession.familia_giro = null;
-          userSession.giro_especifico = null;
-          userSession.esperando_confirmacion_expansion_2km = false;
-          userSession.negocio_lejano_pendiente = null;
-          userSession.intencion_actual = "despedida";
-
-          const farewellText = "¡No hay de qué, fue un verdadero placer ayudarte! 😊🙌 Espero que te atiendan increíble ✨ Recuerda que aquí en BuscaYa estoy disponible para ti las 24 horas cuando necesites encontrar otro negocio o servicio cerca de ti 📍 ¡Que pases un excelente día! 🌟";
-          const farewellReply = {
-            recipient: senderPhone,
-            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-            responseMessage: farewellText,
-            timestamp: timestamp
-          };
-
-          if (msg && META_CLOUD_ACCESS_TOKEN) {
-            try {
-              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: String(senderPhone).replace(/\D/g, ''),
-                  type: "text",
-                  text: { preview_url: true, body: farewellText }
-                })
-              });
-            } catch (e) { console.warn("[Farewell Send Warning]", e.message); }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            processed: true,
-            isFarewell: true,
-            botReply: farewellReply
-          }));
-          return;
-        }
-
-        // Registrar / actualizar usuario en la lista de activos
-        const existingUser = ACTIVE_WHATSAPP_USERS.find(u => u.phone === senderPhone);
-        if (existingUser) {
-          existingUser.lastSeen = timestamp;
-          if (senderName) existingUser.name = senderName;
-        } else {
-          ACTIVE_WHATSAPP_USERS.unshift({
-            phone: senderPhone,
-            name: senderName,
-            lastSeen: timestamp,
-            optIn: true,
-            neighborhood: "CDMX"
-          });
-        }
-
-        // ==============================================================
-        // MOTOR DE REACCIONES AUTOMÁTICAS CON EMOJIS (META CLOUD API)
-        // ==============================================================
-        if (messages && messages[0] && messages[0].id && META_CLOUD_ACCESS_TOKEN) {
-          try {
-            const reactionEmoji = detectReactionEmoji(messageText);
-            const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-            fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: String(senderPhone).replace(/\D/g, ''),
-                type: "reaction",
-                reaction: {
-                  message_id: messages[0].id,
-                  emoji: reactionEmoji
-                }
-              })
-            }).catch(e => console.warn("[Meta Reaction Notice]", e.message));
-          } catch (e) {
-            console.warn("[Meta Reaction Notice]", e.message);
-          }
-        }
-
-        // ==============================================================
-        // MÓDULO 5: OPT-OUT AUTOMÁTICO ("BAJA" / CANCELAR PROMOCIONES)
-        // ==============================================================
-        if (/^(baja|darme\s+de\s+baja|no\s+quiero\s+promociones|cancelar\s+promociones|cancelar\s+suscripci[oó]n|stop|desuscribir)[!.\s]*$/i.test(messageText.trim())) {
-          const cleanSender = String(senderPhone).replace(/\D/g, '');
-          let crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
-          if (crmUser) {
-            crmUser.optOut = true;
-            crmUser.receiveMassCampaigns = false;
-          } else {
-            AUDIENCIA_WHATSAPP.unshift({
-              phone: senderPhone,
-              name: senderName || "Usuario WhatsApp",
-              alias: "",
-              classification: "Baja Voluntaria",
-              tags_giros: [],
-              manualTags: ["Opt-Out"],
-              ubicacion_frecuente: "CDMX",
-              notes: "Solicitó baja de mensajes promocionales.",
-              first_interaction: timestamp,
-              last_interaction: timestamp,
-              optOut: true,
-              receiveMassCampaigns: false
-            });
-          }
-          saveServerDatabase();
-
-          const optOutReply = {
-            recipient: senderPhone,
-            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-            responseMessage: "Has sido dado de baja de nuestras promociones y mensajes masivos ✅. Recuerda que puedes seguir usando BuscaYa para encontrar cualquier negocio o servicio cuando lo necesites. ¡Que tengas un excelente día! 🙌✨",
-            timestamp: timestamp
-          };
-
-          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
-            try {
-              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: cleanSender,
-                  type: "text",
-                  text: { preview_url: true, body: optOutReply.responseMessage }
-                })
-              });
-            } catch (err) {
-              console.warn("[Opt-Out Send Warning]", err.message);
-            }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            optOut: true,
-            botReply: optOutReply
-          }));
-          return;
-        }
-
-        // ==============================================================
-        // MANEJO HONESTO DE FALLO EN TRANSCRIPCIÓN DE NOTA DE VOZ
-        // ==============================================================
-        if (isAudioMessage && (!messageText || !messageText.trim())) {
-          const audioFailText = "Fíjate que no pude escuchar con claridad tu nota de voz 😔🎧 ¿Serías tan amable de escribirme por mensaje de texto qué negocio o servicio estás buscando? Con mucho gusto te ayudo de inmediato 😊🙌";
-          const audioFailReply = {
-            recipient: senderPhone,
-            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-            isAudio: true,
-            audioTranscription: null,
-            responseMessage: audioFailText,
-            timestamp: timestamp
-          };
-
-          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
-            try {
-              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: String(senderPhone).replace(/\D/g, ''),
-                  type: "text",
-                  text: { preview_url: true, body: audioFailText }
-                })
-              });
-            } catch (e) {
-              console.warn("[Audio Fail Reply Warning]", e.message);
-            }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            processed: true,
-            isAudio: true,
-            audioTranscriptionFailed: true,
-            botReply: audioFailReply
-          }));
-          return;
-        }
-
-        // ==============================================================
-        // PRIORIDAD DE SEGURIDAD: EMERGENCIA MÉDICA O DE SEGURIDAD (911 CDMX)
-        // ==============================================================
-        const MEDICAL_EMERGENCY_REGEX = /(?:emergencia\s+m[eé]dica|infarto|ataque\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|accidente\s+grave|hemorragia|convulsi[oó]n|me\s+duele\s+el\s+pecho\s+fuerte|peligro\s+de\s+muerte)/i;
-        if (messageText && MEDICAL_EMERGENCY_REGEX.test(messageText)) {
-          const emergencyText = "⚠️ Si te encuentras ante una emergencia médica o de seguridad que pone en riesgo la vida, por favor comunícate de inmediato al 911 (Emergencias Ciudad de México) o a la Cruz Roja al 55 5395 1111 para recibir auxilio urgente.\n\nSi además necesitas localizar una farmacia, clínica o médico de guardia en tu colonia, confírmame tu ubicación y te paso los datos enseguida.";
-          const emergencyReply = {
-            recipient: senderPhone,
-            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-            responseMessage: emergencyText,
-            timestamp: timestamp
-          };
-
-          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
-            try {
-              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  messaging_product: "whatsapp",
-                  recipient_type: "individual",
-                  to: String(senderPhone).replace(/\D/g, ''),
-                  type: "text",
-                  text: { preview_url: true, body: emergencyText }
-                })
-              });
-            } catch (e) {
-              console.warn("[Emergency Reply Warning]", e.message);
-            }
-          }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            emergencyDetected: true,
-            botReply: emergencyReply
-          }));
-          return;
-        }
-
-        // ==============================================================
-        // MÓDULO 3: AUTOGESTIÓN POR WHATSAPP PARA DUEÑOS DE NEGOCIO (VERIFICADO)
-        // ==============================================================
-        const ownedBiz = findBusinessByOwnerPhone(senderPhone);
-        if (ownedBiz && messageText) {
-          const isScheduleCmd = /(hoy\s+(cierro|cerramos|no\s+abrimos|abro|abrimos)|pausar\s+mi\s+negocio|cerrado\s+por\s+hoy)/i.test(messageText);
-          const isAddServiceCmd = /(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)|nuevo\s+servicio)/i.test(messageText);
-
-          // Verificación del lado del servidor: requiere payload.ownerVerified === true, mensaje entrante firmado por Meta Cloud API, o PIN de propietario ( últimos 4 dígitos del ID/teléfono )
-          const expectedPin = String(ownedBiz.ownerPin || String(ownedBiz.phone || '').replace(/\D/g, '').slice(-4));
-          const hasPinInText = expectedPin && messageText.includes(expectedPin);
-          const isServerVerifiedOwner = Boolean((messages && messages[0] && messages[0].from) || payload.ownerVerified === true || hasPinInText);
-
-          if ((isScheduleCmd || isAddServiceCmd) && !isServerVerifiedOwner) {
-            const unverifiedText = `🔒 Para proteger la ficha de *${ownedBiz.businessName}*, incluye los últimos 4 dígitos de tu teléfono registrado (${expectedPin}) al final de tu instrucción o realiza el cambio desde tu panel en https://buscaya.neuralmediahouse.com/`;
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-              success: false,
-              ownerVerificationRequired: true,
-              botReply: {
-                recipient: senderPhone,
-                agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-                responseMessage: unverifiedText,
-                timestamp: timestamp
-              }
-            }));
-            return;
-          }
-
-          if (isScheduleCmd) {
-            const todayStr = new Date().toISOString().slice(0, 10);
-            const isClosed = /no\s+abrimos|pausar|cierro|cerrado/i.test(messageText);
-            ownedBiz.estado_temporal_hoy = {
-              status: isClosed ? "cerrado" : "horario_especial",
-              note: messageText,
-              date: todayStr
-            };
-            if (!Array.isArray(ownedBiz.ownerAuditLog)) ownedBiz.ownerAuditLog = [];
-            ownedBiz.ownerAuditLog.unshift({
-              action: "schedule_updated",
-              detail: messageText,
-              byPhone: senderPhone,
-              timestamp: timestamp
-            });
-            saveServerDatabase();
-
-            const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya actualicé el estatus de *${ownedBiz.businessName}* por el día de hoy para avisarle a los clientes 😊🙌`;
-            const ownerReply = {
-              recipient: senderPhone,
-              agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-              responseMessage: ownerReplyText,
-              timestamp: timestamp
-            };
-
-            if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
-              try {
-                const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-                await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                    "Content-Type": "application/json"
-                  },
-                  body: JSON.stringify({
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: String(senderPhone).replace(/\D/g, ''),
-                    type: "text",
-                    text: { preview_url: true, body: ownerReplyText }
-                  })
-                });
-              } catch (e) {
-                console.warn("[Owner Schedule Confirm Warning]", e.message);
-              }
-            }
-
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({
-              success: true,
-              ownerAction: "schedule_updated",
-              botReply: ownerReply
-            }));
-            return;
-          }
-
-          if (isAddServiceCmd) {
-            const cleanServ = messageText
-              .replace(/^(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)?|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)?|nuevo\s+servicio:?)/i, '')
-              .replace(new RegExp(`\\b${expectedPin}\\b`, 'g'), '')
-              .trim();
-            if (cleanServ) {
-              ownedBiz.services = (ownedBiz.services ? ownedBiz.services + ", " : "") + cleanServ;
-              if (!Array.isArray(ownedBiz.ownerAuditLog)) ownedBiz.ownerAuditLog = [];
-              ownedBiz.ownerAuditLog.unshift({
-                action: "service_added",
-                detail: cleanServ,
-                byPhone: senderPhone,
-                timestamp: timestamp
-              });
-              saveServerDatabase();
-
-              const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya agregué el nuevo servicio a la ficha de *${ownedBiz.businessName}*: "${cleanServ}" 😊🙌`;
-              const ownerReply = {
-                recipient: senderPhone,
-                agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-                responseMessage: ownerReplyText,
-                timestamp: timestamp
-              };
-
-              if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
-                try {
-                  const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                    method: "POST",
-                    headers: {
-                      "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                      "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                      messaging_product: "whatsapp",
-                      recipient_type: "individual",
-                      to: String(senderPhone).replace(/\D/g, ''),
-                      type: "text",
-                      text: { preview_url: true, body: ownerReplyText }
-                    })
-                  });
-                } catch (e) {
-                  console.warn("[Owner Service Confirm Warning]", e.message);
-                }
-              }
-
-              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-              res.end(JSON.stringify({
-                success: true,
-                ownerAction: "service_added",
-                botReply: ownerReply
-              }));
-              return;
-            }
-          }
-        }
-
-        // ==============================================================
-        // HUMAN HANDOFF: VERIFICAR SI REQUIERE ATENCIÓN HUMANA
-        // ==============================================================
-        const handoffActive = HUMAN_HANDOFF_SESSIONS[senderPhone] && 
-          (HUMAN_HANDOFF_SESSIONS[senderPhone].status === 'pending' || HUMAN_HANDOFF_SESSIONS[senderPhone].status === 'in_progress');
-
-        const needsHandoff = detectHumanHandoffIntent(messageText);
-
-        if (needsHandoff || handoffActive) {
-          // Registrar en la sesión de Helpdesk
-          if (!HUMAN_HANDOFF_SESSIONS[senderPhone]) {
-            HUMAN_HANDOFF_SESSIONS[senderPhone] = {
-              phone: senderPhone,
-              pushName: senderName,
-              status: "pending",
-              requestedAt: timestamp,
-              lastMessage: messageText,
-              messages: [],
-              unread: true
-            };
-          }
-
-          HUMAN_HANDOFF_SESSIONS[senderPhone].lastMessage = messageText;
-          HUMAN_HANDOFF_SESSIONS[senderPhone].status = "pending";
-          HUMAN_HANDOFF_SESSIONS[senderPhone].unread = true;
-          HUMAN_HANDOFF_SESSIONS[senderPhone].messages.push({
-            sender: "user",
-            text: messageText,
-            timestamp: timestamp,
-            isAudio: isAudioMessage
-          });
-
-          // Si acaba de solicitar el handoff, enviar mensaje de pausa oficial
-          const handoffReply = {
-            recipient: senderPhone,
-            type: "text",
-            responseMessage: `🔔 *Transferencia a Asesor Humano Activada*\n\nHola ${senderName}, hemos pausado la atención automática del Concierge IA. Un asesor humano de nuestro equipo de **Neural Media House** tomará el control de este chat de inmediato para darte atención personalizada y resolver tu caso. En breve te respondemos por aquí.`,
-            humanHandoffActive: true,
-            timestamp: timestamp
-          };
-
-          HUMAN_HANDOFF_SESSIONS[senderPhone].messages.push({
-            sender: "system",
-            text: handoffReply.responseMessage,
-            timestamp: timestamp
-          });
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            success: true,
-            humanHandoff: true,
-            status: "human_needed",
-            message: "Sesión pausada para atención humana en Control Maestro (Neural Media House)",
-            botReply: handoffReply
-          }));
-          return;
-        }
-
-        // ==============================================================
-        // CAPA 1 & 3: PRE-PROCESAMIENTO, RELOJ CDMX, AUDIENCIA Y MEMORIA
-        // ==============================================================
-        const mexTime = getMexicoCityTime();
-
-        let geoResult = null;
-        if (latitude && longitude) {
-          geoResult = reverseGeocodeServer(latitude, longitude);
-        } else {
-          geoResult = reverseGeocodeServer(19.3496, -99.1915);
-        }
-
-        // 1. Captura y clasificación automática en Audiencia CRM
-        recordAudienceInteraction(senderPhone, senderName, messageText, geoResult);
-
-        // 2. Memoria Conversacional de Contexto y Sesión (24 hrs)
-        if (!userSession) {
-          userSession = USER_SESSION_MEMORY.get(senderPhone) || {
-            name: null,
-            intencion_actual: null,
-            giro_buscado: null,
-            familia_giro: null,
-            giro_especifico: null,
-            ubicacion: null,
-            lastLocation: null,
-            saludo_enviado: false,
-            esperando_confirmacion_expansion_2km: false,
-            negocio_lejano_pendiente: null,
-            negocios_ya_mostrados: [],
-            esperando_mas_opciones: false,
-            lastBusinesses: [],
-            history: [],
-            lastInteractionTime: Date.now(),
-            lastSeen: Date.now()
-          };
-          USER_SESSION_MEMORY.set(senderPhone, userSession);
-        }
-        userSession.lastSeen = Date.now();
-        if (!Array.isArray(userSession.negocios_ya_mostrados)) userSession.negocios_ya_mostrados = [];
-        if (!Array.isArray(userSession.history)) userSession.history = [];
-
-        // Identificación y Limpieza del Nombre del Usuario (PushName o Detección en Mensaje)
-        if (senderName && senderName !== "Usuario WhatsApp") {
-          const cleanPush = senderName.replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/)[0];
-          if (cleanPush && cleanPush.length >= 2 && !userSession.name) {
-            userSession.name = cleanPush.charAt(0).toUpperCase() + cleanPush.slice(1).toLowerCase();
-          }
-        }
-
-        const nameMatch = messageText.match(/(?:soy|me llamo|mi nombre es)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
-        if (nameMatch && nameMatch[1]) {
-          userSession.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
-        }
-
-        // Registrar mensaje de usuario en historial
-        userSession.history.push({
-          role: "user",
+        const result = await processBuscaYaMessage({
+          phone: senderPhone,
+          name: senderName,
           text: messageText,
-          timestamp: Date.now()
+          latitude: latitude,
+          longitude: longitude,
+          location: payload.location,
+          isAudio: payload.isAudio || (msg && msg.type === 'audio'),
+          audioTranscription: payload.audioTranscription,
+          audioBase64: payload.audioBase64 || payload.audio,
+          isSandbox: false,
+          rawMsg: msg,
+          rawPayload: payload
         });
-        if (userSession.history.length > 15) {
-          userSession.history = userSession.history.slice(-15);
+
+        if (result.duplicate) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, duplicate: true, status: "duplicate_ignored" }));
+          return;
         }
 
-        // Ubicación en tiempo real o recuperación desde memoria conversacional (24 hrs)
-        let userLat = latitude;
-        let userLng = longitude;
-        let userLocationColonia = (isLocationMessage && geoResult?.neighborhood) ? geoResult.neighborhood : null;
-        let locationIsFromMemory = false;
-
-        if (isLocationMessage && latitude && longitude) {
-          userSession.lastLocation = {
-            latitude: latitude,
-            longitude: longitude,
-            neighborhood: geoResult?.neighborhood,
-            municipality: geoResult?.municipality,
-            timestamp: Date.now()
-          };
-        } else if ((!userLat || userLat === 19.3496) && userSession.lastLocation && (Date.now() - userSession.lastLocation.timestamp < 24 * 3600 * 1000)) {
-          userLat = userSession.lastLocation.latitude;
-          userLng = userSession.lastLocation.longitude;
-          userLocationColonia = userSession.lastLocation.neighborhood;
-          locationIsFromMemory = true;
-        }
-
-        // Detección Universal de Dirección / Colonia / Ubicación en Texto (Anti-Bucle de Ubicación)
-        const isWaitingForLocation = (userSession.intencion_actual === "esperando_ubicacion");
-        let detectedAddressInfo = null;
-        if (!isLocationMessage && messageText) {
-          detectedAddressInfo = resolveAddressOrColonia(messageText, isWaitingForLocation);
-          if (detectedAddressInfo) {
-            userLocationColonia = detectedAddressInfo.neighborhood;
-            userLat = detectedAddressInfo.lat || userLat || 19.3496;
-            userLng = detectedAddressInfo.lng || userLng || -99.1915;
-            userSession.lastLocation = {
-              latitude: userLat,
-              longitude: userLng,
-              neighborhood: userLocationColonia,
-              municipality: detectedAddressInfo.municipality || "Álvaro Obregón",
-              timestamp: Date.now()
-            };
-          }
-        }
-
-        // ==============================================================
-        // REGLAS CRÍTICAS PREVIAS: CAPTACIÓN B2B, ASISTENCIA HUMANA Y DUDAS FRECUENTES
-        // ==============================================================
-        const REGISTRATION_INTENT_REGEX = /(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i;
-        const HUMAN_SUPPORT_REGEX = /(?:necesito\s+(?:hablar\s+con\s+una\s+persona|ayuda\s+humana|un\s+humano)|quiero\s+que\s+me\s+atienda\s+alguien\s+real|oye[,.]?\s+necesito\s+ayuda\s+humana|hablar\s+con\s+(?:un\s+)?(?:asesor|humano|persona)|soporte\s+humano|asistencia\s+personalizada|atenci[oó]n\s+humana|atencion\s+humana)/i;
-        const SYSTEM_FAQ_REGEX = /(?:tengo\s+(?:una\s+)?duda[s]?|qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona|c[oó]mo\s+opera|c[oó]mo\s+se\s+usa|de\s+qu[eé]\s+trata|para\s+qu[eé]\s+sirve|c[oó]mo\s+me\s+(?:pueden?\s+)?ayudar|no\s+entiendo\s+(?:bien\s+)?c[oó]mo\s+(?:opera|funciona)|qu[eé]\s+(?:hace|hacen)|qu[eé]\s+puedes\s+hacer|qu[eé]\s+pueden\s+hacer\s+por\s+m[ií])/i;
-
-        const isRegistrationIntent = REGISTRATION_INTENT_REGEX.test(messageText);
-        const isHumanSupportIntent = HUMAN_SUPPORT_REGEX.test(messageText);
-        const isSystemFaqIntent = SYSTEM_FAQ_REGEX.test(messageText);
-
-        const SYSTEM_FAQ_OPTIONS = [
-          "¡Claro que sí con muchísimo gusto! 😊🙌 BuscaYa es tu directorio inteligente directo aquí en WhatsApp. Solo nos dices qué necesitas (comida, un médico, un plomero o servicio) junto con tu ubicación, y nuestra Inteligencia Artificial te encuentra al instante los mejores negocios verificados que están abiertos cerquita de ti 📍✨ Si quieres conocer a fondo cómo está diseñado o registrar tu propio establecimiento, puedes entrar aquí: https://buscaya.neuralmediahouse.com/ 🚀",
-          "¡Hola! Qué excelente pregunta 🌟 BuscaYa conecta de forma inmediata a los vecinos de la zona con negocios locales reales a través de WhatsApp. Si tienes un establecimiento o servicio y quieres formar parte de nuestro directorio para recibir clientes directos, tienes días de prueba gratis ⚡ Pásate a revisar todos los detalles de diseño y realiza tu registro oficial en este enlace: https://buscaya.neuralmediahouse.com/ 📱🤝",
-          "¡Para eso estamos! 🤖✨ Funciona superfácil: tú nos escribes qué buscas o qué servicio requieres, y te pasamos los datos exactos, horarios reales, teléfonos y ubicación de los negocios abiertos a menos de 2 km de ti 🗺️ Si tienes alguna otra duda sobre cómo operamos o te interesa sumar tu negocio al sistema, checa toda la información y regístrate aquí: https://buscaya.neuralmediahouse.com/ 🚀 ¡Cualquier otra cosa aquí ando para ayudarte!"
-        ];
-
-        // ==============================================================
-        // CLASIFICADOR DE INTENCIÓN ANTES DE BUSCAR Y MÁQUINA DE ESTADOS (V4)
-        // ==============================================================
-        const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
-        const AFFIRMATIVE_REGEX = /^(?:s[ií]|claro(?:\s+que\s+s[ií])?|por\s+favor|m[aá]ndal[oa](?:me)?|m[aá]ndamel[oa]s?|m[aá]ndame\s+otr[oa]|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|otr[oa]|algun\s+otr[oa]|mu[eé]strame\s+otr[oa]|mu[eé]strame\s+m[aá]s|s[ií][,.\s]+.*)[!.\s]*$/i;
-        const MORE_OPTIONS_REGEX = /(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida)/i;
-        const FEEDBACK_REGEX = /^(?:est[aá]\s+(?:muy\s+)?lejos|me\s+queda\s+(?:muy\s+)?lejos|algo\s+m[aá]s\s+cerca|est[aá]\s+(?:muy\s+)?caro|no\s+me\s+(?:gusta|convence|late)|ya\s+cerr[oó]|est[aá]\s+cerrado|no\s+contestan|muy\s+retirado|otro\s+m[aá]s\s+cerquita)[!.\s]*$/i;
-        const CORRECTION_REGEX = /(?:no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ\s]+[,;.]?\s*(?:quiero|busco|necesito|sino)\s+|quiero\s+(?:un|una)?\s*[a-záéíóúñ\s]+,\s*no\s+[a-záéíóúñ\s]+|te\s+ped[ií]\s+|dije\s+)/i;
-
-        // Si el usuario corrigió explícitamente la categoría (ej. "quiero una herrería, no comida" o "no quiero comida, busco herrería"), limpiar la parte negada para detectar solo el giro deseado
-        let textForCategoryDetection = messageText || "";
-        const isCategoryCorrection = CORRECTION_REGEX.test(textForCategoryDetection);
-        if (isCategoryCorrection) {
-          textForCategoryDetection = textForCategoryDetection
-            .replace(/,\s*no\s+[a-záéíóúñ\s]+$/i, "")
-            .replace(/no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ]+[,;.\s]*/i, "")
-            .trim();
-        }
-
-        const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver|^1$)/i.test((messageText || '').trim()));
-        const NEGATIVE_CONFIRMATION_REGEX = /^(?:no|nel|no\s+gracias|no\s+por\s+favor|para\s+nada|tampoco|ninguno|ninguna|no\s+quiero|est[aá]\s+muy\s+lejos|me\s+queda\s+muy\s+lejos|demasiado\s+lejos|no\s+me\s+sirve|no\s+me\s+late)[!.\s]*$/i;
-        const isNegativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && NEGATIVE_CONFIRMATION_REGEX.test((messageText || "").trim()));
-        const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
-        const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
-        const isAffirmative = !isLocationMessage && !isCategoryCorrection && !isNegativeExpansion && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
-
-        // 4. Sincronización con BD: Negocios activos o en demo vigente
-        const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
-
-        // Búsqueda Difusa Flexible en Base de Datos en Tiempo Real
-        // Blindaje Geográfico: Si el mensaje contiene una colonia o dirección (ej. "Santa Fe"), NO debe interpretarse como búsqueda comercial
-        const isAddressMessage = Boolean(detectedAddressInfo);
-        const directFuzzyMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
-          ? searchBusinessesFuzzy(textForCategoryDetection, activeBusinesses)
-          : [];
-
-        // Búsqueda Directa Estricta por Nombre de Negocio / Marca Comercial
-        const qCleanForName = (textForCategoryDetection || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        const directBusinessNameMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
-          ? activeBusinesses.filter(b => {
-              const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-              if (!bName || qCleanForName.length < 3) return false;
-              const bCore = bName.replace(/^(?:restaurante|pizzer[ií]a|consultor[ií]a|despacho\s+jur[ií]dico|cl[ií]nica\s+veterinaria)\s+(?:&|y)?\s*/i, '').trim();
-              if (bCore.length >= 4 && qCleanForName.includes(bCore)) return true;
-              return qCleanForName.includes(bName) || bName.includes(qCleanForName);
-            })
-          : [];
-
-        // Detección de Modismos Mexicanos
-        let matchedIdiom = null;
-        let deducedCategoryFromIdiom = null;
-        for (const item of MEXICAN_IDIOMS_MAP) {
-          if (item.regex.test(textForCategoryDetection)) {
-            deducedCategoryFromIdiom = item.category;
-            matchedIdiom = item.tag;
-            break;
-          }
-        }
-
-        // Detección de Familia de Giros Semántica
-        let detectedFamilyKey = null;
-        let detectedFamilyName = null;
-        let detectedSpecificGiro = null;
-
-        for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
-          const kwHit = fData.keywords.some(kw => {
-            const regex = new RegExp(`\\b${kw}\\b`, 'i');
-            return regex.test(textForCategoryDetection);
-          });
-          if (kwHit) {
-            detectedFamilyKey = fKey;
-            detectedFamilyName = fData.name;
-            for (const kw of fData.keywords) {
-              if (new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection)) {
-                detectedSpecificGiro = kw.charAt(0).toUpperCase() + kw.slice(1);
-                break;
-              }
-            }
-            break;
-          }
-        }
-
-        if (!detectedFamilyKey && matchedIdiom) {
-          if (deducedCategoryFromIdiom.includes("Mecánicos") || deducedCategoryFromIdiom.includes("Automotriz")) {
-            detectedFamilyKey = "AUTOMOTRIZ";
-            detectedFamilyName = "Automotriz y Movilidad";
-            detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Restaurantes") || deducedCategoryFromIdiom.includes("Alimentos")) {
-            detectedFamilyKey = "ALIMENTOS_Y_BEBIDAS";
-            detectedFamilyName = "Alimentos y Bebidas";
-            detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Salud")) {
-            detectedFamilyKey = "SALUD";
-            detectedFamilyName = "Salud y Bienestar";
-            detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Plomeros") || deducedCategoryFromIdiom.includes("Electricistas") || deducedCategoryFromIdiom.includes("Cerrajerías")) {
-            detectedFamilyKey = "OFICIOS_DEL_HOGAR";
-            detectedFamilyName = "Oficios del Hogar y Mantenimiento";
-            detectedSpecificGiro = matchedIdiom;
-          } else if (deducedCategoryFromIdiom.includes("Veterinarios") || deducedCategoryFromIdiom.includes("Mascotas")) {
-            detectedFamilyKey = "MASCOTAS";
-            detectedFamilyName = "Mascotas y Cuidado Animal";
-            detectedSpecificGiro = matchedIdiom;
-          }
-        }
-
-        // Si hubo coincidencia con un negocio o servicio activo en la base de datos
-        if (!detectedFamilyKey && (directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
-          const topMatch = directBusinessNameMatches.length > 0 ? directBusinessNameMatches[0] : directFuzzyMatches[0];
-          for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
-            const catHit = fData.categories.some(c => 
-              (topMatch.category || '').toLowerCase().includes(c.toLowerCase()) || 
-              c.toLowerCase().includes((topMatch.category || '').toLowerCase())
-            );
-            if (catHit) {
-              detectedFamilyKey = fKey;
-              detectedFamilyName = fData.name;
-              break;
-            }
-          }
-          if (!detectedFamilyName) {
-            detectedFamilyName = topMatch.category || "Servicios Locales";
-          }
-          detectedSpecificGiro = topMatch.businessName || topMatch.category;
-        }
-
-        // Si es una corrección de categoría, reemplazar la categoría activa, reiniciar mostrados y conservar la ubicación activa
-        if (isCategoryCorrection && (detectedFamilyName || directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
-          userSession.familia_giro = detectedFamilyName || "Servicios Locales";
-          userSession.giro_especifico = detectedSpecificGiro || textForCategoryDetection;
-          userSession.negocios_ya_mostrados = [];
-          userSession.esperando_confirmacion_expansion_2km = false;
-        }
-
-        // Determinar Fase Conversacional Actual (Procesando UBICACIÓN antes que clasificador genérico)
-        currentPhase = 1;
-        const hasValidActiveLocation = Boolean(isLocationMessage || userLocationColonia || locationIsFromMemory || (userSession.lastLocation && userSession.lastLocation.latitude));
-
-        // Detección de Elección de Negocio entre Opciones Ofrecidas previamente
-        let selectedFromOffered = null;
-        if (Array.isArray(userSession.opciones_ofrecidas) && userSession.opciones_ofrecidas.length > 0) {
-          const normText = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-          
-          if (/^(?:1|el\s+1|la\s+1|opci[oó]n\s+1|el\s+primer[oa]|la\s+primer[oa]|primero|primera)[.,!]*$/i.test(normText)) {
-            selectedFromOffered = userSession.opciones_ofrecidas[0];
-          } else if (/^(?:2|el\s+2|la\s+2|opci[oó]n\s+2|el\s+segund[oa]|la\s+segund[oa]|segundo|segunda)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[1]) {
-            selectedFromOffered = userSession.opciones_ofrecidas[1];
-          } else if (/^(?:3|el\s+3|la\s+3|opci[oó]n\s+3|el\s+tercer[oa]|la\s+tercer[oa]|tercero|tercera)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[2]) {
-            selectedFromOffered = userSession.opciones_ofrecidas[2];
-          } else if ((isAffirmative || isAffirmativeExpansion) && userSession.opciones_ofrecidas.length === 1) {
-            selectedFromOffered = userSession.opciones_ofrecidas[0];
-          } else {
-            for (const b of userSession.opciones_ofrecidas) {
-              const bNameNorm = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              const bWords = bNameNorm.split(/\s+/).filter(w => w.length > 3 && !["restaurante", "pizzeria", "herreria", "plomeria", "taller", "trattoria"].includes(w));
-              if (bNameNorm.includes(normText) || normText.includes(bNameNorm) || (bWords.length > 0 && bWords.some(w => normText.includes(w)))) {
-                selectedFromOffered = b;
-                break;
-              }
-            }
-          }
-        }
-
-        if (selectedFromOffered) {
-          currentPhase = 4;
-          userSession.intencion_actual = "entrega_ficha_completa";
-          detectedFamilyName = userSession.familia_giro || selectedFromOffered.category || "Servicios Locales";
-          detectedSpecificGiro = selectedFromOffered.businessName;
-        } else if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
-          currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
-        } else if (isLocationWithoutCoords) {
-          // Bucle de Capturas Resuelto: Si llega un aviso de ubicación sin coordenadas (ej. fin de ubicación en vivo)
-          // NO inventar posición, NO reiniciar sesión, NO saludar de nuevo, conservar la categoría activa
-          currentPhase = 2;
-          userSession.intencion_actual = "esperando_ubicacion";
-        } else if (userSession.esperando_confirmacion_expansion_2km && isNegativeExpansion) {
-          // Rechazo honesto de negocio lejano: Cero bucles, no buscar 'no' en el catálogo
-          currentPhase = 4;
-          userSession.esperando_confirmacion_expansion_2km = false;
-          userSession.negocio_lejano_pendiente = null;
-          userSession.intencion_actual = "rechazo_expansion";
-        } else if (userSession.esperando_confirmacion_expansion_2km && (isAffirmative || isAffirmativeExpansion)) {
-          // Confirmación de expansión a negocio lejano (> 2 km)
-          currentPhase = 4;
-          detectedFamilyName = userSession.familia_giro || "Servicios Locales";
-          detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
-          userSession.intencion_actual = "confirmacion_expansion";
-        } else if (isCategoryCorrection && (userSession.familia_giro || detectedFamilyKey)) {
-          if (hasValidActiveLocation) {
-            currentPhase = 3;
-            userSession.intencion_actual = "correccion_categoria";
-          } else {
-            currentPhase = 2;
-            userSession.intencion_actual = "esperando_ubicacion";
-          }
-        } else if (isAffirmative && userSession.familia_giro) {
-          currentPhase = 4; // FASE 4: Más opciones o feedback
-          detectedFamilyName = userSession.familia_giro || "Alimentos y Bebidas";
-          detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
-          userSession.intencion_actual = isFeedbackOnPrevious ? "feedback_resultado_anterior" : "ver_mas_opciones";
-        } else if (isLocationMessage || (!locationIsFromMemory && (userLocationColonia || detectedAddressInfo))) {
-          // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR (CAPA 2 - PASO 2):
-          // Si el usuario mencionó un giro en este mismo mensaje O ya tenía uno activo en memoria de sesión,
-          // jamás volver a preguntar "¿qué buscas?". Ir DIRECTO a Fase 3 y recomendar los negocios de la zona.
-          const activeFamily = detectedFamilyName || userSession.familia_giro;
-          const activeSpecific = detectedSpecificGiro || userSession.giro_especifico || activeFamily;
-          if (activeFamily || activeSpecific) {
-            currentPhase = 3; // Ejecutar inmediatamente la recomendación de la categoría
-            userSession.familia_giro = activeFamily;
-            userSession.giro_especifico = activeSpecific;
-            detectedFamilyName = activeFamily;
-            detectedSpecificGiro = activeSpecific;
-            userSession.intencion_actual = "buscar_negocio";
-          } else {
-            currentPhase = 1; // Guardar ubicación y preguntar qué desea buscar cerca de ahí
-            userSession.intencion_actual = "ubicacion_guardada_esperando_giro";
-          }
-        } else if (isGreetingOnly && !detectedFamilyKey && directBusinessNameMatches.length === 0) {
-          currentPhase = 1; // FASE 1: Saludo inicial puro (Prohibido escupir negocios)
-          userSession.intencion_actual = "saludo";
-        } else if (directBusinessNameMatches.length > 0) {
-          // Búsqueda directa por nombre comercial o marca: Acceso directo garantizado
-          if (userSession.familia_giro !== detectedFamilyName) {
-            userSession.negocios_ya_mostrados = [];
-          }
-          userSession.familia_giro = detectedFamilyName || directBusinessNameMatches[0].category || "Servicios Locales";
-          userSession.giro_especifico = directBusinessNameMatches[0].businessName;
-          currentPhase = 3; // ACCESO DIRECTO INMEDIATO AL NEGOCIO
-          userSession.intencion_actual = "buscar_negocio";
-        } else if (detectedFamilyKey) {
-          if (userSession.familia_giro !== detectedFamilyName) {
-            userSession.negocios_ya_mostrados = [];
-          }
-          userSession.familia_giro = detectedFamilyName;
-          userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
-          if (!hasValidActiveLocation) {
-            currentPhase = 2; // FASE 2: Necesidad detectada pero falta ubicación
-            userSession.intencion_actual = "esperando_ubicacion";
-          } else {
-            currentPhase = 3; // FASE 3: Búsqueda exacta
-            userSession.intencion_actual = "buscar_negocio";
-          }
-        } else if ((isLocationMessage || userLocationColonia || detectedAddressInfo) && userSession.familia_giro) {
-          currentPhase = 3; // FASE 3: Ubicación o colonia recibida tras haber guardado la necesidad
-          userSession.intencion_actual = "buscar_negocio";
-          detectedFamilyName = userSession.familia_giro;
-          detectedSpecificGiro = userSession.giro_especifico;
-        } else if (!isGreetingOnly && userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || isLocationMessage || detectedAddressInfo)) {
-          currentPhase = 3;
-          userSession.intencion_actual = "buscar_negocio";
-          detectedFamilyName = userSession.familia_giro;
-          detectedSpecificGiro = userSession.giro_especifico;
-        } else if (!isGreetingOnly && messageText && messageText.trim()) {
-          // Búsqueda nueva de giro específico
-          if (userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || detectedAddressInfo)) {
-            currentPhase = 3;
-            userSession.intencion_actual = "buscar_negocio";
-            detectedFamilyName = userSession.familia_giro;
-            detectedSpecificGiro = userSession.giro_especifico;
-          } else {
-            userSession.familia_giro = userSession.familia_giro || "Servicios Locales";
-            userSession.giro_especifico = messageText.trim();
-            if (!hasValidActiveLocation) {
-              currentPhase = 2;
-              userSession.intencion_actual = "esperando_ubicacion";
-            } else {
-              currentPhase = 3;
-              userSession.intencion_actual = "buscar_negocio";
-            }
-          }
-        }
-
-        let cercanos_2km = [];
-        let lejanos_mas_2km = [];
-        let candidatePool = [];
-
-        const familyDef = Object.values(GIRO_FAMILIES).find(f => f.name === userSession.familia_giro);
-        const allowedCategories = familyDef ? familyDef.categories : [];
-        const isOficioFamily = familyDef?.isOficio || false;
-        const isFoodFamily = (userSession.familia_giro === "Alimentos y Bebidas" || detectedFamilyKey === "ALIMENTOS_Y_BEBIDAS");
-
-        // Ejecutar búsqueda SOLO en Fases 3 y 4 (PROHIBIDO en Fases 1 y 2)
-        if (currentPhase === 3 || currentPhase === 4) {
-          const directMatchIds = new Set(
-            (directBusinessNameMatches.length > 0 ? directBusinessNameMatches : []).map(m => m.id)
-          );
-
-          candidatePool = activeBusinesses.filter(b => {
-            const bCat = (b.category || '').toLowerCase();
-            const bName = (b.businessName || '').toLowerCase();
-            const bServ = (b.services || '').toLowerCase();
-
-            // REGLA CRÍTICA #1: BLINDAJE SEMÁNTICO DE COMIDA (CERO HERRERÍAS NI OFICIOS EN BÚSQUEDAS DE COMIDA)
-            if (isFoodFamily) {
-              const nonFoodTokens = [
-                "herrer", "plomer", "electric", "cerrajer", "carpinter", "mecanic", "taller", "grua",
-                "veterinar", "abogad", "contador", "medico", "dentist", "farmacia", "limpieza", "fumiga", "notar", "inmobiliaria"
-              ];
-              if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
-            }
-
-            // REGLA CRÍTICA #2: BLINDAJE DE OFICIOS (CERO SALTOS ABSURDOS)
-            if (isOficioFamily && userSession.giro_especifico) {
-              const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-              const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
-              const matchesThisOficio = bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
-                                        bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
-              if (!matchesThisOficio) return false;
-            }
-
-            // Coincidencia difusa directa
-            if (directMatchIds.has(b.id)) {
-              if (isFoodFamily) {
-                // Si la sesión es de comida, no puede ser una coincidencia de otro rubro ajeno
-                const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
-                if (!isFoodCat) return false;
-              }
-              return true;
-            }
-
-            if (!userSession.familia_giro) return true;
-
-            // Coincidencia exacta o parcial de categoría permitida en esta familia
-            const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
-
-            // Coincidencia estricta de palabras clave (con límites de palabra \b para evitar que 'bar' coincida con 'barandales')
-            const nameOrServiceMatches = familyDef ? familyDef.keywords.some(kw => {
-              const kwRegex = new RegExp(`\\b${kw}\\b`, 'i');
-              return kwRegex.test(bName) || kwRegex.test(bServ);
-            }) : false;
-
-            return catMatches || nameOrServiceMatches;
-          });
-
-          // Si el usuario buscó directamente un negocio por su nombre comercial específico, filtrar para priorizarlo
-          if (directMatchIds.size > 0) {
-            const directOnly = candidatePool.filter(b => directMatchIds.has(b.id));
-            if (directOnly.length > 0) {
-              candidatePool = directOnly;
-            }
-          }
-
-          // Deduplicación estricta: asegurar que cada negocio en candidatePool sea único
-          const uniqueCandidatePool = [];
-          const seenCandIds = new Set();
-          for (const b of candidatePool) {
-            if (!seenCandIds.has(b.id)) {
-              seenCandIds.add(b.id);
-              uniqueCandidatePool.push(b);
-            }
-          }
-
-          // Filtrar negocios que NO hayan sido mostrados en esta sesión todavía (Eliminación de duplicados exactos)
-          const unshownPool = uniqueCandidatePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
-          const effectivePool = unshownPool.length ? unshownPool : uniqueCandidatePool;
-
-          const scored = effectivePool.map(b => {
-            let bLat = b.latitude ? Number(b.latitude) : 19.3496;
-            let bLng = b.longitude ? Number(b.longitude) : -99.1915;
-            const distKm = (userLat && userLng) ? haversineDistanceKm(userLat, userLng, bLat, bLng) : 1.2;
-            const openInfo = isBusinessOpenNow(b, mexTime);
-
-            let score = 0;
-            if (directMatchIds.has(b.id)) score += 200; // Máxima prioridad si fue coincidencia directa
-            if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
-            if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 80;
-            if (openInfo.isOpen) score += 30;
-            if (b.isSponsored || b.plan === "plus" || b.featured) score += 35; // Priorización BuscaYa Plus
-
-            return {
-              ...b,
-              distanceKm: distKm,
-              openInfo: openInfo,
-              matchScore: score
-            };
-          });
-
-          const isSameColonia = (b) => {
-            if (!userLocationColonia || !b.neighborhood) return false;
-            const uNorm = userLocationColonia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            const bNorm = b.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            return uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm);
-          };
-
-          // Separación Estricta de Resultados (Fase 3.2):
-          // Grupo A (cercanos_2km): distancia_km <= 2.0 (o misma colonia o coincidencia directa de negocio)
-          cercanos_2km = scored
-            .filter(b => b.distanceKm <= 2.0 || isSameColonia(b) || directMatchIds.has(b.id))
-            .sort((a, b) => {
-              const aSponsored = a.isSponsored || a.plan === "plus";
-              const bSponsored = b.isSponsored || b.plan === "plus";
-              // Coincidencia directa por nombre de negocio tiene máxima prioridad absoluta
-              if (directMatchIds.has(a.id) && !directMatchIds.has(b.id)) return -1;
-              if (!directMatchIds.has(a.id) && directMatchIds.has(b.id)) return 1;
-              // Negocio VIP Patrocinado del mismo giro aparece primero
-              if (aSponsored && !bSponsored) return -1;
-              if (!aSponsored && bSponsored) return 1;
-              return b.matchScore - a.matchScore;
-            });
-
-          // Grupo B (lejanos_mas_2km): distancia_km > 2.0
-          lejanos_mas_2km = scored
-            .filter(b => b.distanceKm > 2.0 && !isSameColonia(b) && !directMatchIds.has(b.id))
-            .sort((a, b) => a.distanceKm - b.distanceKm);
-
-          if (currentPhase === 3) {
-            if (cercanos_2km.length === 0 && lejanos_mas_2km.length > 0) {
-              // Grupo A vacío pero hay en Grupo B: NO engañar al usuario, avisar honestamente y pedir confirmación
-              const farBiz = lejanos_mas_2km.find(b => !userSession.negocios_ya_mostrados.includes(b.id)) || lejanos_mas_2km[0];
-              userSession.negocio_lejano_pendiente = farBiz;
-              userSession.esperando_confirmacion_expansion_2km = true;
-              userSession.intencion_actual = "esperando_expansion";
-            }
-          }
-        }
-
-        // ==============================================================
-        // REGLA DEL FLUJO INTERACTIVO: EXACTAMENTE 1 SOLO NEGOCIO A LA VEZ
-        // ==============================================================
-        let sourcePool = [];
-        if (userSession.intencion_actual === "rechazo_expansion") {
-          sourcePool = [];
-        } else if (currentPhase === 3) {
-          sourcePool = cercanos_2km;
-        } else if (currentPhase === 4) {
-          if (userSession.negocio_lejano_pendiente) {
-            sourcePool = [userSession.negocio_lejano_pendiente];
-            userSession.esperando_confirmacion_expansion_2km = false;
-            userSession.negocio_lejano_pendiente = null;
-          } else {
-            sourcePool = lejanos_mas_2km.concat(cercanos_2km);
-          }
-        }
-
-        const selectedBusinesses = [];
-        const selectedIdSet = new Set();
-        for (const b of sourcePool) {
-          if (!selectedIdSet.has(b.id) && !userSession.negocios_ya_mostrados.includes(b.id)) {
-            selectedIdSet.add(b.id);
-            selectedBusinesses.push(b);
-            break; // EXACTAMENTE 1 NEGOCIO POR TURNO (Paso 1)
-          }
-        }
-        if (selectedBusinesses.length === 0 && sourcePool.length > 0) {
-          for (const b of sourcePool) {
-            if (!selectedIdSet.has(b.id)) {
-              selectedIdSet.add(b.id);
-              selectedBusinesses.push(b);
-              break;
-            }
-          }
-        }
-
-        // Guardar IDs mostrados para no repetir jamás en la misma conversación y actualizar los 3 pilares de memoria
-        selectedBusinesses.forEach(b => {
-          if (!userSession.negocios_ya_mostrados.includes(b.id)) {
-            userSession.negocios_ya_mostrados.push(b.id);
-          }
-        });
-        userSession.lastBusinesses = selectedBusinesses;
-        userSession.categoria_activa = userSession.giro_especifico || userSession.familia_giro || null;
-        userSession.ubicacion_activa = userSession.lastLocation || (userLocationColonia ? { neighborhood: userLocationColonia, latitude: userLat, longitude: userLng } : null);
-        userSession.ultimo_negocio_ofrecido = selectedBusinesses.length > 0
-          ? { id: selectedBusinesses[0].id, businessName: selectedBusinesses[0].businessName, category: selectedBusinesses[0].category, neighborhood: selectedBusinesses[0].neighborhood || selectedBusinesses[0].colonia }
-          : (userSession.ultimo_negocio_ofrecido || null);
-
-        // Construir Ficha Canónica Completa y Pregunta de Control
-        let canonicalCard = "";
-        let controlQuestion = "";
-        if (selectedBusinesses.length > 0) {
-          const b = selectedBusinesses[0];
-          const cleanP = String(b.phone || '').replace(/\D/g, '');
-          const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
-          const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
-          const sponsorTag = (b.isSponsored || b.plan === "plus") ? `👑 [Opción VIP Patrocinada${distLabel}]\n` : "";
-          const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-
-          canonicalCard = `${sponsorTag}🏢 *${b.businessName}*\n` +
-            `✨ Especialidad: ${b.services || b.category}\n` +
-            `${b.openInfo?.isOpen ? '🟢 Estado: Abierto ahora' : '🔴 Estado: Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar horario'}\n` +
-            `📅 Días: ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
-            `📍 Zona: Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
-            `🗺️ Ver en Google Maps: ${mapsLink}\n` +
-            `📞 Teléfono: ${b.phone}\n` +
-            `💬 WhatsApp: ${waLink}`;
-
-          controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o quieres que te busque otra alternativa por la zona? 🙌";
-        }
-
-        // Construir Contexto Enriquecido para la IA
-        const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
-        const nowMs = Date.now();
-        if (userSession.lastInteractionTime && (nowMs - userSession.lastInteractionTime > FOUR_HOURS_MS)) {
-          userSession.saludo_enviado = false;
-        }
-        const isSessionAlreadyActive = !!userSession.saludo_enviado;
-        userSession.lastInteractionTime = nowMs;
-
-        let greetingDirective = "";
-        if (isSessionAlreadyActive) {
-          greetingDirective = `SALUDO CORRESPONDIENTE: [NO APLICA - SESIÓN YA ACTIVA]\n[REGLA ESTRICTA DE SALUDO ÚNICO]: La sesión ya está en curso y activa (hace menos de 4 horas). TIENES ESTRICTAMENTE PROHIBIDO volver a saludar, dar la bienvenida o decir "${mexTime.greeting}", "Hola", "Buenos días", "Buenas tardes" o "Buenas noches". Ve DIRECTO a atender lo que solicita con empatía y cercanía sin fórmulas de bienvenida repetitivas.`;
-        } else {
-          userSession.saludo_enviado = true;
-          greetingDirective = `SALUDO CORRESPONDIENTE (SOLO MENSAJE #1 DE LA CONVERSACIÓN): "${mexTime.greeting} ${mexTime.icon}"\n[PRIMER MENSAJE]: Saluda con cordialidad y calidez acorde al horario de CDMX.`;
-        }
-
-        let contextualPrompt = `HORA EXACTA EN CIUDAD DE MÉXICO: ${mexTime.fullTimeStr} hrs (${mexTime.weekday}, ${mexTime.dateStr}).
-${greetingDirective}
-USUARIO: ${userSession.name ? userSession.name : "Usuario WhatsApp (aún no registrado por nombre)"} (Tel: ${senderPhone})
-MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicación GPS compartida]' : '')}"`;
-
-        if (isAudioMessage) {
-          contextualPrompt += `\n[NOTA IMPORTANTE]: El usuario envió una NOTA DE VOZ transcrita. Saluda diciendo: "¡Ya escuché tu audio, claro que sí! 🎧😊"`;
-        }
-
-        if (currentPhase === 1) {
-          if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
-            finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
-          } else {
-            finalBotReplyText = isSessionAlreadyActive
-              ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
-              : `${mexTime.greeting} ${mexTime.icon} ¡Bienvenido a BuscaYa! 😊✨ Me da mucho gusto saludarte. Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 📍`;
-          }
-        } else if (currentPhase === 2) {
-          if (isLocationWithoutCoords) {
-            finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación 📍🤔 ¿Podrías escribirme en qué colonia o zona estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
-          } else {
-            const giroTxt = userSession.giro_especifico ? ` de ${userSession.giro_especifico}` : "";
-            finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
-          }
-        } else if (currentPhase === 3) {
-          // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
-          recordMarketDemand(
-            userSession.giro_especifico || detectedSpecificGiro,
-            userLocationColonia,
-            senderPhone,
-            selectedBusinesses
-          );
-
-          if (directBusinessNameMatches.length > 0 && selectedBusinesses.length > 0) {
-            finalBotReplyText = `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-          } else if (cercanos_2km.length > 0) {
-            userSession.opciones_ofrecidas = cercanos_2km.slice(0, 3);
-            if (userSession.opciones_ofrecidas.length === 1) {
-              const b = userSession.opciones_ofrecidas[0];
-              const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
-              const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
-              const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-              finalBotReplyText = `¡Perfecto! Encontré esta excelente opción abierta cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
-                `🏢 *${b.businessName}*${sponsorTag}\n` +
-                `✨ ${b.services || b.category}\n` +
-                `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-                `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-                `🗺️ Ver en Google Maps: ${mapsLink}\n\n` +
-                `¿Te gustaría que te mande su teléfono, WhatsApp directo y ubicación completa? 😊🙌`;
-            } else {
-              const listItems = userSession.opciones_ofrecidas.map((b, idx) => {
-                const numEmoji = ["1️⃣", "2️⃣", "3️⃣"][idx] || `•`;
-                const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
-                const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km` : "";
-                const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-                return `${numEmoji} *${b.businessName}*${sponsorTag}\n` +
-                  `✨ ${b.services || b.category}\n` +
-                  `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-                  `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-                  `🗺️ Ver en Google Maps: ${mapsLink}`;
-              }).join("\n\n");
-
-              finalBotReplyText = `¡Perfecto! Encontré estas opciones cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
-                `${listItems}\n\n` +
-                `¿Cuál de estas opciones te interesa más? 😊 Escríbeme el nombre o número y te paso de inmediato su ficha completa con teléfono, WhatsApp directo y mapa 🙌✨`;
-            }
-          } else {
-            // Regla de Entrega Honesta a 2 km (Fase 3.2):
-            if (lejanos_mas_2km.length > 0) {
-              const farBiz = userSession.negocio_lejano_pendiente || lejanos_mas_2km[0];
-              const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-              const colLabel = farBiz.neighborhood || farBiz.colonia || "la zona poniente";
-              finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${farBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${colLabel}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
-            } else {
-              const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-              const colLabel = userLocationColonia || "esa zona";
-              finalBotReplyText = `Acabo de revisar en nuestro sistema cerca de ${colLabel} y por el momento no tenemos negocios de ${giroLabel} registrados en esa zona 😔📍 ¡Pero muy pronto sumaremos opciones ahí! ¿Te gustaría buscar en alguna otra colonia cercana o algún otro servicio? 😊✨`;
-            }
-          }
-        } else if (currentPhase === 4) {
-          if (userSession.intencion_actual === "rechazo_expansion") {
-            const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese giro";
-            const colLabel = userLocationColonia || "tu zona";
-            finalBotReplyText = `¡Entendido perfectamente! 😊 Sin problema. Por el momento son todos los negocios de ${giroLabel} que tenemos registrados cerquita de ${colLabel} 📍✨ ¡Muy pronto sumaremos nuevos establecimientos en tu calle! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algún otro servicio? 🙌`;
-          } else if (selectedFromOffered && canonicalCard) {
-            finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-          } else if (selectedBusinesses.length > 0 && canonicalCard) {
-            const intro = isFeedbackOnPrevious
-              ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
-              : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
-            finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-          } else {
-            const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-            const colLabel = userLocationColonia || "esa zona";
-            finalBotReplyText = `Acabo de revisar en nuestro sistema cerca de ${colLabel} y por el momento son todas las opciones de ${giroLabel} que tenemos registradas 😔🙏 ¡Muy pronto sumaremos nuevos lugares! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algo diferente? 😊✨`;
-          }
-        }
-
-        // Manejo inmediato de intenciones prioritarias sin latencia de IA
-        if (isHumanSupportIntent) {
-          finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
-        } else if (isRegistrationIntent) {
-          finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
-        } else if (isSystemFaqIntent) {
-          const faqIndex = (userSession.faqReplyIndex !== undefined) ? userSession.faqReplyIndex : 0;
-          finalBotReplyText = SYSTEM_FAQ_OPTIONS[faqIndex % SYSTEM_FAQ_OPTIONS.length];
-          userSession.faqReplyIndex = (faqIndex + 1) % SYSTEM_FAQ_OPTIONS.length;
-        } else if (finalBotReplyText) {
-          // Ya asignado por regla determinista de entrega honesta o flujo guiado
-        } else {
-          try {
-            const aiRes = await callGroqApi({
-              prompt: contextualPrompt,
-              systemInstruction: CURRENT_SYSTEM_PROMPT,
-              temperature: 0.1
-            });
-
-            if (aiRes.success && aiRes.reply) {
-              const rawReply = cleanAiSymbols(aiRes.reply);
-              const isHallucinated = /(?:hora\s+exacta|saludo\s+correspondiente|mensaje\s+recibido|estado\s+conversacional|esta\s+fase|su\s+primer\s+mensaje|proceso\s+recibido|d[ií]as\s+del\s+dueje|informaci[oó]n\s+de\s+chicos|informaci[oó]n\s+de\s+chiles)/i.test(rawReply);
-              if (!isHallucinated && rawReply.length > 5) {
-                finalBotReplyText = rawReply;
-              } else {
-                console.warn("[Sanitizador Anti-Alucinación] Descartando texto alucinado de IA:", rawReply.slice(0, 80));
-              }
-            }
-          } catch (groqErr) {
-            console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
-          }
-        }
-
-        // ==============================================================
-        // BLINDAJE DE FICHA COMPLETA: VALIDAR Y GARANTIZAR LOS 6 CAMPOS
-        // (Aplica únicamente al entregar la ficha completa, no al listar opciones resumidas)
-        // ==============================================================
-        const isDeliveringFullCard = Boolean(userSession.intencion_actual !== "rechazo_expansion" && (selectedFromOffered || directBusinessNameMatches.length > 0 || currentPhase === 4));
-        if (isDeliveringFullCard && selectedBusinesses.length > 0 && finalBotReplyText && canonicalCard) {
-          const b = selectedBusinesses[0];
-          const hasPhone = finalBotReplyText.includes(b.phone) || finalBotReplyText.includes("📞") || finalBotReplyText.includes("Teléfono");
-          const hasHours = finalBotReplyText.includes("⏰") || finalBotReplyText.includes("Horario") || finalBotReplyText.includes(b.openInfo.hoursDisplay);
-          const hasDays = finalBotReplyText.includes("📅") || (b.daysOpen && b.daysOpen.some(d => finalBotReplyText.includes(d)));
-          const hasServices = finalBotReplyText.includes("✨") || (b.services && b.services.split(',')[0] && finalBotReplyText.includes(b.services.split(',')[0].trim()));
-
-          // Si el modelo recortó la ficha o mandó menos de los 6 campos
-          if (!hasPhone || !hasHours || !hasDays || !hasServices) {
-            const parts = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(p => p.trim()).filter(Boolean);
-            const defaultIntro = isLocationMessage
-              ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
-              : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
-            const intro = (parts.length > 1 && !parts[0].includes("🏢")) ? parts[0] : defaultIntro;
-            finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-          }
-        }
-
-        // Fallbacks inteligentes por fase con enlace de atribución directa
-        if (!finalBotReplyText) {
-          if (currentPhase === 1) {
-            if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
-              finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
-            } else {
-              finalBotReplyText = isSessionAlreadyActive
-                ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
-                : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
-            }
-          } else if (currentPhase === 2) {
-            if (isLocationWithoutCoords) {
-              finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación (por ejemplo si la ubicación en tiempo real ya finalizó) 📍🤔 ¿Podrías compartirme un pin fijo de ubicación con el clip de WhatsApp o escribirme en qué colonia estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
-            } else {
-              const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
-              const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
-              const giroLabel = userSession.giro_especifico || userSession.familia_giro || "el servicio que buscas";
-              finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo a encontrar ${giroLabel}! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿me compartes tu ubicación actual con el botón de abajo o en qué colonia estás? 📍✨`;
-            }
-          } else if (selectedBusinesses.length > 0) {
-            const introPrefix = isCategoryCorrection
-              ? `¡Entendido! Cambiamos de inmediato a ${userSession.giro_especifico || userSession.familia_giro} cerca de tu ubicación 📍✨ Aquí tienes esta opción:`
-              : (isLocationMessage)
-                ? `¡Perfecto! Ya tengo tu ubicación en la zona 📍✨ Déjame pasarte la mejor opción abierta cerquita de ti... 👇`
-                : (isFeedbackOnPrevious)
-                  ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
-                  : `¡Aquí tienes una excelente opción cerquita de ti! 😊👇`;
-            finalBotReplyText = `${introPrefix}\n|||SEPARAR|||\n` +
-              `${canonicalCard}\n|||SEPARAR|||\n` +
-              `${controlQuestion}`;
-          } else {
-            if (lejanos_mas_2km.length > 0 && currentPhase === 3) {
-              const farBiz = userSession.negocio_lejano_pendiente || lejanos_mas_2km[0];
-              const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-              const colLabel = farBiz.neighborhood || farBiz.colonia || "la zona poniente";
-              finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${farBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${colLabel}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
-            } else {
-              finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento no tenemos negocios de ${userSession.giro_especifico || userSession.familia_giro || 'ese giro'} registrados cerca de tu ubicación 😔📍 ¡Pero muy pronto sumaremos nuevos establecimientos en tu zona! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨`;
-            }
-          }
-        }
-
-        // ==============================================================
-        // CAPA 1: BLINDAJE DE SALUDO ÚNICO EN SESIÓN ACTIVA (ELIMINACIÓN DE BUCLES)
-        // ==============================================================
-        if (isSessionAlreadyActive) {
-          finalBotReplyText = stripGreetingsIfSessionActive(finalBotReplyText, true);
-        }
-
-        // Si fue nota de voz, anteponer el prefijo obligatorio
-        if (isAudioMessage && finalBotReplyText) {
-          if (!finalBotReplyText.includes("¡Escuché tu nota de voz!")) {
-            finalBotReplyText = `¡Escuché tu nota de voz! 🎧😊\n\n${finalBotReplyText}`;
-          }
-        }
-
-        // ==============================================================
-        // FRENO ANTI-BUCLE: SUPRESIÓN DE MENSAJES DUPLICADOS IDÉNTICOS (< 60 SEG)
-        // ==============================================================
-        if (finalBotReplyText && userSession.lastBotReplyText && 
-            finalBotReplyText.trim() === userSession.lastBotReplyText.trim() && 
-            (Date.now() - (userSession.lastBotReplyTimestamp || 0) < 60000)) {
-          console.log(`[Anti-Bucle Activado] Mensaje duplicado suprimido para ${senderPhone}`);
-          const activeG = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-          const activeC = userLocationColonia || "tu zona";
-          finalBotReplyText = `¡Sigo aquí contigo${userSession.name ? ' ' + userSession.name : ''}! 😊 ¿Te gustaría consultar opciones de ${activeG} en otra colonia cercana, o prefieres buscar otro tipo de negocio o servicio? 📍✨`;
-        }
-        userSession.lastBotReplyText = finalBotReplyText;
-        userSession.lastBotReplyTimestamp = Date.now();
-
-        // Registrar respuesta del asistente en el historial de sesión y persistir memoria en base de datos
-        userSession.history.push({
-          role: "assistant",
-          text: finalBotReplyText,
-          timestamp: Date.now()
-        });
-        if (userSession.history.length > 15) {
-          userSession.history = userSession.history.slice(-15);
-        }
-        saveServerDatabase();
-
-        // ==============================================================
-        // DESPACHO MULTI-BURBUJA Y BOTONES NATIVOS DE WHATSAPP (META CLOUD API)
-        // ==============================================================
-        if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN && finalBotReplyText) {
+        // Despacho a Meta Cloud API si corresponde
+        if (msg && META_CLOUD_ACCESS_TOKEN && result.bubbles && result.bubbles.length > 0) {
           try {
             const cleanTo = String(senderPhone || '').replace(/\D/g, '');
             const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-
-            // Separación por |||SEPARAR||| en burbujas independientes
-            const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbols(b.trim())).filter(Boolean);
-            const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbols(finalBotReplyText)];
-
-            let bizIndex = 0;
-            for (let i = 0; i < bubbles.length; i++) {
-              const bubbleText = bubbles[i];
-
-              // Enviar burbuja de texto
+            for (let i = 0; i < result.bubbles.length; i++) {
+              const bubbleText = result.bubbles[i];
               await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
                 method: "POST",
                 headers: {
@@ -6486,46 +5946,22 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
                   text: { preview_url: true, body: bubbleText }
                 })
               });
-
-
-
-              if (i < bubbles.length - 1) {
+              if (i < result.bubbles.length - 1) {
                 await new Promise(r => setTimeout(r, 700));
               }
             }
-
-
           } catch (metaSendErr) {
             console.warn("[Meta Cloud API Multi-Bubble Send Warning]:", metaSendErr.message);
           }
         }
 
-        const botReply = {
-          recipient: senderPhone,
-          agentPhone: META_OFFICIAL_PHONE_DISPLAY,
-          isAudio: isAudioMessage,
-          audioTranscription: audioTranscription,
-          locationDetected: {
-            latitude: latitude,
-            longitude: longitude,
-            neighborhood: geoResult.neighborhood,
-            municipality: geoResult.municipality,
-            state: geoResult.state,
-            formattedAddress: geoResult.formattedAddress
-          },
-          responseMessage: finalBotReplyText,
-          timestamp: timestamp
-        };
-
         const logEntry = {
           id: `wa-msg-${Date.now()}`,
           timestamp: timestamp,
           from: senderPhone,
-          type: isAudioMessage ? "audio" : (isLocationMessage ? "location" : "text"),
-          audioTranscription: audioTranscription,
+          type: result.botReply?.isAudio ? "audio" : "text",
           coords: { latitude, longitude },
-          neighborhood: geoResult.neighborhood,
-          municipality: geoResult.municipality,
+          neighborhood: result.botReply?.locationDetected?.neighborhood,
           status: "processed"
         };
         WHATSAPP_MESSAGES_LOG.unshift(logEntry);
@@ -6534,11 +5970,9 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
         res.end(JSON.stringify({
           success: true,
           processed: true,
-          isAudio: isAudioMessage,
-          audioTranscription: audioTranscription,
-          isLocation: isLocationMessage,
-          location: geoResult,
-          botReply: botReply
+          botReply: result.botReply,
+          debugState: result.debugState,
+          bubbles: result.bubbles
         }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

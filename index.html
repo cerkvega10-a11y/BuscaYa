@@ -3033,8 +3033,68 @@
                 </div>
                 <div>
                   <h4 class="font-black text-gray-900 text-base">🧠 Centro de Entrenamiento de IA por Tarjetas</h4>
-                  <p class="text-xs text-gray-500">Sin editar código ni prompts gigantes — Agrega tareas, reglas rápidas y gestiona memoria</p>
+                  <p class="text-xs text-gray-500">Sin editar código — Agrega tareas, reglas rápidas, feedback y gestiona memoria</p>
                 </div>
+              </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- EDITOR EN VIVO DEL SYSTEM PROMPT MAESTRO                       -->
+            <!-- ============================================================== -->
+            <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-3">
+              <div class="flex items-center justify-between pb-2 border-b border-purple-200">
+                <div class="flex items-center space-x-2">
+                  <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-code"></i>
+                  </div>
+                  <div>
+                    <h5 class="text-xs font-black text-purple-950 uppercase">🧠 System Prompt Maestro (En Vivo)</h5>
+                    <p class="text-[10px] text-purple-700">Sincronizado 1:1 entre WhatsApp y el Simulador de Control Maestro</p>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button type="button" onclick="handleResetMasterPrompt()" class="px-2.5 py-1 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-[11px] font-bold transition-all cursor-pointer" title="Recompilar desde tareas y reglas">
+                    <i class="fa-solid fa-rotate text-[10px]"></i> Recompilar
+                  </button>
+                  <button type="button" onclick="handleSaveMasterPrompt()" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black transition-all shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk text-[10px]"></i> Guardar
+                  </button>
+                </div>
+              </div>
+              <textarea id="aiMasterPromptEditor" rows="6" class="w-full p-3 rounded-xl border border-purple-200 font-mono text-[11px] leading-relaxed bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-inner" placeholder="Cargando System Prompt Maestro..."></textarea>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- MÓDULO DE CORRECCIÓN RÁPIDA DE ERRORES (FEEDBACK DIRECTO)      -->
+            <!-- ============================================================== -->
+            <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div>
+                  <h5 class="text-xs font-black text-rose-950 uppercase">⚡ Corrección Rápida de Errores (Feedback Directo)</h5>
+                  <p class="text-[10px] text-rose-700">Entrena y corrige a la IA al instante. Se inyecta como regla prioritaria activa sin tocar código.</p>
+                </div>
+              </div>
+
+              <div class="space-y-2.5 text-xs">
+                <div>
+                  <label class="block font-bold text-gray-700 mb-0.5 text-[11px]">1. ¿Qué dijo o escribió el usuario?</label>
+                  <input type="text" id="quickFixUserSays" placeholder="Ej. Quiero tacos en Jalalpa y luego pide otra opción" class="w-full px-3 py-2 rounded-xl border border-rose-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                  <label class="block font-bold text-gray-700 mb-0.5 text-[11px]">2. ¿Qué respondió o hizo mal el bot?</label>
+                  <input type="text" id="quickFixBotDid" placeholder="Ej. Me recomendó una clínica veterinaria" class="w-full px-3 py-2 rounded-xl border border-rose-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                  <label class="block font-bold text-gray-700 mb-0.5 text-[11px]">3. ¿Qué debe responder o hacer correctamente?</label>
+                  <input type="text" id="quickFixBotShould" placeholder="Ej. Bloquear estrictamente comida y solo recomendar taquerías o fondas" class="w-full px-3 py-2 rounded-xl border border-rose-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <button type="button" onclick="handleApplyQuickFix()" class="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                  <i class="fa-solid fa-bolt"></i>
+                  <span>⚡ Aplicar Corrección Inmediata a la IA</span>
+                </button>
               </div>
             </div>
 
@@ -3207,10 +3267,30 @@
               </div>
 
               <div class="flex items-center space-x-2">
-                <button onclick="clearSandboxChat()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1" title="Limpiar historial">
+                <button type="button" onclick="handleResetSandboxSession()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer" title="Reiniciar memoria y estado conversacional de prueba">
+                  <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                  <span>🔄 Reiniciar Sesión</span>
+                </button>
+                <button type="button" onclick="clearSandboxChat()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer" title="Limpiar pantalla">
                   <i class="fa-solid fa-trash-can text-[11px]"></i>
                   <span>Limpiar</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- BARRA DE TELEMETRÍA Y CONTROL DE GIRO BLOQUEADO (1:1 WHATSAPP) -->
+            <div id="sandboxDebugBar" class="bg-gray-900 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono border-b border-gray-800">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-gray-400">🏷️ Giro Bloqueado:</span>
+                <span id="sandboxDebugLockedGiro" class="text-amber-400 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">Ninguno</span>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-gray-400">📍 Colonia:</span>
+                <span id="sandboxDebugColonia" class="text-sky-400 font-bold bg-sky-950/60 px-2 py-0.5 rounded border border-sky-500/30">No detectada</span>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-gray-400">🏢 Negocios Mismo Giro:</span>
+                <span id="sandboxDebugBizCount" class="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">0</span>
               </div>
             </div>
 
