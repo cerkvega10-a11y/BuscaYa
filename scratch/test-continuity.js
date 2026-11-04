@@ -135,7 +135,7 @@ async function runTests() {
   }
 
   // Pregunta de control obligatoria
-  if (!reply2B.includes("¿Qué tal se ve esta opción para ti?")) {
+  if (!reply2B.includes("¿Qué te parece esta opción?")) {
     throw new Error("FAIL: Turno 2B no contiene la Pregunta de Control interactiva.");
   }
   console.log("✅ PASÓ: Turno 2B recomendó con Ficha Completa, Pregunta de Control y CERO saludos repetidos.");

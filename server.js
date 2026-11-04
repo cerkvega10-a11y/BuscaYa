@@ -538,6 +538,22 @@ const SERVER_CDMX_POINTS = [
   { neighborhood: "Santa Fe", municipality: "Álvaro Obregón", lat: 19.3600, lng: -99.2600 },
   { neighborhood: "Las Águilas", municipality: "Álvaro Obregón", lat: 19.3564, lng: -99.2155 },
   { neighborhood: "Olivar de los Padres", municipality: "Álvaro Obregón", lat: 19.3361, lng: -99.2238 },
+  { neighborhood: "Jalalpa", municipality: "Álvaro Obregón", lat: 19.3635, lng: -99.2312 },
+  { neighborhood: "Jalalpa el Grande", municipality: "Álvaro Obregón", lat: 19.3635, lng: -99.2312 },
+  { neighborhood: "Jalalpa Tepito", municipality: "Álvaro Obregón", lat: 19.3645, lng: -99.2340 },
+  { neighborhood: "Vasco de Quiroga", municipality: "Álvaro Obregón", lat: 19.3650, lng: -99.2550 },
+  { neighborhood: "Av. Vasco de Quiroga", municipality: "Álvaro Obregón", lat: 19.3650, lng: -99.2550 },
+  { neighborhood: "Lomas de Becerra", municipality: "Álvaro Obregón", lat: 19.3789, lng: -99.2089 },
+  { neighborhood: "Olivar del Conde", municipality: "Álvaro Obregón", lat: 19.3712, lng: -99.2156 },
+  { neighborhood: "Colina del Sur", municipality: "Álvaro Obregón", lat: 19.3512, lng: -99.2212 },
+  { neighborhood: "Merced Gómez", municipality: "Álvaro Obregón", lat: 19.3621, lng: -99.2012 },
+  { neighborhood: "Toluca", municipality: "Álvaro Obregón", lat: 19.3361, lng: -99.2238 },
+  { neighborhood: "Av. Toluca", municipality: "Álvaro Obregón", lat: 19.3361, lng: -99.2238 },
+  { neighborhood: "Revolución", municipality: "Álvaro Obregón", lat: 19.3496, lng: -99.1915 },
+  { neighborhood: "Av. Revolución", municipality: "Álvaro Obregón", lat: 19.3496, lng: -99.1915 },
+  { neighborhood: "Desierto de los Leones", municipality: "Álvaro Obregón", lat: 19.3400, lng: -99.2350 },
+  { neighborhood: "Chimalistac", municipality: "Álvaro Obregón", lat: 19.3510, lng: -99.1820 },
+  { neighborhood: "Tlacopac", municipality: "Álvaro Obregón", lat: 19.3580, lng: -99.1920 },
   { neighborhood: "Florida", municipality: "Álvaro Obregón", lat: 19.3582, lng: -99.1793 },
   { neighborhood: "Guadalupe Inn", municipality: "Álvaro Obregón", lat: 19.3621, lng: -99.1865 },
   { neighborhood: "Jardines del Pedregal", municipality: "Álvaro Obregón", lat: 19.3245, lng: -99.2089 },
@@ -1080,30 +1096,35 @@ Eres el asistente virtual oficial de BuscaYa, desarrollado exclusivamente por el
 
 ## 2. FLUJO EXACTO DE 5 ESTADOS (NO SALTAR NI REPETIR PASOS)
 - ESTADO 1 (Saludo sin giro): Si el usuario solo dice "Hola", salúdalo con calidez según la hora del día y pregúntale qué negocio, comida o servicio necesita buscar hoy. (Prohibido mostrar negocios aquí).
-- ESTADO 2 (Petición de giro sin ubicación): Si el usuario dice qué busca (ej. "Tengo hambre", "Busco un plomero") pero aún no ha dado su ubicación ni su colonia, reacciona con empatía y pídele amablemente que escriba en qué colonia o zona se encuentra 📍 (prohibido pedir que use botones o clips).
-- ESTADO 3 (Recepción de Ubicación por Pin GPS o Colonia escrita):
-  - En cuanto recibas el Pin de Ubicación o el nombre de la colonia, NUNCA vuelvas a pedir la ubicación ni vuelvas a saludar.
-  - Si existen negocios del giro solicitado a menos de 2 km, entrega el mejor/VIP de inmediato usando la ficha compacta y detente preguntando si le gusta esa opción o si quiere ver otra.
-  - Si NO existen negocios de ese giro a menos de 2 km, pero hay opciones de ese mismo giro a más de 2 km, avísale honestamente que a 2 km no hay por ahora, dile a qué distancia o en qué colonia está el más cercano y pregúntale si quiere que se lo mandes.
-- ESTADO 4 (Confirmación de más opciones): Si el usuario dice "Sí" o "Dame otra opción", muéstrale únicamente otro negocio que pertenezca al MISMO GIRO o MISMA FAMILIA que pidió (jamás mezcles comida con herrerías o plomerías, ni oficios distintos entre sí). Nunca repitas un negocio que ya mostraste en la misma charla.
-- ESTADO 5 (Agradecimiento o Despedida): Si el usuario dice "Gracias", "Muchas gracias", "Ok perfecto", "Adiós" o "Sale bye", TIENES ESTRICTAMENTE PROHIBIDO volver a enviar negocios o repetir el VIP. Solo despídete con mucha alegría, dile que fue un gusto ayudarle y que estarás aquí cuando vuelva a necesitar BuscaYa 😊🙌✨.
+- ESTADO 2 (Petición de giro sin ubicación): Cuando el usuario diga qué giro busca (ej. "Quiero comer", "Busco un plomero"), responde con empatía y pregunta únicamente por escrito:
+  "¡Claro que sí! 😊🙌 Para buscarte las mejores opciones abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨"
+  (Queda estrictamente prohibido pedir que toque botones o comparta pines de ubicación).
+- ESTADO 3 (Recepción de Colonia o Referencia escrita):
+  - En cuanto recibas el nombre de la colonia o referencia, NUNCA vuelvas a pedir la ubicación ni vuelvas a saludar.
+  - Cruza la referencia con Google Maps contra los negocios registrados en esa colonia o en un radio <= 2 km.
+  - Si existen negocios del giro solicitado a menos de 2 km, entrega la ficha compacta con su enlace de Google Maps y detente preguntando qué le parece la opción.
+  - Si NO existen negocios de ese giro a menos de 2 km, pero hay opciones a más de 2 km, avísale con total honestidad a qué distancia y colonia está el más cercano y pregúntale si quiere que se lo mandes.
+  - Si no existe ningún negocio en el sistema, informa amablemente que por ahora no hay en esa zona sin inventar negocios falsos.
+- ESTADO 4 (Confirmación de más opciones): Si el usuario dice "Sí" o "Dame otra opción", muéstrale únicamente otro negocio del MISMO GIRO o MISMA FAMILIA (jamás mezcles comida con herrerías o plomerías). Nunca repitas un negocio ya mostrado.
+- ESTADO 5 (Agradecimiento o Despedida): Si el usuario dice "Gracias", "Muchas gracias", "Ok perfecto", "Adiós" o "Sale bye", TIENES ESTRICTAMENTE PROHIBIDO volver a enviar negocios o repetir el VIP. Despídete con mucha alegría y calidez.
 
 ## 3. MANEJO DE AUDIOS E IMÁGENES
 - Notas de Voz: El sistema transcribe los audios automáticamente. Atiende lo que el usuario dijo en su audio con total naturalidad ("¡Claro que sí, ya escuché tu audio! 🎧😊...").
-- Imágenes: Si el usuario manda una foto o imagen, dile amablemente que por ahora no puedes visualizar imágenes pero que muy pronto tendrás esa función lista 📸✨, y pídele que te platique por texto o nota de voz qué necesita buscar.
+- Imágenes: Si el usuario manda una foto o imagen, dile amablemente que por ahora no puedes visualizar imágenes pero que muy pronto tendrás esa función lista 📸✨, y pídele que te escriba o mande audio con lo que busca.
 
-## 4. FORMATO DE FICHA COMPACTA Y MULTI-BURBUJA (1 NEGOCIO = 1 MENSAJE)
-Presenta siempre la información completa del negocio de forma limpia, corta y fácil de leer en el celular (usando |||SEPARAR||| si el backend requiere dividir la introducción, la ficha y la pregunta final en burbujas separadas):
+## 4. FORMATO DE FICHA COMPACTA CON GOOGLE MAPS (100% TEXTO LIMPIO, CERO PINES EXTERNOS)
+Presenta siempre la información completa del negocio en una sola ficha limpia y estructurada por mensaje, incluyendo el enlace directo de Google Maps dentro del texto:
 
-🏢 Nombre: [Nombre oficial del negocio]
-✨ Especialidad: [Servicios o platillos principales en 1 línea corta]
-🕒 Estado: [Abierto ahora 🟢 / Cerrado 🔴] • [Horario de atención]
+🏢 *[Nombre oficial del negocio]*
+✨ Especialidad: [Servicios o platillos principales]
+🟢 Estado: [Abierto ahora / Cerrado] • ⏰ [Horario]
 📅 Días: [Días laborales]
-📍 Zona: [Colonia y distancia aproximada, ej. a 1.2 km de ti]
-📞 Teléfono: [Número limpio para tocar y llamar]
-💬 WhatsApp directo: [Enlace corto wa.me con mensaje de BuscaYa]
+📍 Zona: [Colonia y referencia]
+🗺️ Ver en Google Maps: [Enlace directo de Google Maps]
+📞 Teléfono: [Número de contacto]
+💬 WhatsApp: [Enlace wa.me con mensaje de BuscaYa]
 
-(Acompañado de su tarjeta o botón nativo de Ubicación en WhatsApp para abrir el mapa con un toque).
+(Al terminar de enviar la ficha de ese negocio, pregunta en una burbuja corta: "¿Qué te parece esta opción? 😊 ¿Te gusta o quieres que te busque otra alternativa por la zona? 🙌").
 
 ## 5. REGLAS INSTITUCIONALES, REGISTRO, SOPORTE HUMANO Y SEGURIDAD
 - ¿Quién te creó?: "Fui diseñado y desarrollado por el equipo de Neural Media House 🚀🤖 para conectarte con los mejores negocios locales en BuscaYa ✨".
@@ -6093,15 +6114,18 @@ ${visualFormatRule}`;
           const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
           const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
           const sponsorTag = (b.isSponsored || b.plan === "plus") ? `👑 [Opción VIP Patrocinada${distLabel}]\n` : "";
-          canonicalCard = `${sponsorTag}🏢 ${b.businessName}\n` +
-            `✨ ${b.services || b.category}\n` +
-            `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
-            `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
-            `📍 Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
+          const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
+
+          canonicalCard = `${sponsorTag}🏢 *${b.businessName}*\n` +
+            `✨ Especialidad: ${b.services || b.category}\n` +
+            `${b.openInfo?.isOpen ? '🟢 Estado: Abierto ahora' : '🔴 Estado: Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar horario'}\n` +
+            `📅 Días: ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
+            `📍 Zona: Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
+            `🗺️ Ver en Google Maps: ${mapsLink}\n` +
             `📞 Teléfono: ${b.phone}\n` +
             `💬 WhatsApp: ${waLink}`;
 
-          controlQuestion = `¿Qué tal se ve esta opción para ti? 😊 ¿Te gusta o prefieres que te busque algún otro lugar de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} aquí cerquita? 🙌`;
+          controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o quieres que te busque otra alternativa por la zona? 🙌";
         }
 
         // Construir Contexto Enriquecido para la IA
@@ -6142,10 +6166,8 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
           if (isLocationWithoutCoords) {
             finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación 📍🤔 ¿Podrías escribirme en qué colonia o zona estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
           } else {
-            const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
-            const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
-            const giroLabel = userSession.giro_especifico || userSession.familia_giro || "el servicio que buscas";
-            finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo a encontrar ${giroLabel}! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿en qué colonia o zona te encuentras? Escríbemela por aquí por favor 📍✨`;
+            const giroTxt = userSession.giro_especifico ? ` de ${userSession.giro_especifico}` : "";
+            finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
           }
         } else if (currentPhase === 3) {
           // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
@@ -6164,21 +6186,25 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
               const b = userSession.opciones_ofrecidas[0];
               const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
               const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
+              const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
               finalBotReplyText = `¡Perfecto! Encontré esta excelente opción abierta cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
                 `🏢 *${b.businessName}*${sponsorTag}\n` +
                 `✨ ${b.services || b.category}\n` +
                 `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-                `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n\n` +
+                `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
+                `🗺️ Ver en Google Maps: ${mapsLink}\n\n` +
                 `¿Te gustaría que te mande su teléfono, WhatsApp directo y ubicación completa? 😊🙌`;
             } else {
               const listItems = userSession.opciones_ofrecidas.map((b, idx) => {
                 const numEmoji = ["1️⃣", "2️⃣", "3️⃣"][idx] || `•`;
                 const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
                 const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km` : "";
+                const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
                 return `${numEmoji} *${b.businessName}*${sponsorTag}\n` +
                   `✨ ${b.services || b.category}\n` +
                   `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-                  `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}`;
+                  `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
+                  `🗺️ Ver en Google Maps: ${mapsLink}`;
               }).join("\n\n");
 
               finalBotReplyText = `¡Perfecto! Encontré estas opciones cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
@@ -6194,12 +6220,13 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
               finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${farBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${colLabel}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
             } else {
               const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-              finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento no tenemos negocios de ${giroLabel} registrados tan cerquita de tu ubicación 😔📍 ¡Pero muy pronto sumaremos nuevos establecimientos en tu zona! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨`;
+              const colLabel = userLocationColonia || "esa zona";
+              finalBotReplyText = `Acabo de revisar en nuestro sistema cerca de ${colLabel} y por el momento no tenemos negocios de ${giroLabel} registrados en esa zona 😔📍 ¡Pero muy pronto sumaremos opciones ahí! ¿Te gustaría buscar en alguna otra colonia cercana o algún otro servicio? 😊✨`;
             }
           }
         } else if (currentPhase === 4) {
           if (selectedFromOffered && canonicalCard) {
-            finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n¿Qué tal se ve esta opción para ti? 😊 ¿Te gustaría ver los detalles de otra opción o que busquemos algo diferente? 🙌`;
+            finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
           } else if (selectedBusinesses.length > 0 && canonicalCard) {
             const intro = isFeedbackOnPrevious
               ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
@@ -6207,7 +6234,8 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
             finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
           } else {
             const giroLabel = userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-            finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento son todas las opciones de ${giroLabel} que tenemos registradas cerca de tu zona 😔🙏 ¡Muy pronto sumaremos nuevos lugares! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨`;
+            const colLabel = userLocationColonia || "esa zona";
+            finalBotReplyText = `Acabo de revisar en nuestro sistema cerca de ${colLabel} y por el momento son todas las opciones de ${giroLabel} que tenemos registradas 😔🙏 ¡Muy pronto sumaremos nuevos lugares! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algo diferente? 😊✨`;
           }
         }
 
@@ -6227,7 +6255,7 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
             const aiRes = await callGroqApi({
               prompt: contextualPrompt,
               systemInstruction: CURRENT_SYSTEM_PROMPT,
-              temperature: 0.2
+              temperature: 0.1
             });
 
             if (aiRes.success && aiRes.reply) {
@@ -6378,33 +6406,7 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText || (isLocationMessage ? '[Ubicació
                 })
               });
 
-              // Si la burbuja es una ficha de negocio y tenemos coordenadas, enviar Pin de Ubicación Nativo de WhatsApp
-              if (bubbleText.includes("🏢") && selectedBusinesses[bizIndex]) {
-                const b = selectedBusinesses[bizIndex];
-                bizIndex++;
-                if (b.latitude && b.longitude) {
-                  await new Promise(r => setTimeout(r, 400));
-                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-                    method: "POST",
-                    headers: {
-                      "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                      "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                      messaging_product: "whatsapp",
-                      recipient_type: "individual",
-                      to: cleanTo,
-                      type: "location",
-                      location: {
-                        latitude: Number(b.latitude),
-                        longitude: Number(b.longitude),
-                        name: b.businessName,
-                        address: `${b.neighborhood || b.colonia || ''}, ${b.municipality || 'CDMX'}`
-                      }
-                    })
-                  });
-                }
-              }
+
 
               if (i < bubbles.length - 1) {
                 await new Promise(r => setTimeout(r, 700));
