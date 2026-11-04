@@ -6360,9 +6360,10 @@ function applyPromoToLanding(cfg) {
     if (cfg.title.includes("<span")) {
       title.innerHTML = cfg.title;
     } else {
-      // Si contiene "7 Días GRATIS!" resaltarlo en verde oficial
-      if (cfg.title.includes("7 Días GRATIS!")) {
-        title.innerHTML = cfg.title.replace("7 Días GRATIS!", '<span class="text-[#25D366]">7 Días GRATIS!</span>');
+      // Si contiene "X Días GRATIS!" resaltarlo en verde oficial #25D366
+      const regexDays = /(\d+\s*(?:Días|días|dias)\s*GRATIS!?)/i;
+      if (regexDays.test(cfg.title)) {
+        title.innerHTML = cfg.title.replace(regexDays, '<span class="text-[#25D366]">$1</span>');
       } else {
         title.textContent = cfg.title;
       }
@@ -7218,11 +7219,83 @@ async function loadLandingCmsUI() {
   applyCmsToLandingPage(CURRENT_LANDING_CMS);
 }
 
+function handleGlobalTrialDaysInput(val) {
+  const days = parseInt(val) || 15;
+  CURRENT_LANDING_CMS.trialDays = days;
+  if (CURRENT_PROMO_CONFIG) CURRENT_PROMO_CONFIG.trialDays = days;
+  updateLandingCmsPreview();
+  if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
+}
+
+function setGlobalTrialDays(days) {
+  const input = document.getElementById("cmsTrialDaysInput");
+  if (input) input.value = days;
+  CURRENT_LANDING_CMS.trialDays = Number(days);
+  autoApplyDaysToAllInputs();
+}
+
+function autoApplyDaysToAllInputs() {
+  const days = document.getElementById("cmsTrialDaysInput")?.value?.trim() || "15";
+  const numDays = parseInt(days) || 15;
+  CURRENT_LANDING_CMS.trialDays = numDays;
+
+  // 1. Botón Navbar Superior
+  const navInput = document.getElementById("cmsNavCtaTrial");
+  if (navInput) navInput.value = `Prueba ${numDays} días GRATIS`;
+
+  // 2. Botón Hero Principal
+  const heroInput = document.getElementById("cmsHeroCtaTrial");
+  if (heroInput) heroInput.value = `Prueba nuestro sistema por ${numDays} días GRATIS`;
+
+  // 3. Título del Banner Promocional
+  const promoTitleInput = document.getElementById("promoTitleInput");
+  if (promoTitleInput) promoTitleInput.value = `¡Prueba la Plataforma ${numDays} Días GRATIS!`;
+
+  // 4. Descripción del Banner Promocional
+  const promoDescInput = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+  if (promoDescInput) {
+    promoDescInput.value = `¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tus primeros ${numDays} días.`;
+  }
+
+  // 5. Botón CTA del Banner
+  const promoCtaInput = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
+  if (promoCtaInput) {
+    promoCtaInput.value = `¡Regístrate y Obtén ${numDays} Días GRATIS!`;
+  }
+
+  // 6. Actualizar nombre de la sección en lista de secciones si existe
+  if (Array.isArray(CURRENT_LANDING_CMS.sections)) {
+    const promoSec = CURRENT_LANDING_CMS.sections.find(s => s.id === "promo");
+    if (promoSec) promoSec.name = `Banner Promoción ${numDays} Días`;
+    renderCmsSectionsList(CURRENT_LANDING_CMS.sections);
+  }
+
+  // 7. Refrescar vistas previas
+  updateLandingCmsPreview();
+  if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
+
+  showToast(`¡Configurado para ${numDays} días de prueba! Haz clic en "Guardar y Publicar Cambios" para aplicarlo a la web.`, "success");
+}
+
+function setPresetPromoImage(path) {
+  const urlInput = document.getElementById("promoImageUrlInput");
+  if (urlInput) urlInput.value = path;
+  const prevImg = document.getElementById("promoPreviewImg");
+  if (prevImg) prevImg.src = path;
+  if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
+  showToast(`Imagen seleccionada: ${path}. Recuerda hacer clic en "Guardar y Publicar Cambios".`, "info");
+}
+
 function syncLandingCmsInputs(cms) {
   if (!cms) return;
+
+  const trialDaysInput = document.getElementById("cmsTrialDaysInput");
+  if (trialDaysInput) trialDaysInput.value = cms.trialDays || 15;
+
   const bInput = document.getElementById("cmsHeroBadge");
   const tInput = document.getElementById("cmsHeroTitle");
   const sInput = document.getElementById("cmsHeroSubtitle");
+  const navTrial = document.getElementById("cmsNavCtaTrial");
   const cta1 = document.getElementById("cmsHeroCtaTrial");
   const cta2 = document.getElementById("cmsHeroCtaChat");
 
@@ -7234,8 +7307,9 @@ function syncLandingCmsInputs(cms) {
   if (bInput && cms.hero) bInput.value = cms.hero.badge || "";
   if (tInput && cms.hero) tInput.value = cms.hero.title || "";
   if (sInput && cms.hero) sInput.value = cms.hero.subtitle || "";
-  if (cta1 && cms.hero) cta1.value = cms.hero.ctaTrialText || "";
-  if (cta2 && cms.hero) cta2.value = cms.hero.ctaChatText || "";
+  if (navTrial && cms.hero) navTrial.value = cms.hero.navTrialText || `Prueba ${cms.trialDays || 15} días GRATIS`;
+  if (cta1 && cms.hero) cta1.value = cms.hero.ctaTrialText || `Prueba nuestro sistema por ${cms.trialDays || 15} días GRATIS`;
+  if (cta2 && cms.hero) cta2.value = cms.hero.ctaChatText || "Probar Chat en Vivo";
 
   if (cPri && cms.colors) {
     cPri.value = cms.colors.primary || "#075E54";
@@ -7258,23 +7332,24 @@ function syncLandingCmsInputs(cms) {
     if (lbl) lbl.textContent = cBg.value;
   }
 
-  if (cms.promo) {
-    const promoUrl = document.getElementById("promoImageUrlInput");
-    const promoBadge = document.getElementById("promoBadgeInput");
-    const promoTitle = document.getElementById("promoTitleInput");
-    const promoDesc = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
-    const promoCta = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
+  const promoData = cms.promo || CURRENT_PROMO_CONFIG || {};
+  const promoUrl = document.getElementById("promoImageUrlInput");
+  const promoBadge = document.getElementById("promoBadgeInput");
+  const promoTitle = document.getElementById("promoTitleInput");
+  const promoDesc = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+  const promoCta = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
+  const promoWa = document.getElementById("promoWaTextInput");
 
-    if (promoUrl && cms.promo.bannerImage) promoUrl.value = cms.promo.bannerImage;
-    if (promoBadge && cms.promo.badge) promoBadge.value = cms.promo.badge;
-    if (promoTitle && cms.promo.title) promoTitle.value = cms.promo.title;
-    if (promoDesc && cms.promo.description) promoDesc.value = cms.promo.description;
-    if (promoCta && cms.promo.buttonText) promoCta.value = cms.promo.buttonText;
-    if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
-  }
+  if (promoUrl && promoData.bannerImage) promoUrl.value = promoData.bannerImage;
+  if (promoBadge && promoData.badge) promoBadge.value = promoData.badge;
+  if (promoTitle && promoData.title) promoTitle.value = promoData.title.replace(/<[^>]*>/g, '');
+  if (promoDesc && promoData.description) promoDesc.value = promoData.description;
+  if (promoCta && promoData.buttonText) promoCta.value = promoData.buttonText;
+  if (promoWa && promoData.whatsappText) promoWa.value = promoData.whatsappText;
 
   renderCmsSectionsList(cms.sections || []);
   updateLandingCmsPreview();
+  if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
 }
 
 function renderCmsSectionsList(sections) {
@@ -7322,9 +7397,13 @@ function toggleCmsSectionVisibility(index) {
 }
 
 function updateLandingCmsPreview() {
+  const trialDaysInput = document.getElementById("cmsTrialDaysInput");
+  const trialDays = trialDaysInput?.value ? parseInt(trialDaysInput.value) : (CURRENT_LANDING_CMS.trialDays || 15);
+
   const bInput = document.getElementById("cmsHeroBadge");
   const tInput = document.getElementById("cmsHeroTitle");
   const sInput = document.getElementById("cmsHeroSubtitle");
+  const navTrial = document.getElementById("cmsNavCtaTrial");
   const cta1 = document.getElementById("cmsHeroCtaTrial");
   const cta2 = document.getElementById("cmsHeroCtaChat");
 
@@ -7342,7 +7421,7 @@ function updateLandingCmsPreview() {
   if (prevBadge && bInput) prevBadge.textContent = bInput.value || "DIRECTORIO INTELIGENTE EN WHATSAPP";
   if (prevTitle && tInput) prevTitle.textContent = tInput.value || "Encuentra lo que necesitas en segundos por WhatsApp";
   if (prevSubtitle && sInput) prevSubtitle.textContent = sInput.value || "";
-  if (prevCta1 && cta1) prevCta1.textContent = cta1.value || "Prueba 15 días GRATIS";
+  if (prevCta1) prevCta1.textContent = (cta1 && cta1.value) ? cta1.value : `Prueba ${trialDays} días GRATIS`;
   if (prevCta2 && cta2) prevCta2.textContent = cta2.value || "Chat en Vivo";
 
   if (cPri) {
@@ -7367,9 +7446,14 @@ function updateLandingCmsPreview() {
 }
 
 async function handleSaveLandingCms() {
+  const trialDaysInput = document.getElementById("cmsTrialDaysInput");
+  const trialDays = trialDaysInput?.value ? (parseInt(trialDaysInput.value) || 15) : (CURRENT_LANDING_CMS.trialDays || 15);
+  CURRENT_LANDING_CMS.trialDays = trialDays;
+
   const bInput = document.getElementById("cmsHeroBadge");
   const tInput = document.getElementById("cmsHeroTitle");
   const sInput = document.getElementById("cmsHeroSubtitle");
+  const navTrial = document.getElementById("cmsNavCtaTrial");
   const cta1 = document.getElementById("cmsHeroCtaTrial");
   const cta2 = document.getElementById("cmsHeroCtaChat");
 
@@ -7382,7 +7466,8 @@ async function handleSaveLandingCms() {
     badge: bInput?.value?.trim() || "DIRECTORIO INTELIGENTE EN WHATSAPP",
     title: tInput?.value?.trim() || "Encuentra lo que necesitas en segundos por WhatsApp",
     subtitle: sInput?.value?.trim() || "",
-    ctaTrialText: cta1?.value?.trim() || "Prueba nuestro sistema por 15 días GRATIS",
+    navTrialText: navTrial?.value?.trim() || `Prueba ${trialDays} días GRATIS`,
+    ctaTrialText: cta1?.value?.trim() || `Prueba nuestro sistema por ${trialDays} días GRATIS`,
     ctaChatText: cta2?.value?.trim() || "Probar Chat en Vivo"
   };
 
@@ -7398,51 +7483,86 @@ async function handleSaveLandingCms() {
   const promoTitle = document.getElementById("promoTitleInput")?.value?.trim();
   const promoDesc = (document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput"))?.value?.trim();
   const promoCta = (document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput"))?.value?.trim();
+  const promoWa = document.getElementById("promoWaTextInput")?.value?.trim();
+  const promoVisible = document.getElementById("promoIsVisibleInput") ? document.getElementById("promoIsVisibleInput").checked : true;
 
-  if (promoUrl || promoTitle) {
-    CURRENT_LANDING_CMS.promo = {
-      bannerImage: promoUrl || "assets/promo-7dias.jpg",
-      badge: promoBadge || "Promoción Especial de Lanzamiento",
-      title: promoTitle || "¡Prueba la Plataforma 15 Días GRATIS!",
-      description: promoDesc || "",
-      buttonText: promoCta || "Activar 15 Días GRATIS"
-    };
-    if (typeof handleSavePromoBanner === "function") {
-      handleSavePromoBanner().catch(() => {});
-    }
+  CURRENT_LANDING_CMS.promo = {
+    bannerImage: promoUrl || "assets/promo-7dias.jpg",
+    badge: promoBadge || "Promoción Especial de Lanzamiento",
+    title: promoTitle || `¡Prueba la Plataforma ${trialDays} Días GRATIS!`,
+    description: promoDesc || "",
+    buttonText: promoCta || `¡Regístrate y Obtén ${trialDays} Días GRATIS!`,
+    whatsappText: promoWa || "Probar Concierge en WhatsApp",
+    isVisible: promoVisible,
+    trialDays: trialDays
+  };
+
+  // Sincronizar estado en memoria de promociones
+  CURRENT_PROMO_CONFIG = {
+    ...CURRENT_PROMO_CONFIG,
+    ...CURRENT_LANDING_CMS.promo
+  };
+
+  const saveBtn = document.getElementById("btnSaveLandingCms");
+  const origBtnContent = saveBtn ? saveBtn.innerHTML : null;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Guardando y publicando...</span>';
   }
 
   try {
-    const res = await fetch("/api/cms/landing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(CURRENT_LANDING_CMS)
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
-      applyCmsToLandingPage(CURRENT_LANDING_CMS);
-      showToast("¡Página Principal (CMS) actualizada y publicada con éxito!", "success");
-    } else {
-      showToast("Error al guardar CMS en el servidor.", "error");
-    }
+    const [resCms, resPromo] = await Promise.all([
+      fetch("/api/cms/landing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(CURRENT_LANDING_CMS)
+      }),
+      fetch("/api/promotions/banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(CURRENT_LANDING_CMS.promo)
+      })
+    ]);
+
+    localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
+    localStorage.setItem("BUSCAYA_PROMO_CONFIG", JSON.stringify(CURRENT_LANDING_CMS.promo));
+    applyCmsToLandingPage(CURRENT_LANDING_CMS);
+    showToast(`¡Página Principal, Días de Prueba (${trialDays}d) e Imagen guardados y publicados con éxito!`, "success");
   } catch (err) {
     localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
+    localStorage.setItem("BUSCAYA_PROMO_CONFIG", JSON.stringify(CURRENT_LANDING_CMS.promo));
     applyCmsToLandingPage(CURRENT_LANDING_CMS);
-    showToast("Cambios guardados localmente en navegador.", "info");
+    showToast("Cambios guardados localmente en el navegador.", "info");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      if (origBtnContent) saveBtn.innerHTML = origBtnContent;
+    }
   }
 }
 
 async function handleResetLandingCms() {
-  if (!confirm("¿Deseas restablecer los textos, colores y secciones de la página principal a los originales?")) return;
+  if (!confirm("¿Deseas restablecer los textos, colores, imagen y secciones de la página principal a los originales de 15 días?")) return;
   CURRENT_LANDING_CMS = {
+    trialDays: 15,
     colors: { primary: "#075E54", secondary: "#128C7E", accent: "#25D366", bg: "#F0F2F5" },
     hero: {
       badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
       title: "Encuentra lo que necesitas en segundos por WhatsApp",
       subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
+      navTrialText: "Prueba 15 días GRATIS",
       ctaTrialText: "Prueba nuestro sistema por 15 días GRATIS",
       ctaChatText: "Probar Chat en Vivo"
+    },
+    promo: {
+      bannerImage: "assets/promo-7dias.jpg",
+      badge: "Promoción Especial de Lanzamiento",
+      title: "¡Prueba la Plataforma 15 Días GRATIS!",
+      description: "¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tus primeros 15 días.",
+      buttonText: "¡Regístrate Hoy!",
+      whatsappText: "Probar Concierge en WhatsApp",
+      isVisible: true,
+      trialDays: 15
     },
     sections: [
       { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
@@ -7461,7 +7581,18 @@ async function handleResetLandingCms() {
 function applyCmsToLandingPage(cms) {
   if (!cms) return;
 
-  // 1. Hero texts
+  const trialDays = cms.trialDays || 15;
+
+  // 1. Botón Navbar Superior
+  const btnNavTrial = document.getElementById("btnNavFreeTrial");
+  if (btnNavTrial) {
+    const span = btnNavTrial.querySelector("span");
+    if (span) {
+      span.textContent = cms.hero?.navTrialText || `Prueba ${trialDays} días GRATIS`;
+    }
+  }
+
+  // 2. Hero texts
   const heroBadge = document.querySelector("#view-landing .inline-flex span");
   if (heroBadge && cms.hero?.badge) heroBadge.textContent = cms.hero.badge;
 
@@ -7489,21 +7620,13 @@ function applyCmsToLandingPage(cms) {
     if (span) span.textContent = cms.hero.ctaChatText;
   }
 
-  // 2. Banner de Promoción Principal (Flyer y Textos)
-  if (cms.promo) {
-    const promoImg = document.getElementById("promoBannerImg");
-    if (promoImg && cms.promo.bannerImage) promoImg.src = cms.promo.bannerImage;
-    const promoBadge = document.getElementById("promoBannerBadgeText");
-    if (promoBadge && cms.promo.badge) promoBadge.textContent = cms.promo.badge;
-    const promoTitle = document.getElementById("promoBannerTitle");
-    if (promoTitle && cms.promo.title) promoTitle.textContent = cms.promo.title;
-    const promoDesc = document.getElementById("promoBannerDescription");
-    if (promoDesc && cms.promo.description) promoDesc.textContent = cms.promo.description;
-    const promoCta = document.getElementById("promoBannerCtaBtnText");
-    if (promoCta && cms.promo.buttonText) promoCta.textContent = cms.promo.buttonText;
+  // 3. Banner de Promoción Principal (Flyer y Textos)
+  const promoData = cms.promo || CURRENT_PROMO_CONFIG;
+  if (promoData) {
+    applyPromoToLanding(promoData);
   }
 
-  // 3. Visibilidad de secciones
+  // 4. Visibilidad de secciones
   if (Array.isArray(cms.sections)) {
     cms.sections.forEach(sec => {
       let el = null;
@@ -8385,6 +8508,10 @@ window.trackBusinessEvent = trackBusinessEvent;
 window.handleInteractiveAction = handleInteractiveAction;
 
 // Exportaciones del CMS de la Landing Page
+window.handleGlobalTrialDaysInput = handleGlobalTrialDaysInput;
+window.setGlobalTrialDays = setGlobalTrialDays;
+window.autoApplyDaysToAllInputs = autoApplyDaysToAllInputs;
+window.setPresetPromoImage = setPresetPromoImage;
 window.loadLandingCmsUI = loadLandingCmsUI;
 window.syncLandingCmsInputs = syncLandingCmsInputs;
 window.renderCmsSectionsList = renderCmsSectionsList;

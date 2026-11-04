@@ -3536,8 +3536,8 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // Validación y Aplicación de Cupones Promocionales (Por defecto 15 días)
-        let trialDays = Number(customTrialDays) || 15;
+        // Validación y Aplicación de Cupones Promocionales (Por defecto según CMS o 15 días)
+        let trialDays = Number(customTrialDays || (SERVER_LANDING_CMS && SERVER_LANDING_CMS.trialDays)) || 15;
         let discountPercent = 0;
         let appliedCoupon = null;
 
@@ -4191,7 +4191,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const trialDays = Number(data.trialDays || data.customTrialDays) || 15;
+        const trialDays = Number(data.trialDays || data.customTrialDays || (SERVER_LANDING_CMS && SERVER_LANDING_CMS.trialDays)) || 15;
         const resolvedId = data.id || `by-${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
         const expiresAt = data.expiresAt || new Date(Date.now() + trialDays * 86400000).toISOString();
 
@@ -4612,11 +4612,24 @@ const server = http.createServer(async (req, res) => {
         SERVER_LANDING_CMS = {
           ...SERVER_LANDING_CMS,
           ...payload,
+          trialDays: payload.trialDays !== undefined ? Number(payload.trialDays) : (SERVER_LANDING_CMS.trialDays || 15),
           colors: { ...SERVER_LANDING_CMS.colors, ...(payload.colors || {}) },
           hero: { ...SERVER_LANDING_CMS.hero, ...(payload.hero || {}) },
+          promo: { ...(SERVER_LANDING_CMS.promo || {}), ...(payload.promo || {}) },
           sections: Array.isArray(payload.sections) ? payload.sections : SERVER_LANDING_CMS.sections,
           updatedAt: new Date().toISOString()
         };
+        if (payload.promo) {
+          SERVER_PROMOTIONS = {
+            ...SERVER_PROMOTIONS,
+            ...(payload.promo || {}),
+            trialDays: SERVER_LANDING_CMS.trialDays,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        if (payload.trialDays) {
+          SERVER_PROMOTIONS.trialDays = Number(payload.trialDays);
+        }
         saveServerDatabase();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({

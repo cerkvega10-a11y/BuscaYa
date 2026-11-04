@@ -3510,6 +3510,48 @@
             <!-- Columna Izquierda: Edición de Textos y Colores -->
             <div class="lg:col-span-7 space-y-6">
               
+              <!-- 0. CONTROLADOR MAESTRO DE DÍAS GRATIS & PROMOCIÓN GLOBAL -->
+              <div class="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border-2 border-emerald-400 space-y-4 shadow-sm">
+                <div class="flex items-center justify-between pb-2 border-b border-emerald-200">
+                  <h4 class="text-xs font-black text-emerald-950 uppercase flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt text-emerald-600"></i>
+                    <span>⚡ DÍAS DE PRUEBA GRATIS &amp; PROMOCIÓN GLOBAL</span>
+                  </h4>
+                  <span class="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-full">Sincronizador Automático</span>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                  <div>
+                    <label class="block font-bold text-gray-800 mb-1">
+                      ¿Cuántos Días Gratis quieres ofrecer en la plataforma? (Escribe el número):
+                    </label>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <div class="relative w-32">
+                        <input type="number" id="cmsTrialDaysInput" min="1" max="365" value="15" oninput="handleGlobalTrialDaysInput(this.value)" class="w-full pl-3 pr-8 py-2 rounded-xl border-2 border-emerald-500 font-black text-base text-emerald-900 bg-white text-center focus:ring-2 focus:ring-emerald-400 shadow-inner">
+                        <span class="absolute right-2.5 top-2.5 text-xs text-gray-400 font-bold">días</span>
+                      </div>
+                      
+                      <!-- Botones de selección rápida -->
+                      <button type="button" onclick="setGlobalTrialDays(7)" class="px-3 py-2 rounded-xl border border-gray-300 bg-white hover:bg-emerald-50 hover:border-emerald-400 font-bold text-gray-700 transition-all cursor-pointer">
+                        7 Días
+                      </button>
+                      <button type="button" onclick="setGlobalTrialDays(15)" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 shadow-sm transition-all cursor-pointer">
+                        15 Días (Recomendado)
+                      </button>
+                      <button type="button" onclick="setGlobalTrialDays(30)" class="px-3 py-2 rounded-xl border border-gray-300 bg-white hover:bg-purple-50 hover:border-purple-400 font-bold text-gray-700 transition-all cursor-pointer">
+                        30 Días (VIP)
+                      </button>
+                      
+                      <button type="button" onclick="autoApplyDaysToAllInputs()" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black transition-all flex items-center space-x-1 shadow-sm cursor-pointer ml-auto" title="Actualiza automáticamente los textos del botón superior, hero, y banner con este número de días">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>🪄 Auto-Aplicar a Todos los Textos</span>
+                      </button>
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-1">Escribe si son 7, 15 o más días. Puedes usar el botón de auto-aplicar o personalizar cada texto individualmente abajo.</p>
+                  </div>
+                </div>
+              </div>
+
               <!-- 1. Textos del Hero y Portada -->
               <div class="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-4">
                 <h4 class="text-xs font-black text-indigo-950 uppercase flex items-center space-x-2">
@@ -3533,13 +3575,17 @@
                     <textarea id="cmsHeroSubtitle" rows="2" oninput="updateLandingCmsPreview()" class="w-full px-3 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 leading-relaxed">Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.</textarea>
                   </div>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 1 (Prueba Gratis):</label>
+                      <label class="block font-bold text-gray-700 mb-1">Botón Navbar Superior:</label>
+                      <input type="text" id="cmsNavCtaTrial" oninput="updateLandingCmsPreview()" value="Prueba 15 días GRATIS" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
+                    </div>
+                    <div>
+                      <label class="block font-bold text-gray-700 mb-1">Botón Hero (Prueba Gratis):</label>
                       <input type="text" id="cmsHeroCtaTrial" oninput="updateLandingCmsPreview()" value="Prueba nuestro sistema por 15 días GRATIS" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
                     </div>
                     <div>
-                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 2 (Chat en Vivo):</label>
+                      <label class="block font-bold text-gray-700 mb-1">Botón Hero 2 (Chat Vivo):</label>
                       <input type="text" id="cmsHeroCtaChat" oninput="updateLandingCmsPreview()" value="Probar Chat en Vivo" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
                     </div>
                   </div>
@@ -3593,7 +3639,7 @@
                 <div class="flex items-center justify-between pb-2 border-b border-emerald-200">
                   <h4 class="text-xs font-black text-emerald-950 uppercase flex items-center space-x-2">
                     <i class="fa-solid fa-photo-film text-emerald-600"></i>
-                    <span>3. Imagen y Textos de la Promoción Principal (Banner)</span>
+                    <span>3. Imagen y Textos del Banner Promocional</span>
                   </h4>
                   <span class="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full">Visible en Home</span>
                 </div>
@@ -3601,7 +3647,12 @@
                 <div class="space-y-3 text-xs">
                   <!-- Subir Flyer / Imagen -->
                   <div>
-                    <label class="block font-bold text-gray-700 mb-1">Imagen / Flyer de la Promoción:</label>
+                    <div class="flex items-center justify-between mb-1">
+                      <label class="block font-bold text-gray-700">Imagen / Flyer de la Promoción *:</label>
+                      <button type="button" onclick="setPresetPromoImage('assets/promo-7dias.jpg')" class="text-[11px] text-emerald-700 hover:text-emerald-900 underline font-bold cursor-pointer">
+                        Restaurar Imagen Original
+                      </button>
+                    </div>
                     <div class="border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-2xl p-4 bg-white text-center transition-all cursor-pointer relative group" onclick="document.getElementById('promoImageFileInput').click()">
                       <input type="file" id="promoImageFileInput" accept="image/*" class="hidden" onchange="handlePromoImageFileSelect(event)">
                       <div class="space-y-1.5">
@@ -3609,9 +3660,9 @@
                           <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
                         <div class="text-xs font-bold text-gray-800">
-                          <span class="text-emerald-700 underline">Haz clic para subir imagen</span> o arrastra aquí
+                          <span class="text-emerald-700 underline">Haz clic para subir imagen</span> desde tu computadora o arrastra aquí
                         </div>
-                        <span class="text-[10px] text-gray-500 block">PNG, JPG, WEBP (Recomendado 800x1000px)</span>
+                        <span class="text-[10px] text-gray-500 block">PNG, JPG, WEBP (Recomendado 800x1000px vertical)</span>
                       </div>
                     </div>
                   </div>
@@ -3621,7 +3672,7 @@
                     <label class="block font-bold text-gray-700 mb-1">O escribe enlace/URL de imagen:</label>
                     <div class="relative">
                       <i class="fa-solid fa-link absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-                      <input type="text" id="promoImageUrlInput" oninput="handlePromoImageUrlInput()" placeholder="assets/promo-15dias.jpg o https://..." class="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-300 text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500">
+                      <input type="text" id="promoImageUrlInput" oninput="handlePromoImageUrlInput()" placeholder="assets/promo-7dias.jpg o https://..." class="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-300 text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500">
                     </div>
                   </div>
 
@@ -3639,20 +3690,25 @@
 
                   <div>
                     <label class="block font-bold text-gray-700 mb-1">Texto Descriptivo del Banner:</label>
-                    <textarea id="promoSubtitleInput" rows="2" oninput="updatePromoLivePreview()" class="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white leading-relaxed">Conecta tu negocio en segundos con miles de clientes locales en la Ciudad de México impulsado por Inteligencia Artificial oficial en WhatsApp.</textarea>
+                    <textarea id="promoSubtitleInput" rows="2" oninput="updatePromoLivePreview()" class="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white leading-relaxed">¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tus primeros 15 días.</textarea>
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label class="block font-bold text-gray-700 mb-1">Texto del Botón (CTA):</label>
-                      <input type="text" id="promoCtaBtnInput" oninput="updatePromoLivePreview()" value="Activar 15 Días GRATIS" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold bg-white">
+                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 1 (Registro CTA):</label>
+                      <input type="text" id="promoCtaBtnInput" oninput="updatePromoLivePreview()" value="¡Regístrate Hoy!" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold bg-white">
                     </div>
-                    <div class="flex items-end">
-                      <button type="button" onclick="handleSavePromoBanner(event)" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
-                        <i class="fa-solid fa-floppy-disk"></i>
-                        <span>💾 Guardar Banner Promocional</span>
-                      </button>
+                    <div>
+                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 2 (WhatsApp CTA):</label>
+                      <input type="text" id="promoWaTextInput" oninput="updatePromoLivePreview()" value="Probar Concierge en WhatsApp" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold bg-white">
                     </div>
+                  </div>
+
+                  <div class="pt-1 flex items-center justify-between">
+                    <label class="inline-flex items-center space-x-2 cursor-pointer">
+                      <input type="checkbox" id="promoIsVisibleInput" checked onchange="updatePromoLivePreview()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500">
+                      <span class="text-xs font-bold text-gray-800">Mostrar Banner en Página Principal</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -3688,6 +3744,48 @@
                 </div>
               </div>
 
+              <!-- Vista Previa en Vivo del Banner Promocional -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-gray-700 uppercase flex items-center space-x-1.5">
+                    <i class="fa-solid fa-eye text-emerald-600"></i>
+                    <span>Vista Previa del Banner Promocional</span>
+                  </span>
+                  <span class="text-[10px] text-gray-400 font-mono">En tiempo real</span>
+                </div>
+                
+                <div class="bg-gradient-to-br from-[#075E54] via-[#0d7367] to-[#128C7E] rounded-3xl p-4 text-white shadow-xl border border-[#25D366]/30 overflow-hidden relative">
+                  <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                    <div class="sm:col-span-5 flex justify-center">
+                      <div class="relative group max-w-[150px]">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-[#25D366] to-amber-400 rounded-xl blur opacity-30"></div>
+                        <img id="promoPreviewImg" src="assets/promo-7dias.jpg" alt="Preview Banner" class="relative rounded-xl shadow-xl w-full h-auto object-cover border border-white/20">
+                      </div>
+                    </div>
+                    <div class="sm:col-span-7 space-y-2 text-center sm:text-left">
+                      <div class="inline-flex items-center space-x-1 bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 rounded-full text-[9px] font-black text-amber-300 uppercase tracking-wider">
+                        <i class="fa-solid fa-fire text-amber-400"></i>
+                        <span id="promoPreviewBadge">Promoción Especial de Lanzamiento</span>
+                      </div>
+                      <h4 id="promoPreviewTitle" class="text-sm font-black leading-tight text-white">
+                        ¡Prueba la Plataforma 15 Días GRATIS!
+                      </h4>
+                      <p id="promoPreviewDesc" class="text-[10px] text-gray-200 leading-relaxed line-clamp-3">
+                        ¿Qué estás esperando? Únete al directorio de última generación en WhatsApp...
+                      </p>
+                      <div class="pt-1 flex flex-wrap items-center gap-1.5 justify-center sm:justify-start">
+                        <span class="px-2.5 py-1 rounded-lg bg-[#25D366] text-[#075E54] font-black text-[10px] shadow-sm" id="promoPreviewBtnText">
+                          ¡Regístrate Hoy!
+                        </span>
+                        <span class="px-2.5 py-1 rounded-lg bg-white/10 text-white font-bold text-[10px] border border-white/20" id="promoPreviewWaText">
+                          WhatsApp
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -3700,160 +3798,21 @@
       <!-- ============================================================== -->
       <div id="adminTabContentCoupons" class="hidden space-y-8">
         
-        <!-- ============================================================== -->
-        <!-- PERSONALIZADOR DE PROMOCIÓN VISUAL & BANNER DE LANZAMIENTO     -->
-        <!-- ============================================================== -->
-        <div class="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500/40 shadow-lg space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
-            <div class="flex items-center space-x-3">
-              <div class="w-12 h-12 rounded-2xl bg-[#075E54] text-[#25D366] flex items-center justify-center text-2xl shadow-lg">
-                <i class="fa-solid fa-photo-film"></i>
-              </div>
-              <div>
-                <h3 class="text-lg font-black text-gray-900">🎨 Personalizador de Promociones & Banner de Lanzamiento</h3>
-                <p class="text-xs text-gray-500">Modifica o sube nuevas imágenes y textos del banner promocional visible en la página principal</p>
-              </div>
+        <!-- Acceso Rápido al Personalizador Visual del Banner -->
+        <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 rounded-3xl p-6 border-2 border-emerald-400/50 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-2xl shadow-md">
+              <i class="fa-solid fa-paintbrush"></i>
             </div>
-
-            <div class="flex items-center space-x-2">
-              <button type="button" onclick="handleResetPromoBanner()" class="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer" title="Restablecer imagen y textos por defecto">
-                <i class="fa-solid fa-arrow-rotate-left text-gray-500"></i>
-                <span>Restablecer Original</span>
-              </button>
+            <div>
+              <h3 class="text-base font-black text-gray-900">🎨 Personalizador del Banner de Lanzamiento &amp; Imagen</h3>
+              <p class="text-xs text-gray-600">Cambia la imagen del flyer, define si son 7, 15 o más días gratis y edita los textos de la portada.</p>
             </div>
           </div>
-
-          <form id="adminPromoBannerForm" onsubmit="handleSavePromoBanner(event)" class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              <!-- Columna Izquierda: Subida de Imagen y Controles -->
-              <div class="lg:col-span-5 space-y-4">
-                <div>
-                  <label class="block text-xs font-black text-gray-800 uppercase mb-1">
-                    Imagen / Flyer de la Promoción *
-                  </label>
-                  <p class="text-[11px] text-gray-500 mb-2">Sube una imagen desde tu computadora (PNG, JPG, WEBP) o escribe una URL externa.</p>
-                  
-                  <!-- Dropzone / File Picker -->
-                  <div class="border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-2xl p-4 bg-emerald-50/40 text-center transition-all cursor-pointer relative group" onclick="document.getElementById('promoImageFileInput').click()">
-                    <input type="file" id="promoImageFileInput" accept="image/*" class="hidden" onchange="handlePromoImageFileSelect(event)">
-                    <div class="space-y-2">
-                      <div class="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                      </div>
-                      <div class="text-xs font-bold text-gray-800">
-                        <span class="text-emerald-700 underline">Haz clic para subir imagen</span> o arrastra aquí
-                      </div>
-                      <span class="text-[10px] text-gray-500 block">Recomendado: 800 x 1000 px o vertical (PNG / JPG)</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- URL alternativa -->
-                <div class="space-y-1">
-                  <label class="block text-xs font-bold text-gray-700">O escribir enlace / URL de imagen:</label>
-                  <div class="relative">
-                    <i class="fa-solid fa-link absolute left-3.5 top-2.5 text-gray-400 text-xs"></i>
-                    <input type="text" id="promoImageUrlInput" oninput="handlePromoImageUrlInput()" placeholder="assets/promo-7dias.jpg o https://..." class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:ring-2 focus:ring-emerald-500">
-                  </div>
-                </div>
-
-                <!-- Textos del Banner -->
-                <div class="space-y-3 pt-2 border-t border-gray-100">
-                  <div class="space-y-1">
-                    <label class="block text-xs font-bold text-gray-700">Texto de la Etiqueta / Badge:</label>
-                    <input type="text" id="promoBadgeInput" oninput="updatePromoLivePreview()" value="Promoción Especial de Lanzamiento" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-500">
-                  </div>
-
-                  <div class="space-y-1">
-                    <label class="block text-xs font-bold text-gray-700">Título Principal:</label>
-                    <input type="text" id="promoTitleInput" oninput="updatePromoLivePreview()" value="¡Prueba la Plataforma 15 Días GRATIS!" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500">
-                  </div>
-
-                  <div class="space-y-1">
-                    <label class="block text-xs font-bold text-gray-700">Texto Descriptivo:</label>
-                    <textarea id="promoDescInput" rows="3" oninput="updatePromoLivePreview()" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-emerald-500 leading-relaxed">¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.</textarea>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-2">
-                    <div class="space-y-1">
-                      <label class="block text-xs font-bold text-gray-700">Texto Botón 1 (Registro):</label>
-                      <input type="text" id="promoBtnTextInput" oninput="updatePromoLivePreview()" value="¡Regístrate Hoy!" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold">
-                    </div>
-                    <div class="space-y-1">
-                      <label class="block text-xs font-bold text-gray-700">Texto Botón 2 (WhatsApp):</label>
-                      <input type="text" id="promoWaTextInput" oninput="updatePromoLivePreview()" value="Probar Concierge en WhatsApp" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold">
-                    </div>
-                  </div>
-
-                  <div class="pt-2 flex items-center justify-between">
-                    <label class="inline-flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" id="promoIsVisibleInput" checked onchange="updatePromoLivePreview()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500">
-                      <span class="text-xs font-bold text-gray-800">Mostrar Banner en Página Principal</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="pt-2">
-                  <button type="submit" id="btnSavePromoBanner" class="w-full py-3 rounded-xl bg-[#075E54] hover:bg-[#0c7367] text-white font-black text-sm shadow-lg flex items-center justify-center space-x-2 transition-all cursor-pointer">
-                    <i class="fa-solid fa-floppy-disk text-[#25D366]"></i>
-                    <span>Guardar y Publicar Promoción</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Columna Derecha: Vista Previa en Vivo -->
-              <div class="lg:col-span-7 space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-black text-gray-700 uppercase flex items-center space-x-1.5">
-                    <i class="fa-solid fa-eye text-emerald-600"></i>
-                    <span>Vista Previa en Vivo (Página Principal)</span>
-                  </span>
-                  <span class="text-[11px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-mono">En tiempo real</span>
-                </div>
-
-                <!-- Preview Card -->
-                <div class="bg-gradient-to-br from-[#075E54] via-[#0d7367] to-[#128C7E] rounded-3xl p-5 sm:p-6 text-white shadow-xl border border-[#25D366]/30 overflow-hidden relative">
-                  <div class="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
-                    <div class="sm:col-span-5 flex justify-center">
-                      <div class="relative group max-w-[220px] sm:max-w-[240px]">
-                        <div class="absolute -inset-1 bg-gradient-to-r from-[#25D366] to-amber-400 rounded-2xl blur opacity-30"></div>
-                        <img id="promoPreviewImg" src="assets/promo-7dias.jpg" alt="Preview Banner" class="relative rounded-xl shadow-xl w-full h-auto object-cover border border-white/20">
-                      </div>
-                    </div>
-                    <div class="sm:col-span-7 space-y-3 text-center sm:text-left">
-                      <div class="inline-flex items-center space-x-1.5 bg-amber-400/20 border border-amber-300/40 px-3 py-0.5 rounded-full text-[10px] font-black text-amber-300 uppercase tracking-wider">
-                        <i class="fa-solid fa-fire text-amber-400"></i>
-                        <span id="promoPreviewBadge">Promoción Especial de Lanzamiento</span>
-                      </div>
-                      <h4 id="promoPreviewTitle" class="text-xl sm:text-2xl font-black leading-tight text-white">
-                        ¡Prueba la Plataforma 15 Días GRATIS!
-                      </h4>
-                      <p id="promoPreviewDesc" class="text-xs text-gray-200 leading-relaxed line-clamp-4">
-                        ¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.
-                      </p>
-                      <div class="pt-1 flex flex-col sm:flex-row items-center gap-2 justify-center sm:justify-start">
-                        <span id="promoPreviewBtn" class="px-4 py-2 rounded-lg bg-[#25D366] text-[#075E54] font-black text-xs shadow-md flex items-center space-x-1.5">
-                          <i class="fa-solid fa-circle-check text-xs"></i>
-                          <span id="promoPreviewBtnText">¡Regístrate Hoy!</span>
-                        </span>
-                        <span class="px-3.5 py-2 rounded-lg bg-white/10 text-white font-bold text-xs border border-white/20 flex items-center space-x-1.5">
-                          <i class="fa-brands fa-whatsapp text-[#25D366] text-xs"></i>
-                          <span id="promoPreviewWaText">Probar Concierge en WhatsApp</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-center space-x-2">
-                  <i class="fa-solid fa-circle-info text-amber-600 text-sm"></i>
-                  <span><b>Nota:</b> Al hacer clic en <i>Guardar y Publicar</i>, la imagen y textos se actualizarán inmediatamente en la portada para todos los visitantes de BuscaYa.</span>
-                </div>
-              </div>
-
-            </div>
-          </form>
+          <button type="button" onclick="switchAdminSubTab('landing-cms')" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black transition-all shadow-md flex items-center space-x-2 cursor-pointer whitespace-nowrap">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Ir a Editor CMS (Página Principal)</span>
+          </button>
         </div>
         
         <div class="bg-white rounded-3xl p-6 sm:p-8 border-2 border-amber-400/40 shadow-md space-y-6">
