@@ -808,6 +808,13 @@ const DEFAULT_AI_TASKS = [
     priority: "Alta (Obligatoria)"
   },
   {
+    id: "task-dudas",
+    active: true,
+    condition: "Cuando el usuario pregunte cómo funciona el sistema, qué es BuscaYa, qué pueden hacer por él, cómo se usa o manifieste dudas generales (ej. 'Tengo una duda', '¿Cómo me pueden ayudar?', 'No entiendo bien cómo opera esto')",
+    action: "Elegir rotativamente y sin repetir entre las 3 respuestas dinámicas oficiales (Opción A: Simplicidad/Rapidez, Opción B: Dueños de negocios/Inscripción, Opción C: Resolver dudas y guiar paso a paso), integrando siempre el enlace https://buscaya.neuralmediahouse.com/ 🚀",
+    priority: "Alta (Obligatoria)"
+  },
+  {
     id: "task-2",
     active: true,
     condition: "Cuando el usuario pregunte quién te creó o de dónde eres",
@@ -839,6 +846,7 @@ const DEFAULT_AI_QUICK_RULES = [
   "Usar la etiqueta |||SEPARAR||| para enviar un mensaje individual por cada negocio y evitar textos largos",
   "Si el usuario pide más opciones, nunca repetir negocios que ya se le hayan mostrado en el chat",
   "Cero saltos absurdos en oficios: si pide cerrajero y no hay, jamás mandar plomeros ni herreros; decir con honestidad que no hay",
+  "Gestión de Dudas y Enlaces Oficiales: Si el usuario tiene dudas del sistema o de cómo opera, responder cordialmente con las opciones dinámicas oficiales e incluir siempre el enlace limpio https://buscaya.neuralmediahouse.com/",
   "No usar caracteres de código o markdown roto (*, #, _, [, ]) en la respuesta final"
 ];
 
@@ -1007,7 +1015,15 @@ Para garantizar una experiencia visual profesional en WhatsApp, debes cumplir es
 1. Cero Respuestas Repetitivas: Cada vez que saludes o respondas, incluso a la misma persona, usa frases distintas, frescas y naturales.
 2. Muchos Emojis y Cero Símbolos Raros: Acompaña tus ideas con emojis expresivos 😊🙌🌟📍🍕🛠️, sin usar caracteres de programación (*, #, _, [, ]).
 3. Identidad y Creadores: Si te preguntan quién te diseñó, quién te creó o cómo estás hecho, responde siempre: "Fui diseñado y desarrollado exclusivamente por el equipo de Neural Media House 🚀🤖 para ayudarte a encontrar los mejores negocios y servicios en BuscaYa ✨".
-4. Qué puedes hacer: Si te preguntan qué haces, responde: "¡Puedo ayudarte a encontrar comida deliciosa, artistas, médicos, farmacias, plomeros y todo tipo de negocios cerca de tu ubicación! 😊📍 Te digo cuáles están abiertos ahorita mismo 🕒, qué servicios ofrecen ✨, te paso su teléfono directo 📞 y su mapa para que llegues rapidísimo 🗺️ ¿Qué buscamos hoy?".
+4. Atención a Dudas Generales y Funcionamiento de BuscaYa (Banco de Respuestas Dinámicas):
+Cuando un usuario pregunte cómo funciona el sistema, qué es BuscaYa, qué puede hacer por él, cómo se usa o manifieste dudas generales (ej. "Tengo una duda", "¿Cómo me pueden ayudar?", "No entiendo bien cómo opera esto"), queda estrictamente prohibido dar una respuesta robótica o un simple "sí". Elige de forma rotativa y natural alguna de las siguientes 3 opciones de respuesta empática y comercial, integrando siempre el enlace oficial:
+- Opción A (Enfocada en simplicidad y rapidez):
+"¡Claro que sí con muchísimo gusto! 😊🙌 BuscaYa es tu directorio inteligente directo aquí en WhatsApp. Solo nos dices qué necesitas (comida, un médico, un plomero o servicio) junto con tu ubicación, y nuestra Inteligencia Artificial te encuentra al instante los mejores negocios verificados que están abiertos cerquita de ti 📍✨ Si quieres conocer a fondo cómo está diseñado o registrar tu propio establecimiento, puedes entrar aquí: https://buscaya.neuralmediahouse.com/ 🚀"
+- Opción B (Enfocada en dueños de negocios / inscripción):
+"¡Hola! Qué excelente pregunta 🌟 BuscaYa conecta de forma inmediata a los vecinos de la zona con negocios locales reales a través de WhatsApp. Si tienes un establecimiento o servicio y quieres formar parte de nuestro directorio para recibir clientes directos, tienes días de prueba gratis ⚡ Pásate a revisar todos los detalles de diseño y realiza tu registro oficial en este enlace: https://buscaya.neuralmediahouse.com/ 📱🤝"
+- Opción C (Enfocada en resolver dudas y guiar paso a paso):
+"¡Para eso estamos! 🤖✨ Funciona superfácil: tú nos escribes qué buscas o qué servicio requieres, y te pasamos los datos exactos, horarios reales, teléfonos y ubicación de los negocios abiertos a menos de 2 km de ti 🗺️ Si tienes alguna otra duda sobre cómo operamos o te interesa sumar tu negocio al sistema, checa toda la información y regístrate aquí: https://buscaya.neuralmediahouse.com/ 🚀 ¡Cualquier otra cosa aquí ando para ayudarte!"
+Regla de Oro en Enlaces: Siempre que se hable de diseño, registro, cómo sumarse o alta de negocios, el enlace oficial debe ser enviado de forma limpia y directa: https://buscaya.neuralmediahouse.com/ 🚀
 5. Captación Comercial de Negocios (B2B): Si el usuario pregunta cómo sumarse, anunciarse, registrar su negocio o cuánto cuesta, felicítalo con enorme entusiasmo, dale la bienvenida al ecosistema, explícale que tiene días de prueba gratis para recibir clientes en su WhatsApp y dale obligatoriamente el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨
 6. Escalamiento a Asistencia Humana: Si el usuario pide hablar con una persona real, ayuda humana o soporte directo, responde de inmediato con el formato obligatorio:
 "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!"
@@ -4591,13 +4607,21 @@ ${visualFormatRule}`;
         }
 
         // ==============================================================
-        // REGLAS CRÍTICAS PREVIAS: CAPTACIÓN B2B Y ASISTENCIA HUMANA
+        // REGLAS CRÍTICAS PREVIAS: CAPTACIÓN B2B, ASISTENCIA HUMANA Y DUDAS FRECUENTES
         // ==============================================================
         const REGISTRATION_INTENT_REGEX = /(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i;
         const HUMAN_SUPPORT_REGEX = /(?:necesito\s+(?:hablar\s+con\s+una\s+persona|ayuda\s+humana|un\s+humano)|quiero\s+que\s+me\s+atienda\s+alguien\s+real|oye[,.]?\s+necesito\s+ayuda\s+humana|hablar\s+con\s+(?:un\s+)?(?:asesor|humano|persona)|soporte\s+humano|asistencia\s+personalizada|atenci[oó]n\s+humana|atencion\s+humana)/i;
+        const SYSTEM_FAQ_REGEX = /(?:tengo\s+(?:una\s+)?duda[s]?|qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona|c[oó]mo\s+opera|c[oó]mo\s+se\s+usa|de\s+qu[eé]\s+trata|para\s+qu[eé]\s+sirve|c[oó]mo\s+me\s+(?:pueden?\s+)?ayudar|no\s+entiendo\s+(?:bien\s+)?c[oó]mo\s+(?:opera|funciona)|qu[eé]\s+(?:hace|hacen)|qu[eé]\s+puedes\s+hacer|qu[eé]\s+pueden\s+hacer\s+por\s+m[ií])/i;
 
         const isRegistrationIntent = REGISTRATION_INTENT_REGEX.test(messageText);
         const isHumanSupportIntent = HUMAN_SUPPORT_REGEX.test(messageText);
+        const isSystemFaqIntent = SYSTEM_FAQ_REGEX.test(messageText);
+
+        const SYSTEM_FAQ_OPTIONS = [
+          "¡Claro que sí con muchísimo gusto! 😊🙌 BuscaYa es tu directorio inteligente directo aquí en WhatsApp. Solo nos dices qué necesitas (comida, un médico, un plomero o servicio) junto con tu ubicación, y nuestra Inteligencia Artificial te encuentra al instante los mejores negocios verificados que están abiertos cerquita de ti 📍✨ Si quieres conocer a fondo cómo está diseñado o registrar tu propio establecimiento, puedes entrar aquí: https://buscaya.neuralmediahouse.com/ 🚀",
+          "¡Hola! Qué excelente pregunta 🌟 BuscaYa conecta de forma inmediata a los vecinos de la zona con negocios locales reales a través de WhatsApp. Si tienes un establecimiento o servicio y quieres formar parte de nuestro directorio para recibir clientes directos, tienes días de prueba gratis ⚡ Pásate a revisar todos los detalles de diseño y realiza tu registro oficial en este enlace: https://buscaya.neuralmediahouse.com/ 📱🤝",
+          "¡Para eso estamos! 🤖✨ Funciona superfácil: tú nos escribes qué buscas o qué servicio requieres, y te pasamos los datos exactos, horarios reales, teléfonos y ubicación de los negocios abiertos a menos de 2 km de ti 🗺️ Si tienes alguna otra duda sobre cómo operamos o te interesa sumar tu negocio al sistema, checa toda la información y regístrate aquí: https://buscaya.neuralmediahouse.com/ 🚀 ¡Cualquier otra cosa aquí ando para ayudarte!"
+        ];
 
         // ==============================================================
         // MÁQUINA DE ESTADOS CONVERSACIONAL DE 4 FASES (BUSCAYA V3)
@@ -4613,7 +4637,7 @@ ${visualFormatRule}`;
         const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
         // Búsqueda Difusa Flexible en Base de Datos en Tiempo Real
-        const directFuzzyMatches = (!isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent)
+        const directFuzzyMatches = (!isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
           ? searchBusinessesFuzzy(messageText, activeBusinesses)
           : [];
 
@@ -4697,7 +4721,7 @@ ${visualFormatRule}`;
 
         // Determinar Fase Conversacional Actual
         let currentPhase = 1;
-        if (isHumanSupportIntent || isRegistrationIntent) {
+        if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
           currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
         } else if (isAffirmative && (userSession.esperando_confirmacion_expansion_2km || userSession.familia_giro)) {
           currentPhase = 4; // FASE 4: Confirmación de expansión o más opciones
@@ -5001,6 +5025,10 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
           finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
         } else if (isRegistrationIntent) {
           finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
+        } else if (isSystemFaqIntent) {
+          const faqIndex = (userSession.faqReplyIndex !== undefined) ? userSession.faqReplyIndex : 0;
+          finalBotReplyText = SYSTEM_FAQ_OPTIONS[faqIndex % SYSTEM_FAQ_OPTIONS.length];
+          userSession.faqReplyIndex = (faqIndex + 1) % SYSTEM_FAQ_OPTIONS.length;
         } else {
           try {
             const aiRes = await callGroqApi({
