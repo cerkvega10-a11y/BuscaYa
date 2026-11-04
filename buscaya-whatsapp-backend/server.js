@@ -540,7 +540,23 @@ async function handleIncomingMessage(sock, msg) {
     distanciaKm: typeof b._distKm === 'number' && b._distKm < 900 ? Number(b._distKm.toFixed(2)) : undefined
   }));
 
-  // Enviar indicador "escribiendo..." en WhatsApp
+  // Enviar indicador "escribiendo..." en WhatsApp y reaccionar al mensaje
+  try {
+    let reactionEmoji = "👍";
+    const lowerUser = (userText || '').toLowerCase();
+    if (/(hambre|pizza|taco|comer|cenar|antojo|comida|restaurante|postre)/i.test(lowerUser)) reactionEmoji = "🤤";
+    else if (/(duele|enfermo|malestar|farmacia|medicina|doctor|urgente|fuga|tubo|emergencia|ayuda|problema)/i.test(lowerUser)) reactionEmoji = "😢";
+    else if (/(gracias|muchas\s+gracias|excelente|genial|cool|increible|chido|top|perfecto|te\s+quiero|me\s+gusta)/i.test(lowerUser)) reactionEmoji = "❤️";
+    else if (/(jaja|jeje|gracioso|risa|chiste)/i.test(lowerUser)) reactionEmoji = "😂";
+    else if (/(wow|sorpresa|en\s+serio|increible|apoco)/i.test(lowerUser)) reactionEmoji = "😮";
+
+    if (msg?.key) {
+      await sock.sendMessage(remoteJid, { react: { text: reactionEmoji, key: msg.key } });
+    }
+  } catch (reactErr) {
+    console.warn("[Baileys Reaction Notice]", reactErr.message);
+  }
+
   await sock.sendPresenceUpdate('composing', remoteJid);
 
   // Historial multi-turno

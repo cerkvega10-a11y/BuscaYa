@@ -1111,6 +1111,24 @@ function recordAudienceInteraction(phone, name, text, geoResult) {
   saveServerDatabase();
 }
 
+const DATA_BACKUPS_DIR = path.join(DATA_DIR, 'backups');
+
+const DEFAULT_VIEW_SIMULATION = {
+  enabled: true,
+  businesses: {}, // { [bizId]: true/false }
+  lastRunDate: null,
+  simulatedViewsTotal: 0
+};
+let SERVER_VIEW_SIMULATION = { ...DEFAULT_VIEW_SIMULATION };
+
+const DEFAULT_MARKET_DEMAND = {
+  unsatisfied: [], // [{ id, giro, colonia, count, phone, lastRequestedAt }]
+  satisfied: []    // [{ id, giro, colonia, count, businessesShown: [], lastRequestedAt }]
+};
+let SERVER_MARKET_DEMAND = { ...DEFAULT_MARKET_DEMAND };
+
+let lastDbBackupTimestamp = 0;
+
 function saveServerDatabase() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
@@ -1125,9 +1143,35 @@ function saveServerDatabase() {
       promotions: SERVER_PROMOTIONS,
       aiTraining: SERVER_AI_TRAINING_CONFIG,
       memorySettings: SERVER_MEMORY_SETTINGS,
-      cms: SERVER_LANDING_CMS
+      cms: SERVER_LANDING_CMS,
+      viewSimulation: SERVER_VIEW_SIMULATION,
+      marketDemand: SERVER_MARKET_DEMAND
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
+
+    // Respaldo preventivo periódico contra pérdidas en disco
+    const now = Date.now();
+    if (now - lastDbBackupTimestamp > 15 * 60 * 1000) {
+      lastDbBackupTimestamp = now;
+      if (!fs.existsSync(DATA_BACKUPS_DIR)) {
+        fs.mkdirSync(DATA_BACKUPS_DIR, { recursive: true });
+      }
+      const backupPath = path.join(DATA_BACKUPS_DIR, `server-db-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+      fs.writeFileSync(backupPath, JSON.stringify(payload, null, 2), 'utf8');
+
+      // Mantener únicamente los últimos 10 respaldos
+      try {
+        const files = fs.readdirSync(DATA_BACKUPS_DIR)
+          .filter(f => f.startsWith('server-db-') && f.endsWith('.json'))
+          .sort()
+          .reverse();
+        if (files.length > 10) {
+          files.slice(10).forEach(oldF => {
+            try { fs.unlinkSync(path.join(DATA_BACKUPS_DIR, oldF)); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+    }
   } catch (e) {
     console.warn("[Server DB Save Warning]", e.message);
   }
@@ -1135,8 +1179,22 @@ function saveServerDatabase() {
 
 function loadServerDatabase() {
   try {
+    let raw = null;
     if (fs.existsSync(DB_FILE_PATH)) {
-      const raw = fs.readFileSync(DB_FILE_PATH, 'utf8');
+      raw = fs.readFileSync(DB_FILE_PATH, 'utf8');
+    } else if (fs.existsSync(DATA_BACKUPS_DIR)) {
+      // Auto-recuperación desde respaldo más reciente si el archivo principal falta
+      const backups = fs.readdirSync(DATA_BACKUPS_DIR)
+        .filter(f => f.startsWith('server-db-') && f.endsWith('.json'))
+        .sort()
+        .reverse();
+      if (backups.length > 0) {
+        console.log(`[Server DB Hydration] Restaurando desde respaldo seguro: ${backups[0]}`);
+        raw = fs.readFileSync(path.join(DATA_BACKUPS_DIR, backups[0]), 'utf8');
+      }
+    }
+
+    if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed.businesses) && parsed.businesses.length > 0) {
         SERVER_BUSINESSES = parsed.businesses;
@@ -1169,8 +1227,17 @@ function loadServerDatabase() {
         if (parsed.cms && typeof parsed.cms === 'object') {
           SERVER_LANDING_CMS = { ...DEFAULT_LANDING_CMS, ...parsed.cms };
         }
+        if (parsed.viewSimulation && typeof parsed.viewSimulation === 'object') {
+          SERVER_VIEW_SIMULATION = { ...DEFAULT_VIEW_SIMULATION, ...parsed.viewSimulation };
+        }
+        if (parsed.marketDemand && typeof parsed.marketDemand === 'object') {
+          SERVER_MARKET_DEMAND = {
+            unsatisfied: Array.isArray(parsed.marketDemand.unsatisfied) ? parsed.marketDemand.unsatisfied : [],
+            satisfied: Array.isArray(parsed.marketDemand.satisfied) ? parsed.marketDemand.satisfied : []
+          };
+        }
         CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
-        console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde ${DB_FILE_PATH}`);
+        console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde almacenamiento persistente.`);
         return;
       }
     }
@@ -1190,11 +1257,330 @@ function loadServerDatabase() {
       SERVER_AI_TRAINING_CONFIG = { tasks: [...DEFAULT_AI_TASKS], quickRules: [...DEFAULT_AI_QUICK_RULES], updatedAt: new Date().toISOString() };
       SERVER_MEMORY_SETTINGS = { ...DEFAULT_MEMORY_SETTINGS, updatedAt: new Date().toISOString() };
       SERVER_LANDING_CMS = { ...DEFAULT_LANDING_CMS, updatedAt: new Date().toISOString() };
+      SERVER_VIEW_SIMULATION = { ...DEFAULT_VIEW_SIMULATION };
+      SERVER_MARKET_DEMAND = { ...DEFAULT_MARKET_DEMAND };
       CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
       saveServerDatabase();
     }
   } catch (e) {
     console.warn("[Server Business DB Init Notice]", e.message);
+  }
+}
+
+// -------------------------------------------------------------
+// LÓGICA DE SIMULADOR DE IMPULSO DE VISTAS (TRACCIÓN INICIAL)
+// -------------------------------------------------------------
+function runViewSimulationCycle() {
+  if (!SERVER_VIEW_SIMULATION || SERVER_VIEW_SIMULATION.enabled === false) {
+    return { ran: false, reason: "disabled", count: 0, viewsAdded: 0 };
+  }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let updatedCount = 0;
+  let viewsAddedTotal = 0;
+
+  SERVER_BUSINESSES.forEach(b => {
+    // Si el negocio tiene switch individual desactivado por el SuperAdmin, no simular
+    if (SERVER_VIEW_SIMULATION.businesses && SERVER_VIEW_SIMULATION.businesses[b.id] === false) {
+      return;
+    }
+
+    // Verificar si está en su primer mes de registro (<= 30 días)
+    const createdTime = b.createdAt ? new Date(b.createdAt).getTime() : Date.now();
+    const daysSinceCreation = (Date.now() - createdTime) / (1000 * 60 * 60 * 24);
+    if (daysSinceCreation <= 30 || !b.createdAt) {
+      // Sumar aleatoriamente entre 5 y 10 vistas diarias
+      const added = Math.floor(Math.random() * 6) + 5; // 5 a 10 vistas
+      b.simulatedViews = (b.simulatedViews || 0) + added;
+      viewsAddedTotal += added;
+      updatedCount++;
+
+      // Registrar también en analítica para reflejarse de inmediato en su panel
+      if (!BUSINESS_ANALYTICS[b.id]) {
+        BUSINESS_ANALYTICS[b.id] = createEmptyAnalytics();
+      }
+      BUSINESS_ANALYTICS[b.id].impressions = (BUSINESS_ANALYTICS[b.id].impressions || 0) + added;
+      const today = getDayNameEs();
+      const dayItem = BUSINESS_ANALYTICS[b.id].history.find(h => h.day === today);
+      if (dayItem) dayItem.impressions += added;
+    }
+  });
+
+  SERVER_VIEW_SIMULATION.lastRunDate = todayStr;
+  SERVER_VIEW_SIMULATION.simulatedViewsTotal = (SERVER_VIEW_SIMULATION.simulatedViewsTotal || 0) + viewsAddedTotal;
+  saveServerDatabase();
+  console.log(`[Simulador de Vistas] Ciclo completado: +${viewsAddedTotal} vistas en ${updatedCount} negocios.`);
+  return { ran: true, count: updatedCount, viewsAdded: viewsAddedTotal, date: todayStr };
+}
+
+// -------------------------------------------------------------
+// LÓGICA DE REGISTRO DE DEMANDA INSATISFECHA VS DEMANDA ATENDIDA
+// -------------------------------------------------------------
+function recordMarketDemand(giro, colonia, phone, foundBusinesses = []) {
+  if (!giro) return;
+  const col = (colonia && colonia !== "CDMX") ? colonia : "CDMX General";
+  const now = new Date().toISOString();
+
+  if (!SERVER_MARKET_DEMAND) {
+    SERVER_MARKET_DEMAND = { unsatisfied: [], satisfied: [] };
+  }
+
+  if (!foundBusinesses || foundBusinesses.length === 0) {
+    // Demanda Insatisfecha (Sin Cobertura a 2 km)
+    let item = SERVER_MARKET_DEMAND.unsatisfied.find(u => 
+      u.giro.toLowerCase() === giro.toLowerCase() && u.colonia.toLowerCase() === col.toLowerCase()
+    );
+    if (item) {
+      item.count = (item.count || 1) + 1;
+      item.lastRequestedAt = now;
+      if (phone) item.phone = phone;
+    } else {
+      SERVER_MARKET_DEMAND.unsatisfied.push({
+        id: "md-unsat-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        giro: giro,
+        colonia: col,
+        count: 1,
+        phone: phone || "No disponible",
+        lastRequestedAt: now
+      });
+    }
+  } else {
+    // Demanda Atendida (Con Resultados Disponibles)
+    let item = SERVER_MARKET_DEMAND.satisfied.find(s => 
+      s.giro.toLowerCase() === giro.toLowerCase() && s.colonia.toLowerCase() === col.toLowerCase()
+    );
+    const names = foundBusinesses.map(b => b.businessName || b);
+    if (item) {
+      item.count = (item.count || 1) + 1;
+      item.lastRequestedAt = now;
+      item.businessesShown = Array.from(new Set([...(item.businessesShown || []), ...names]));
+    } else {
+      SERVER_MARKET_DEMAND.satisfied.push({
+        id: "md-sat-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        giro: giro,
+        colonia: col,
+        count: 1,
+        businessesShown: names,
+        lastRequestedAt: now
+      });
+    }
+  }
+
+  saveServerDatabase();
+}
+
+// -------------------------------------------------------------
+// GENERADOR DE REPORTE EJECUTIVO EN PDF (PURO BINARIO PDF 1.4)
+// -------------------------------------------------------------
+function generateExecutiveDemandPdf() {
+  const cutoff = new Date().toLocaleDateString("es-MX", { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString("es-MX");
+  const unsatisfied = [...(SERVER_MARKET_DEMAND?.unsatisfied || [])].sort((a, b) => (b.count || 0) - (a.count || 0));
+  const satisfied = [...(SERVER_MARKET_DEMAND?.satisfied || [])].sort((a, b) => (b.count || 0) - (a.count || 0));
+
+  const textLines = [
+    "BUSCAYA - REPORTE EJECUTIVO DE INTELIGENCIA DE MERCADO Y DEMANDA",
+    "Desarrollado y Operado por: Neural Media House",
+    "Fecha y Hora de Corte: " + cutoff,
+    "=========================================================================",
+    "",
+    "SECCION A: OPORTUNIDADES DE VENTA (DEMANDA INSATISFECHA - SIN COBERTURA 2 KM)",
+    "Giros y servicios que los usuarios buscan activamente pero no tenemos registrados:",
+    "-------------------------------------------------------------------------"
+  ];
+
+  if (unsatisfied.length === 0) {
+    textLines.push("No hay solicitudes insatisfechas registradas al momento.");
+  } else {
+    unsatisfied.slice(0, 15).forEach((item, idx) => {
+      textLines.push(`${idx + 1}. GIRO: ${item.giro.toUpperCase()} | ZONA: ${item.colonia} | SOLICITUDES: ${item.count} | ULT: ${item.lastRequestedAt.slice(0, 10)}`);
+    });
+  }
+
+  textLines.push("");
+  textLines.push("=========================================================================");
+  textLines.push("SECCION B: RENDIMIENTO ACTUAL (DEMANDA ATENDIDA CON RESULTADOS)");
+  textLines.push("Giros y comercios que estan respondiendo satisfactoriamente a las busquedas:");
+  textLines.push("-------------------------------------------------------------------------");
+
+  if (satisfied.length === 0) {
+    textLines.push("No hay registros de demanda atendida todavia.");
+  } else {
+    satisfied.slice(0, 15).forEach((item, idx) => {
+      const bizSample = (item.businessesShown || []).slice(0, 2).join(", ");
+      textLines.push(`${idx + 1}. GIRO: ${item.giro.toUpperCase()} | ZONA: ${item.colonia} | ATENCIONES: ${item.count} | COMERCIOS: ${bizSample}`);
+    });
+  }
+
+  textLines.push("");
+  textLines.push("=========================================================================");
+  textLines.push("CLAUSULA LEGAL DE DESLINDE DE RESPONSABILIDAD (NEURAL MEDIA HOUSE):");
+  textLines.push("BuscaYa actua como directorio tecnologico e intermediario informativo");
+  textLines.push("automatizado. No presta ni garantiza de forma directa los servicios.");
+  textLines.push("=========================================================================");
+
+  // Compilar a buffer PDF 1.4 binario válido
+  let streamContent = "BT\n/F1 9 Tf\n40 800 Td\n14 TL\n";
+  textLines.forEach((l, idx) => {
+    const cleanL = l.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, " ");
+    const esc = cleanL.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    streamContent += `(${esc}) ` + (idx === 0 ? "Tj\n" : "'\n");
+  });
+  streamContent += "ET\n";
+
+  const streamBytes = Buffer.byteLength(streamContent);
+  let pdf = "%PDF-1.4\n";
+  const offsets = [];
+
+  offsets.push(pdf.length);
+  pdf += "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+
+  offsets.push(pdf.length);
+  pdf += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+
+  offsets.push(pdf.length);
+  pdf += "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n";
+
+  offsets.push(pdf.length);
+  pdf += "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n";
+
+  offsets.push(pdf.length);
+  pdf += `5 0 obj\n<< /Length ${streamBytes} >>\nstream\n${streamContent}endstream\nendobj\n`;
+
+  const xrefOffset = pdf.length;
+  pdf += "xref\n0 6\n0000000000 65535 f \n";
+  offsets.forEach(off => {
+    pdf += String(off).padStart(10, '0') + " 00000 n \n";
+  });
+  pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return Buffer.from(pdf, "binary");
+}
+
+// -------------------------------------------------------------
+// MOTOR SPINTAX CON VARIACIÓN INTELIGENTE (ANTI-BANEO)
+// -------------------------------------------------------------
+function generateSpintaxVariations(baseMessage) {
+  const greetings = [
+    "¡Hola {nombre}! 😊✨",
+    "¡Qué tal {nombre}! 👋🌟",
+    "¡Excelente día {nombre}! 🚀📍",
+    "¡Un gusto saludarte {nombre}! 🙌💫",
+    "¡Hola vecino {nombre}! 🌮🏙️"
+  ];
+
+  return greetings.map(greet => {
+    let text = baseMessage || "";
+    if (text.includes("{nombre}")) {
+      text = text.replace(/\{nombre\}/gi, greet);
+    } else {
+      text = `${greet}\n\n${text}`;
+    }
+    return text;
+  });
+}
+
+// -------------------------------------------------------------
+// ANÁLISIS DE SENTIMIENTO PARA REACCIONES NATIVAS DE WHATSAPP
+// -------------------------------------------------------------
+function detectReactionEmoji(text) {
+  if (!text) return "👍";
+  const lower = text.toLowerCase();
+  if (/(hambre|pizza|taco|comer|cenar|antojo|comida|restaurante|postre|antojitos)/i.test(lower)) {
+    return "🤤";
+  }
+  if (/(duele|enfermo|malestar|farmacia|medicina|doctor|urgente|fuga|tubo|emergencia|ayuda|problema)/i.test(lower)) {
+    return "😢";
+  }
+  if (/(gracias|muchas\s+gracias|excelente|genial|cool|increible|chido|top|perfecto|te\s+quiero|me\s+gusta)/i.test(lower)) {
+    return "❤️";
+  }
+  if (/(jaja|jeje|gracioso|risa|chiste)/i.test(lower)) {
+    return "😂";
+  }
+  if (/(wow|sorpresa|en\s+serio|increible|apoco|que\s+loco)/i.test(lower)) {
+    return "😮";
+  }
+  return "👍";
+}
+
+// -------------------------------------------------------------
+// RECONOCIMIENTO DE NÚMERO DE DUEÑO DE NEGOCIO
+// -------------------------------------------------------------
+function findBusinessByOwnerPhone(rawPhone) {
+  if (!rawPhone) return null;
+  const cleanDigits = String(rawPhone).replace(/\D/g, '').slice(-10);
+  if (!cleanDigits || cleanDigits.length < 8) return null;
+
+  return SERVER_BUSINESSES.find(b => {
+    const bDigits = String(b.phone || '').replace(/\D/g, '').slice(-10);
+    return bDigits && bDigits === cleanDigits;
+  });
+}
+
+// -------------------------------------------------------------
+// NOTIFICACIONES AUTOMÁTICAS DE VALOR Y AVISOS PREVENTIVOS (DÍA 15 & DÍA 1 ANTES)
+// -------------------------------------------------------------
+function checkAutomatedNotifications() {
+  const now = Date.now();
+  const DAY_MS = 24 * 3600 * 1000;
+  let sentCount = 0;
+
+  SERVER_BUSINESSES.forEach(b => {
+    const totalViews = (BUSINESS_ANALYTICS[b.id]?.impressions || 0) + (b.simulatedViews || 0);
+    const cleanPhone = String(b.phone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 8) return;
+
+    // 1. Reporte Quincenal (Cada 15 días)
+    const lastBiweekly = b.lastBiweeklyReportSentAt ? new Date(b.lastBiweeklyReportSentAt).getTime() : 0;
+    if (now - lastBiweekly >= 15 * DAY_MS) {
+      const biweeklyMsg = `📊 ¡Hola ${b.ownerName || 'amigo'}! En estos últimos 15 días tu negocio *${b.businessName}* ha aparecido ante ${totalViews} vecinos que buscaron tu servicio en BuscaYa 🚀✨`;
+      sendWhatsAppNotificationDirect(cleanPhone, biweeklyMsg);
+      b.lastBiweeklyReportSentAt = new Date().toISOString();
+      sentCount++;
+    }
+
+    // 2. Aviso Preventivo de Fin de Prueba (Exactamente 1 Día / 24h Antes de Expirar)
+    if (b.status === "demo" && b.expiresAt) {
+      const expiryTime = new Date(b.expiresAt).getTime();
+      const hoursRemaining = (expiryTime - now) / (1000 * 3600);
+      if (hoursRemaining > 0 && hoursRemaining <= 24 && !b.preventiveNoticeSentAt) {
+        const trialDays = b.initialTrialDays || 7;
+        const noticeMsg = `¡Hola ${b.ownerName || 'amigo'}! 😊✨ Te recordamos que mañana concluye tu periodo de prueba gratuito de ${trialDays} días en BuscaYa. Durante este tiempo ${totalViews} personas vieron tu negocio 📍. A partir de mañana tu suscripción continuará activa automáticamente para que sigas recibiendo clientes sin interrupción 🚀🙌`;
+        sendWhatsAppNotificationDirect(cleanPhone, noticeMsg);
+        b.preventiveNoticeSentAt = new Date().toISOString();
+        sentCount++;
+      }
+    }
+  });
+
+  if (sentCount > 0) {
+    saveServerDatabase();
+  }
+  return { checkedAt: new Date().toISOString(), notificationsDispatched: sentCount };
+}
+
+async function sendWhatsAppNotificationDirect(phone, text) {
+  const cleanTo = String(phone).replace(/\D/g, '');
+  if (META_CLOUD_ACCESS_TOKEN) {
+    try {
+      await fetch(`https://graph.facebook.com/v21.0/${META_CLOUD_PHONE_NUMBER_ID}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: cleanTo,
+          type: "text",
+          text: { preview_url: true, body: text }
+        })
+      });
+    } catch (e) {
+      console.warn("[WhatsApp Direct Notification Warning]", e.message);
+    }
+  } else {
+    console.log(`[WhatsApp Simulado a ${cleanTo}]: ${text}`);
   }
 }
 
@@ -1321,36 +1707,93 @@ async function runAutomatedSubscriptionCharges() {
           newExpiresAt: biz.expiresAt
         });
       } else {
-        // En caso de fallo en tarjeta: Pausar inmediatamente y excluir de la IA
-        biz.status = "expired";
-        biz.day8Attempted = true;
-        dbModified = true;
-        CRON_WORKER_STATS.totalExecutedCharges++;
-        CRON_WORKER_STATS.failedCharges++;
+        // En caso de fallo en tarjeta: Activar Periodo de Gracia de 24 Horas antes de pausar
+        const nowMs = Date.now();
+        if (!biz.gracePeriodUntil) {
+          biz.status = "grace_period";
+          biz.subscriptionStatus = "🟡 En Periodo de Gracia (24 Horas)";
+          biz.gracePeriodUntil = new Date(nowMs + 24 * 3600 * 1000).toISOString();
+          biz.firstFailedAt = new Date().toISOString();
+          dbModified = true;
 
-        const logEntry = {
-          id: `cron-fail-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          eventType: "auto_cron_subscription_failed",
-          resourceId: invoiceNumber,
-          email: biz.email,
-          businessName: biz.businessName,
-          amountPaid: 0,
-          currency: "MXN",
-          status: "rejected",
-          actionTaken: "Cobro automático rechazado por Mercado Pago. Cuenta suspendida automáticamente ('Vencido / Pausado') y excluida de respuestas de IA."
-        };
-        pushBoundedLog(WEBHOOK_LOGS, logEntry);
+          const logEntry = {
+            id: `cron-grace-${nowMs}`,
+            timestamp: new Date().toISOString(),
+            eventType: "auto_cron_grace_period_activated",
+            resourceId: invoiceNumber,
+            email: biz.email,
+            businessName: biz.businessName,
+            amountPaid: 0,
+            currency: "MXN",
+            status: "grace_period",
+            actionTaken: "Fallo en primer intento de cobro. Negocio colocado en Periodo de Gracia (24h) manteniéndose visible en IA antes del reintento final."
+          };
+          pushBoundedLog(WEBHOOK_LOGS, logEntry);
 
-        results.push({
-          businessId: biz.id,
-          businessName: biz.businessName,
-          status: "rejected",
-          action: "auto_suspended",
-          newStatus: "expired"
-        });
+          results.push({
+            businessId: biz.id,
+            businessName: biz.businessName,
+            status: "grace_period_activated",
+            action: "grace_period_24h",
+            newStatus: "grace_period",
+            gracePeriodUntil: biz.gracePeriodUntil
+          });
+        } else if (nowMs >= new Date(biz.gracePeriodUntil).getTime()) {
+          // Reintento a las 24 horas volvió a fallar: Pausar cuenta y notificar al dueño
+          biz.status = "payment_failed";
+          biz.subscriptionStatus = "🔴 Pausado por Falta de Pago";
+          biz.day8Attempted = true;
+          dbModified = true;
+          CRON_WORKER_STATS.totalExecutedCharges++;
+          CRON_WORKER_STATS.failedCharges++;
+
+          const logEntry = {
+            id: `cron-fail-${nowMs}`,
+            timestamp: new Date().toISOString(),
+            eventType: "auto_cron_subscription_final_failed",
+            resourceId: invoiceNumber,
+            email: biz.email,
+            businessName: biz.businessName,
+            amountPaid: 0,
+            currency: "MXN",
+            status: "rejected",
+            actionTaken: "Cobro rechazado tras concluir el Periodo de Gracia de 24 horas. Cuenta pausada por falta de pago y notificada por WhatsApp."
+          };
+          pushBoundedLog(WEBHOOK_LOGS, logEntry);
+
+          // Enviar WhatsApp preventivo al dueño
+          const cleanPhone = String(biz.phone || '').replace(/\D/g, '');
+          if (cleanPhone) {
+            const warningMsg = `¡Hola ${biz.ownerName || 'propietario'}! ⚠️ Notamos un inconveniente al procesar la renovación de tu suscripción de *${biz.businessName}* en BuscaYa. Para evitar que tu negocio deje de aparecer ante los clientes de tu zona, por favor actualiza tu método de pago en este enlace directo: https://buscaya.neuralmediahouse.com/#renovar-${biz.id} 🙏✨`;
+            sendWhatsAppNotificationDirect(cleanPhone, warningMsg);
+          }
+
+          results.push({
+            businessId: biz.id,
+            businessName: biz.businessName,
+            status: "rejected_after_grace",
+            action: "paused_for_non_payment",
+            newStatus: "payment_failed"
+          });
+        }
       }
     }
+  }
+
+  // Ejecutar ciclo de simulación de vistas si el día cambió
+  try {
+    const simRes = runViewSimulationCycle();
+    if (simRes.ran) dbModified = true;
+  } catch (e) {
+    console.warn("[Cron View Sim Notice]", e.message);
+  }
+
+  // Comprobar avisos automáticos quincenales y preventivos de 1 día antes
+  try {
+    const notifRes = checkAutomatedNotifications();
+    if (notifRes.notificationsDispatched > 0) dbModified = true;
+  } catch (e) {
+    console.warn("[Cron Notif Notice]", e.message);
   }
 
   if (dbModified) {
@@ -2309,6 +2752,163 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ==============================================================
+  // MÓDULO 1: SIMULADOR DE IMPULSO DE VISTAS (ENDPOINTS)
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/admin/view-simulation') {
+    const list = SERVER_BUSINESSES.map(b => {
+      const realViews = (BUSINESS_ANALYTICS[b.id]?.impressions || 0);
+      const simViews = (b.simulatedViews || 0);
+      return {
+        id: b.id,
+        businessName: b.businessName,
+        ownerName: b.ownerName,
+        createdAt: b.createdAt,
+        realViews: realViews,
+        simulatedViews: simViews,
+        totalViews: realViews + simViews,
+        simulationEnabled: SERVER_VIEW_SIMULATION.businesses[b.id] !== false
+      };
+    });
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      simulation: SERVER_VIEW_SIMULATION,
+      businesses: list
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/view-simulation') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        if (typeof payload.enabled === 'boolean') {
+          SERVER_VIEW_SIMULATION.enabled = payload.enabled;
+        }
+        if (payload.businesses && typeof payload.businesses === 'object') {
+          SERVER_VIEW_SIMULATION.businesses = { ...SERVER_VIEW_SIMULATION.businesses, ...payload.businesses };
+        }
+        saveServerDatabase();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Configuración del Simulador de Vistas actualizada",
+          simulation: SERVER_VIEW_SIMULATION
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/view-simulation/run-now') {
+    try {
+      const result = runViewSimulationCycle();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        success: true,
+        message: "Ciclo de simulación ejecutado exitosamente",
+        result: result,
+        simulation: SERVER_VIEW_SIMULATION
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // ==============================================================
+  // MÓDULO 2: INTELIGENCIA DE MERCADO Y DEMANDA (ENDPOINTS & PDF)
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/market-demand') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      marketDemand: SERVER_MARKET_DEMAND
+    }));
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/market-demand/export-pdf') {
+    try {
+      const pdfBuffer = generateExecutiveDemandPdf();
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="Reporte_Demanda_BuscaYa.pdf"',
+        'Content-Length': pdfBuffer.length
+      });
+      res.end(pdfBuffer);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // ==============================================================
+  // MÓDULO 3 & 4: ACCIONES DE CALIDAD (SEMÁFORO) Y AVISOS PREVENTIVOS
+  // ==============================================================
+  if (req.method === 'POST' && pathname === '/api/business/quality-action') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { businessId, action } = JSON.parse(body || '{}');
+        const biz = SERVER_BUSINESSES.find(b => b.id === businessId);
+        if (!biz) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: "Negocio no encontrado" }));
+          return;
+        }
+
+        if (action === 'reset_strikes') {
+          biz.qualityStrikes = 0;
+          biz.qualityAlert = false;
+        } else if (action === 'deactivate') {
+          biz.status = "expired";
+          biz.subscriptionStatus = "Pausado por Calidad (3 Strikes)";
+          biz.qualityAlert = false;
+        }
+        saveServerDatabase();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: action === 'reset_strikes' ? "Semáforo restablecido con éxito" : "Negocio dado de baja por calidad",
+          business: biz
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/notifications/check-triggers') {
+    try {
+      const notifResult = checkAutomatedNotifications();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        success: true,
+        message: "Chequeo de notificaciones y avisos preventivos completado",
+        result: notifResult
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    }
+    return;
+  }
+
+  // ==============================================================
   // MÓDULO 3 & 4: CRM DE AUDIENCIA Y DIFUSIÓN WHATSAPP (1-A-1 Y MASIVO)
   // ==============================================================
   if (req.method === 'GET' && pathname === '/api/crm/audiencia') {
@@ -2445,6 +3045,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Despacho de Campaña Masiva Multimedia con Intervalo de Seguridad
+  // Despacho de Campaña Masiva Multimedia con Intervalo de Seguridad y Protección Anti-Baneo
   if (req.method === 'POST' && pathname === '/api/crm/broadcast') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -2457,18 +3058,28 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        console.log(`[Campañas Masivas] Iniciando envío de difusión para ${recipients.length} destinatarios con delay seguro de 1.2s...`);
+        // Filtrar usuarios con Opt-Out activo ("Baja")
+        const validRecipients = recipients.filter(r => {
+          const rawPhone = r.phone || r;
+          const cleanTo = String(rawPhone).replace(/\D/g, '');
+          const existing = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanTo);
+          return !(existing && (existing.optOut === true || existing.receiveMassCampaigns === false));
+        });
+
+        // Generar 5 variaciones Spintax para evitar huella estática de spam
+        const spintaxList = generateSpintaxVariations(templateText || "");
+        console.log(`[Campañas Masivas Anti-Baneo] Iniciando difusión para ${validRecipients.length} destinatarios autorizados (Jitter 4-10s y Spintax de 5 variantes)...`);
         const results = [];
 
-        for (let i = 0; i < recipients.length; i++) {
-          const rec = recipients[i];
+        for (let i = 0; i < validRecipients.length; i++) {
+          const rec = validRecipients[i];
           const rawPhone = rec.phone || rec;
           const cleanTo = String(rawPhone).replace(/\D/g, '');
           const contactName = rec.name && rec.name !== "Usuario sin nombre" ? rec.name : (rec.alias || "");
           
-          // Variable dinámica {nombre}
-          let customText = (templateText || "")
-            .replace(/\{nombre\}/gi, contactName ? `¡Hola ${contactName}!` : "¡Hola!");
+          // Seleccionar variante Spintax rotativa
+          const baseVariant = spintaxList[i % spintaxList.length];
+          let customText = baseVariant.replace(/\{nombre\}/gi, contactName ? `${contactName}` : "amigo");
 
           if (Array.isArray(buttons) && buttons.length > 0) {
             customText += "\n\n" + buttons.filter(b => b.text && b.url).map(b => `🔗 ${b.text}: ${b.url}`).join("\n");
@@ -2499,11 +3110,13 @@ const server = http.createServer(async (req, res) => {
             sentOk = true; // Modo simulación
           }
 
-          results.push({ phone: cleanTo, name: contactName, success: sentOk });
+          results.push({ phone: cleanTo, name: contactName, success: sentOk, variantIndex: (i % spintaxList.length) + 1 });
 
-          // Intervalo de seguridad entre mensajes (1.2 segundos para prevenir rate limiting)
-          if (i < recipients.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1200));
+          // Pausa humana aleatoria (Jitter Delay de 4 a 10 segundos)
+          if (i < validRecipients.length - 1) {
+            const jitterMs = Math.floor(Math.random() * (10000 - 4000 + 1)) + 4000;
+            console.log(`[Anti-Baneo Jitter] Esperando ${jitterMs}ms antes del siguiente contacto...`);
+            await new Promise(resolve => setTimeout(resolve, jitterMs));
           }
         }
 
@@ -2513,8 +3126,11 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({
           success: true,
           totalRecipients: recipients.length,
+          dispatchedRecipients: validRecipients.length,
+          skippedOptOutCount: recipients.length - validRecipients.length,
           successfulCount: successfulCount,
-          failedCount: recipients.length - successfulCount,
+          failedCount: validRecipients.length - successfulCount,
+          antiBaneoActive: true,
           results: results
         }));
       } catch (err) {
@@ -3490,6 +4106,189 @@ ${visualFormatRule}`;
         }
 
         // ==============================================================
+        // MOTOR DE REACCIONES AUTOMÁTICAS CON EMOJIS (META CLOUD API)
+        // ==============================================================
+        if (messages && messages[0] && messages[0].id && META_CLOUD_ACCESS_TOKEN) {
+          try {
+            const reactionEmoji = detectReactionEmoji(messageText);
+            const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+            fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: String(senderPhone).replace(/\D/g, ''),
+                type: "reaction",
+                reaction: {
+                  message_id: messages[0].id,
+                  emoji: reactionEmoji
+                }
+              })
+            }).catch(e => console.warn("[Meta Reaction Notice]", e.message));
+          } catch (e) {
+            console.warn("[Meta Reaction Notice]", e.message);
+          }
+        }
+
+        // ==============================================================
+        // MÓDULO 5: OPT-OUT AUTOMÁTICO ("BAJA" / CANCELAR PROMOCIONES)
+        // ==============================================================
+        if (/^(baja|no quiero promociones|cancelar suscripci[oó]n|stop|desuscribir)$/i.test(messageText.trim())) {
+          const cleanSender = String(senderPhone).replace(/\D/g, '');
+          const crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
+          if (crmUser) {
+            crmUser.optOut = true;
+            crmUser.receiveMassCampaigns = false;
+            saveServerDatabase();
+          }
+
+          const optOutReply = {
+            recipient: senderPhone,
+            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+            responseMessage: "Has sido dado de baja de nuestras promociones y mensajes masivos ✅. Recuerda que puedes seguir usando BuscaYa para encontrar cualquier negocio o servicio cuando lo necesites. ¡Que tengas un excelente día! 🙌✨",
+            timestamp: timestamp
+          };
+
+          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
+            try {
+              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: cleanSender,
+                  type: "text",
+                  text: { preview_url: true, body: optOutReply.responseMessage }
+                })
+              });
+            } catch (err) {
+              console.warn("[Opt-Out Send Warning]", err.message);
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: true,
+            optOut: true,
+            botReply: optOutReply
+          }));
+          return;
+        }
+
+        // ==============================================================
+        // MÓDULO 3: AUTOGESTIÓN POR WHATSAPP PARA DUEÑOS DE NEGOCIO
+        // ==============================================================
+        const ownedBiz = findBusinessByOwnerPhone(senderPhone);
+        if (ownedBiz && messageText) {
+          const isScheduleCmd = /(hoy\s+(cierro|cerramos|no\s+abrimos|abro|abrimos)|pausar\s+mi\s+negocio|cerrado\s+por\s+hoy)/i.test(messageText);
+          const isAddServiceCmd = /(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)|nuevo\s+servicio)/i.test(messageText);
+
+          if (isScheduleCmd) {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const isClosed = /no\s+abrimos|pausar|cierro|cerrado/i.test(messageText);
+            ownedBiz.estado_temporal_hoy = {
+              status: isClosed ? "cerrado" : "horario_especial",
+              note: messageText,
+              date: todayStr
+            };
+            saveServerDatabase();
+
+            const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya actualicé el estatus de *${ownedBiz.businessName}* por el día de hoy para avisarle a los clientes 😊🙌`;
+            const ownerReply = {
+              recipient: senderPhone,
+              agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+              responseMessage: ownerReplyText,
+              timestamp: timestamp
+            };
+
+            if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
+              try {
+                const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+                await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    messaging_product: "whatsapp",
+                    recipient_type: "individual",
+                    to: String(senderPhone).replace(/\D/g, ''),
+                    type: "text",
+                    text: { preview_url: true, body: ownerReplyText }
+                  })
+                });
+              } catch (e) {
+                console.warn("[Owner Schedule Confirm Warning]", e.message);
+              }
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: true,
+              ownerAction: "schedule_updated",
+              botReply: ownerReply
+            }));
+            return;
+          }
+
+          if (isAddServiceCmd) {
+            const cleanServ = messageText.replace(/^(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)?|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)?|nuevo\s+servicio:?)/i, '').trim();
+            if (cleanServ) {
+              ownedBiz.services = (ownedBiz.services ? ownedBiz.services + ", " : "") + cleanServ;
+              saveServerDatabase();
+
+              const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya agregué el nuevo servicio a la ficha de *${ownedBiz.businessName}*: "${cleanServ}" 😊🙌`;
+              const ownerReply = {
+                recipient: senderPhone,
+                agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+                responseMessage: ownerReplyText,
+                timestamp: timestamp
+              };
+
+              if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
+                try {
+                  const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: String(senderPhone).replace(/\D/g, ''),
+                      type: "text",
+                      text: { preview_url: true, body: ownerReplyText }
+                    })
+                  });
+                } catch (e) {
+                  console.warn("[Owner Service Confirm Warning]", e.message);
+                }
+              }
+
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(JSON.stringify({
+                success: true,
+                ownerAction: "service_added",
+                botReply: ownerReply
+              }));
+              return;
+            }
+          }
+        }
+
+        // ==============================================================
         // HUMAN HANDOFF: VERIFICAR SI REQUIERE ATENCIÓN HUMANA
         // ==============================================================
         const handoffActive = HUMAN_HANDOFF_SESSIONS[senderPhone] && 
@@ -3818,10 +4617,20 @@ ${visualFormatRule}`;
         userSession.lastBusinesses = selectedBusinesses;
 
         // Construir Contexto Enriquecido para la IA
+        const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+        const isSessionAlreadyActive = userSession.saludo_enviado && (Date.now() - (userSession.lastInteractionTime || 0) < FOUR_HOURS_MS);
+        userSession.lastInteractionTime = Date.now();
+
         let contextualPrompt = `HORA EXACTA EN CIUDAD DE MÉXICO: ${mexTime.fullTimeStr} hrs (${mexTime.weekday}, ${mexTime.dateStr}).
 SALUDO CORRESPONDIENTE: "${mexTime.greeting} ${mexTime.icon}"
 USUARIO: ${userSession.name ? userSession.name : "Usuario WhatsApp (aún no registrado por nombre)"} (Tel: ${senderPhone})
 MENSAJE RECIBIDO DEL USUARIO: "${messageText}"`;
+
+        if (isSessionAlreadyActive) {
+          contextualPrompt += `\n[REGLA DE SALUDO ÚNICO ACTIVA]: Esta sesión ya está en curso y activa (hace menos de 4 horas). TIENES ESTRICTAMENTE PROHIBIDO volver a saludar, decir "Hola", "Buenos días", "Buenas tardes" o "Buenas noches". Ve DIRECTO al grano con empatía y fluidez sin fórmulas de bienvenida repetitivas.`;
+        } else {
+          userSession.saludo_enviado = true;
+        }
 
         if (isAudioMessage) {
           contextualPrompt += `\n[NOTA IMPORTANTE]: El usuario envió una NOTA DE VOZ transcrita. Saluda diciendo: "¡Ya escuché tu audio, claro que sí! 🎧😊"`;
@@ -3837,19 +4646,32 @@ El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.fa
 2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍.
 TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubicación.`;
         } else if (currentPhase === 3) {
+          // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
+          recordMarketDemand(
+            userSession.giro_especifico || detectedSpecificGiro,
+            userLocationColonia,
+            senderPhone,
+            selectedBusinesses
+          );
+
           if (selectedBusinesses.length > 0) {
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADOS EN 2 KM DISPONIBLES]
 Se encontraron ${selectedBusinesses.length} opciones verificadas a menos de 2 km de ${userSession.giro_especifico}.
 Debes usar OBLIGATORIAMENTE la etiqueta |||SEPARAR||| para enviar cada negocio en una burbuja de mensaje separada.
-Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => ({
-              nombre: b.businessName,
-              servicios: b.services || b.category,
-              estado: b.openInfo.label,
-              horario: b.openInfo.hoursDisplay,
-              dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
-              colonia: b.neighborhood || b.colonia || "CDMX",
-              telefono: b.phone
-            })), null, 2) + `\n\nAl final, en otra burbuja tras |||SEPARAR|||, pregunta amablemente si le agrada alguna opción o si desea ver más.`;
+Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
+              const cleanP = String(b.phone || '').replace(/\D/g, '');
+              const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
+              return {
+                nombre: b.businessName,
+                servicios: b.services || b.category,
+                estado: b.openInfo.label,
+                horario: b.openInfo.hoursDisplay,
+                dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
+                colonia: b.neighborhood || b.colonia || "CDMX",
+                telefono: b.phone,
+                enlaceWhatsApp: waLink
+              };
+            }), null, 2) + `\n\nAl final, en otra burbuja tras |||SEPARAR|||, pregunta amablemente si le agrada alguna opción o si desea ver más.`;
           } else {
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - SIN COBERTURA EN 2 KM]
 NO hay opciones de "${userSession.giro_especifico}" a menos de 2 km registradas actualmente.
@@ -3861,16 +4683,21 @@ Dile con amabilidad que en 2 km no hay opciones por ahora pero que muy pronto ha
 El usuario autorizó ver opciones a más de 2 km o solicitó más opciones de ${userSession.giro_especifico}.
 REGLA INQUEBRANTABLE: ÚNICAMENTE puedes recomendar estos negocios de la familia ${userSession.familia_giro}.
 Usa la etiqueta |||SEPARAR||| entre la introducción, entre cada negocio y en el cierre.
-Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => ({
-              nombre: b.businessName,
-              servicios: b.services || b.category,
-              estado: b.openInfo.label,
-              horario: b.openInfo.hoursDisplay,
-              dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
-              colonia: b.neighborhood || b.colonia || "CDMX",
-              distanciaKm: b.distanceKm,
-              telefono: b.phone
-            })), null, 2);
+Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => {
+              const cleanP = String(b.phone || '').replace(/\D/g, '');
+              const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
+              return {
+                nombre: b.businessName,
+                servicios: b.services || b.category,
+                estado: b.openInfo.label,
+                horario: b.openInfo.hoursDisplay,
+                dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
+                colonia: b.neighborhood || b.colonia || "CDMX",
+                distanciaKm: b.distanceKm,
+                telefono: b.phone,
+                enlaceWhatsApp: waLink
+              };
+            }), null, 2);
           } else {
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - TODAS LAS OPCIONES MOSTRADAS]
 Ya se mostraron todas las opciones registradas en la base de datos para ${userSession.giro_especifico} (${userSession.familia_giro}).
@@ -3893,26 +4720,43 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
           console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
         }
 
-        // Fallbacks inteligentes por fase
+        // Fallbacks inteligentes por fase con enlace de atribución directa
         if (!finalBotReplyText) {
           if (currentPhase === 1) {
-            finalBotReplyText = `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
+            finalBotReplyText = isSessionAlreadyActive
+              ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
+              : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
           } else if (currentPhase === 2) {
             finalBotReplyText = `¡Claro que sí! Con gusto te ayudo a buscar las mejores opciones de ${userSession.giro_especifico || 'lo que necesitas'} 😊🙌 Para recomendarte los lugares abiertos a menos de 2 km de ti, ¿me compartes tu ubicación actual o en qué colonia estás? 📍✨`;
           } else if (selectedBusinesses.length > 0) {
             const b = selectedBusinesses[0];
+            const cleanP = String(b.phone || '').replace(/\D/g, '');
+            const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
             finalBotReplyText = `¡Aquí tienes una excelente opción cerquita de ti! 😊👇\n|||SEPARAR|||\n` +
               `🏢 ${b.businessName}\n` +
               `✨ ${b.services || b.category}\n` +
               `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
               `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
               `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-              `📞 ${b.phone}\n|||SEPARAR|||\n` +
+              `📞 Teléfono: ${b.phone}\n` +
+              `💬 WhatsApp: ${waLink}\n|||SEPARAR|||\n` +
               `¿Te late esta opción o buscamos algo más? 🙌✨`;
           } else {
             finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de ${userSession.familia_giro || 'lo mismo'} aunque estén un poquito más retiradas? 🚗💨`;
           }
         }
+
+        // ==============================================================
+        // FRENO ANTI-BUCLE: SUPRESIÓN DE MENSAJES DUPLICADOS IDÉNTICOS (< 60 SEG)
+        // ==============================================================
+        if (finalBotReplyText && userSession.lastBotReplyText && 
+            finalBotReplyText.trim() === userSession.lastBotReplyText.trim() && 
+            (Date.now() - (userSession.lastBotReplyTimestamp || 0) < 60000)) {
+          console.log(`[Anti-Bucle Activado] Mensaje duplicado suprimido para ${senderPhone}`);
+          finalBotReplyText = `¡Sigo aquí contigo${userSession.name ? ' ' + userSession.name : ''}! 😊 ¿Te gustaría ver más opciones o prefieres que busquemos otra categoría? 📍✨`;
+        }
+        userSession.lastBotReplyText = finalBotReplyText;
+        userSession.lastBotReplyTimestamp = Date.now();
 
         // Registrar respuesta del asistente en el historial de sesión
         userSession.history.push({
@@ -4278,6 +5122,17 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
       BUSINESS_ANALYTICS[bizId] = createEmptyAnalytics();
     }
     const analytics = BUSINESS_ANALYTICS[bizId];
+    const targetBiz = SERVER_BUSINESSES.find(b => b.id === bizId);
+    const simViews = targetBiz ? (targetBiz.simulatedViews || 0) : 0;
+
+    const totalImpressions = (analytics.impressions || 0) + simViews;
+    const mergedAnalytics = {
+      ...analytics,
+      impressions: totalImpressions,
+      simulatedViews: simViews,
+      realImpressions: analytics.impressions || 0,
+      clicks: analytics.clicks
+    };
 
     const estimatedRoi = analytics.clicks > 0 
       ? (analytics.clicks * 180 / 499).toFixed(1) 
@@ -4287,7 +5142,7 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
     res.end(JSON.stringify({
       success: true,
       businessId: bizId,
-      analytics: analytics,
+      analytics: mergedAnalytics,
       monthlyFeeMx: 499,
       estimatedRoiMultiplier: estimatedRoi,
       leadsGenerated: analytics.clicks

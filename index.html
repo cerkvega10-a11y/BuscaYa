@@ -1041,11 +1041,18 @@
           </div>
 
           <!-- Terms acceptance checkbox -->
-          <div class="pt-2">
+          <div class="pt-2 space-y-2">
             <label class="flex items-start space-x-2.5 cursor-pointer select-none">
               <input type="checkbox" id="regAcceptRenewalTerms" checked required class="mt-1 w-4 h-4 text-[#009ee3] rounded focus:ring-[#009ee3]">
               <span class="text-xs text-gray-600 leading-snug">
                 Autorizo la verificación de mi tarjeta por <b>$0.00 MXN</b> para activar mi Demo de 7 días. Entiendo que tras finalizar los 7 días de prueba comenzará la suscripción mensual de <b>$499 MXN</b> y que puedo cancelar en cualquier momento con 1 clic sin penalizaciones.
+              </span>
+            </label>
+
+            <label class="flex items-start space-x-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="regAcceptLegalTerms" checked required class="mt-1 w-4 h-4 text-[#075E54] rounded focus:ring-[#075E54]">
+              <span class="text-xs text-gray-600 leading-snug">
+                He leído y acepto el <a href="javascript:void(0)" onclick="openPrivacyModal()" class="text-[#075E54] font-bold underline hover:text-[#128C7E]">Aviso de Privacidad (LFPDPPP)</a> y los <a href="javascript:void(0)" onclick="openTermsModal()" class="text-[#075E54] font-bold underline hover:text-[#128C7E]">Términos y Condiciones de Uso (B2B/B2C)</a>, incluyendo la Cláusula de Intermediación Tecnológica y Deslinde de Responsabilidad de Neural Media House.
               </span>
             </label>
           </div>
@@ -2026,6 +2033,10 @@
           <span>🔔 Atención Manual &amp; Handoff</span>
           <span id="handoffBadgeCount" class="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse ml-1">1</span>
         </button>
+        <button id="adminTabBtnMarketDemand" onclick="switchAdminSubTab('market-demand')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-blue-700 hover:bg-blue-50 border border-gray-300">
+          <i class="fa-solid fa-chart-line text-blue-600 text-base"></i>
+          <span>📊 Inteligencia de Mercado</span>
+        </button>
       </div>
 
       <!-- ========================================== -->
@@ -2248,6 +2259,74 @@
             </ul>
           </div>
         </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- MÓDULO 1: SIMULADOR DE IMPULSO DE VISTAS (TRACCIÓN INICIAL) -->
+      <!-- ========================================== -->
+      <div class="bg-white rounded-3xl p-6 border-2 border-indigo-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md">
+              <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 class="text-base font-black text-gray-900">📈 Impulso de Confianza (Simulador de Vistas Iniciales)</h3>
+                <span id="viewSimStatusBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center space-x-1 bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span id="viewSimStatusBadgeText">🟢 ACTIVO (Tracción)</span>
+                </span>
+              </div>
+              <p class="text-xs text-gray-500">Suma aleatoriamente entre 5 y 10 vistas diarias a cada negocio en su primer mes de registro para máxima confianza en su panel.</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnToggleGlobalViewSim" type="button" onclick="toggleGlobalViewSimulation()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">
+              <i class="fa-solid fa-power-off"></i>
+              <span id="btnToggleGlobalViewSimText">🟢 ACTIVO</span>
+            </button>
+            <button id="btnRunViewSimCycleNow" type="button" onclick="runViewSimulationNow()" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer">
+              <i class="fa-solid fa-bolt text-indigo-600"></i>
+              <span>⚡ Ejecutar Ciclo Diario Ahora</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3 bg-gray-50 rounded-2xl border border-gray-200/70 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center space-x-2 text-gray-700">
+            <i class="fa-solid fa-circle-info text-indigo-500"></i>
+            <span>Al desactivar el botón maestro, el sistema detiene inmediatamente los incrementos automáticos y contabiliza únicamente las vistas 100% reales de WhatsApp.</span>
+          </div>
+          <div class="text-[11px] font-mono text-gray-500 whitespace-nowrap">
+            Último ciclo: <b id="viewSimLastRunDate" class="text-gray-800">Hoy</b> • Vistas simuladas: <b id="viewSimTotalAccumulated" class="text-indigo-600">0</b>
+          </div>
+        </div>
+
+        <!-- Lista colapsable de interruptores individuales por negocio -->
+        <details class="group bg-white rounded-2xl border border-gray-200 overflow-hidden text-xs">
+          <summary class="px-4 py-2.5 bg-gray-50/80 hover:bg-gray-100 cursor-pointer font-black text-gray-700 flex items-center justify-between">
+            <span>⚙️ Control Individual por Negocio (<span id="viewSimEligibleCount">0</span> registros)</span>
+            <i class="fa-solid fa-chevron-down text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="p-3 overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-gray-100 text-[10px] text-gray-400 uppercase font-black">
+                  <th class="py-2 px-3">Negocio</th>
+                  <th class="py-2 px-3">Vistas Reales</th>
+                  <th class="py-2 px-3">Vistas Impulso</th>
+                  <th class="py-2 px-3">Total en Panel</th>
+                  <th class="py-2 px-3 text-right">Switch Individual</th>
+                </tr>
+              </thead>
+              <tbody id="viewSimBusinessesTableBody" class="divide-y divide-gray-100">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </details>
       </div>
 
       <!-- ========================================== -->
@@ -3870,6 +3949,141 @@
       </div>
       <!-- FIN CONTENEDOR 4: HUMAN HANDOFF -->
 
+      <!-- ========================================== -->
+      <!-- CONTENEDOR 8: INTELIGENCIA DE MERCADO Y DEMANDA -->
+      <!-- ========================================== -->
+      <div id="adminTabContentMarketDemand" class="hidden space-y-8">
+        <!-- Header con Botón de Descarga PDF -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="space-y-2">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-md">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+              <div>
+                <h2 class="text-xl sm:text-2xl font-black text-gray-900">📊 Inteligencia de Mercado y Demanda</h2>
+                <span class="text-xs text-blue-700 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                  Monitoreo Estratégico en Vivo • WhatsApp CDMX
+                </span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-600 max-w-2xl leading-relaxed">
+              Descubre qué giros y colonias busca la gente donde aún no tenemos negocios registrados (oportunidades de venta para prospectar) contra los giros que sí están siendo atendidos con éxito.
+            </p>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <button id="btnExportMarketDemandPdf" onclick="downloadMarketDemandPdf()" class="px-5 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm transition-all shadow-md flex items-center space-x-2.5 cursor-pointer">
+              <i class="fa-solid fa-file-pdf text-base"></i>
+              <span>📥 Descargar Reporte en PDF (Buscados vs. No Encontrados)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Métricas Rápidas de Demanda -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-red-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl font-bold">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <span class="block text-xs font-bold text-gray-500 uppercase">Demanda Insatisfecha</span>
+              <span class="text-2xl font-black text-red-600" id="marketDemandUnsatisfiedCount">0</span>
+              <span class="block text-[10px] text-gray-400">Giros sin cobertura en 2 km</span>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+              <span class="block text-xs font-bold text-gray-500 uppercase">Demanda Atendida</span>
+              <span class="text-2xl font-black text-emerald-700" id="marketDemandSatisfiedCount">0</span>
+              <span class="block text-[10px] text-gray-400">Giros con comercios mostrados</span>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold">
+              <i class="fa-solid fa-crosshairs"></i>
+            </div>
+            <div>
+              <span class="block text-xs font-bold text-gray-500 uppercase">Efectividad de Cobertura</span>
+              <span class="text-2xl font-black text-blue-700" id="marketDemandCoverageRate">100%</span>
+              <span class="block text-[10px] text-gray-400">Tasa de respuesta exitosa</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección A: Oportunidades de Venta (Demanda Insatisfecha) -->
+        <div class="bg-white rounded-3xl p-6 border-2 border-red-200 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
+            <div>
+              <h3 class="text-base font-black text-gray-900 flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                <span>Sección A: Oportunidades de Venta (Giros buscados y NO registrados por colonia)</span>
+              </h3>
+              <p class="text-xs text-gray-500">Ideal para que el equipo comercial salga a prospectar y afiliar estos negocios con venta garantizada.</p>
+            </div>
+            <span class="text-[11px] font-mono font-bold text-red-700 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
+              Alta Prioridad Comercial
+            </span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50/70 text-[10px] text-gray-500 uppercase font-black">
+                  <th class="py-3 px-4">Giro Solicitado</th>
+                  <th class="py-3 px-4">Colonia / Coordenadas</th>
+                  <th class="py-3 px-4 text-center">Veces Buscado</th>
+                  <th class="py-3 px-4">Última Petición</th>
+                  <th class="py-3 px-4">Teléfono Solicitante</th>
+                  <th class="py-3 px-4 text-right">Acción Comercial</th>
+                </tr>
+              </thead>
+              <tbody id="marketDemandUnsatisfiedTableBody" class="divide-y divide-gray-100">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sección B: Rendimiento Actual (Demanda Atendida) -->
+        <div class="bg-white rounded-3xl p-6 border-2 border-emerald-200 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
+            <div>
+              <h3 class="text-base font-black text-gray-900 flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span>Sección B: Rendimiento Actual (Giros y Negocios que SÍ están apareciendo)</span>
+              </h3>
+              <p class="text-xs text-gray-500">Reporte de comercios afiliados que reciben tráfico y recomendaciones continuas por WhatsApp.</p>
+            </div>
+            <span class="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              Servicio Activo
+            </span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50/70 text-[10px] text-gray-500 uppercase font-black">
+                  <th class="py-3 px-4">Giro Solicitado</th>
+                  <th class="py-3 px-4">Colonia / Zona</th>
+                  <th class="py-3 px-4 text-center">Veces Atendido</th>
+                  <th class="py-3 px-4">Negocios Recomendados</th>
+                  <th class="py-3 px-4">Última Atención</th>
+                </tr>
+              </thead>
+              <tbody id="marketDemandSatisfiedTableBody" class="divide-y divide-gray-100">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
 
     </div>
   </main>
@@ -4863,6 +5077,123 @@
       </form>
     </div>
   </div>
+  <!-- ============================================================== -->
+  <!-- MODAL: AVISO DE PRIVACIDAD (LFPDPPP)                           -->
+  <!-- ============================================================== -->
+  <div id="modalPrivacyPolicy" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+            <i class="fa-solid fa-shield-halved text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black">Aviso de Privacidad Integral</h3>
+            <span class="text-[11px] text-emerald-200">Conforme a la Ley Federal de Protección de Datos Personales (LFPDPPP)</span>
+          </div>
+        </div>
+        <button type="button" onclick="closePrivacyModal()" class="text-gray-200 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs text-gray-700 overflow-y-auto leading-relaxed">
+        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 font-medium">
+          <b>Identidad del Responsable:</b> BuscaYa es una plataforma tecnológica desarrollada, operada y bajo titularidad exclusiva de <b>Neural Media House</b>, con domicilio en Ciudad de México, México.
+        </div>
+
+        <h4 class="font-black text-gray-900 text-sm">1. Datos Personales Recabados</h4>
+        <p>
+          Para prestadores de servicios y negocios afiliados: nombre del titular o representante legal, correo electrónico, teléfono de contacto y WhatsApp, geolocalización física del establecimiento y datos comerciales de facturación/suscripción procesados de forma cifrada mediante Mercado Pago. Para usuarios buscadores: número de WhatsApp remitente, geolocalización compartida (vía GPS o texto) e historial de solicitudes para fines de optimización del concierge virtual.
+        </p>
+
+        <h4 class="font-black text-gray-900 text-sm">2. Finalidad del Tratamiento</h4>
+        <p>
+          Conectar de manera ágil a usuarios buscadores con negocios locales verificados en su área geográfica inmediata, procesar las suscripciones mensuales del directorio y generar analítica anonimizada de demanda de servicios locales.
+        </p>
+
+        <h4 class="font-black text-gray-900 text-sm">3. Derechos ARCO</h4>
+        <p>
+          Usted tiene derecho a conocer qué datos personales tenemos de usted, para qué los utilizamos y las condiciones del uso que les damos (Acceso). Asimismo, es su derecho solicitar la corrección de su información personal (Rectificación); que la eliminemos de nuestros registros o bases de datos (Cancelación); así como oponerse al uso de sus datos personales para fines específicos (Oposición). Para ejercer cualquiera de sus derechos ARCO, envíe una solicitud a <b>privacidad@neuralmediahouse.com</b>.
+        </p>
+
+        <div class="bg-gray-100 border border-gray-300 p-3.5 rounded-xl text-gray-800 space-y-1.5">
+          <h5 class="font-black uppercase text-[11px] text-gray-900">Cláusula de Deslinde y Responsabilidad Tecnológica</h5>
+          <p class="text-[11px] text-gray-700">
+            BuscaYa y Neural Media House actúan como un directorio tecnológico automatizado. La contratación de bienes y servicios se realiza de forma directa y autónoma entre el usuario y el prestador de servicios correspondiente.
+          </p>
+        </div>
+      </div>
+
+      <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <button type="button" onclick="closePrivacyModal()" class="px-5 py-2 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white font-bold text-xs cursor-pointer">
+          Entendido y Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: TÉRMINOS Y CONDICIONES DE USO (B2B/B2C)                 -->
+  <!-- ============================================================== -->
+  <div id="modalTermsConditions" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-[#075E54] text-white p-5 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+            <i class="fa-solid fa-file-contract text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black">Términos y Condiciones de Uso (B2B / B2C)</h3>
+            <span class="text-[11px] text-emerald-200">BuscaYa • Operado por Neural Media House</span>
+          </div>
+        </div>
+        <button type="button" onclick="closeTermsModal()" class="text-gray-200 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs text-gray-700 overflow-y-auto leading-relaxed">
+        <!-- CLÁUSULA MANDATORIA DE DESLINDE -->
+        <div class="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl text-amber-950 space-y-2">
+          <div class="flex items-center space-x-2 font-black text-xs text-amber-900">
+            <i class="fa-solid fa-scale-balanced text-amber-600 text-sm"></i>
+            <span>CLÁUSULA DE INTERMEDIACIÓN TECNOLÓGICA Y DESLINDE DE RESPONSABILIDAD</span>
+          </div>
+          <p class="text-[11px] font-medium leading-relaxed italic text-gray-800">
+            "BuscaYa (desarrollado y operado por Neural Media House) actúa única y exclusivamente como un directorio tecnológico e intermediario informativo automatizado para facilitar el contacto entre usuarios buscadores y establecimientos o prestadores de servicios independientes. BuscaYa NO presta los servicios anunciados, ni emplea, subcontrata o representa a los comercios registrados. Por lo tanto, la calidad, puntualidad, precios, cobros, facturación, higiene, seguridad, garantías o cualquier daño derivado de los productos o servicios finales contratados son responsabilidad total, directa y exclusiva del establecimiento o prestador de servicios anunciado, liberando a BuscaYa y a Neural Media House de cualquier reclamación civil, mercantil o administrativa."
+          </p>
+        </div>
+
+        <h4 class="font-black text-gray-900 text-sm">1. Aceptación de las Condiciones</h4>
+        <p>
+          Al acceder o registrarse en BuscaYa, el usuario o prestador de servicios declara ser mayor de edad con plena capacidad jurídica, aceptando someterse a los presentes Términos de Servicio y a la legislación aplicable en los Estados Unidos Mexicanos.
+        </p>
+
+        <h4 class="font-black text-gray-900 text-sm">2. Suscripciones B2B y Periodo de Prueba</h4>
+        <p>
+          Los comercios afiliados disfrutan de un periodo inicial de prueba sin costo (según el plan o cupón aplicado). Al término de dicho periodo, la suscripción mensual se renueva automáticamente mediante Mercado Pago por la tarifa estipulada ($499 MXN mensuales o la tarifa vigente con descuento). El usuario puede cancelar su renovación en cualquier momento con un solo clic desde su panel de control sin penalización alguna.
+        </p>
+
+        <h4 class="font-black text-gray-900 text-sm">3. Reglas de Convivencia y Calidad del Servicio</h4>
+        <p>
+          BuscaYa se reserva el derecho de pausar o retirar de manera inmediata y sin derecho a reembolso a cualquier comercio o prestador que acumule 3 reportes formales de mala atención, fraudes, incumplimientos reiterados o publicidad engañosa, salvaguardando la integridad y seguridad de la comunidad local.
+        </p>
+
+        <h4 class="font-black text-gray-900 text-sm">4. Jurisdicción</h4>
+        <p>
+          Para la interpretación y cumplimiento de los presentes Términos, las partes se someten expresamente a las leyes federales de México y a la jurisdicción de los tribunales competentes de la Ciudad de México, renunciando a cualquier otro fuero que pudiera corresponderles por razón de sus domicilios presentes o futuros.
+        </p>
+      </div>
+
+      <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <button type="button" onclick="closeTermsModal()" class="px-5 py-2 rounded-xl bg-[#075E54] hover:bg-[#128C7E] text-white font-bold text-xs cursor-pointer">
+          Acepto los Términos
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========================================== -->
   <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-32 transition-transform duration-300 max-w-sm bg-gray-900 text-white p-4 rounded-2xl shadow-2xl flex items-center space-x-3 border border-gray-700">
     <div id="toastIcon" class="w-8 h-8 rounded-full bg-[#25D366] text-[#075E54] flex items-center justify-center font-bold text-sm">
@@ -4902,7 +5233,8 @@
             <li><a href="javascript:void(0)" onclick="navigateTo('landing')" class="hover:text-[#25D366]">Inicio</a></li>
             <li><a href="javascript:void(0)" onclick="navigateTo('register')" class="hover:text-[#25D366]">Prueba 7 Días Gratis</a></li>
             <li><a href="javascript:void(0)" onclick="openLoginModal()" class="hover:text-[#25D366]">Iniciar Sesión</a></li>
-            <li><a href="aviso-de-privacidad.html" target="_blank" class="text-emerald-300 hover:text-white font-bold flex items-center space-x-1"><i class="fa-solid fa-shield-halved text-[10px]"></i><span>Aviso de Privacidad</span></a></li>
+            <li><a href="javascript:void(0)" onclick="openPrivacyModal()" class="text-emerald-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"><i class="fa-solid fa-shield-halved text-[10px]"></i><span>Aviso de Privacidad</span></a></li>
+            <li><a href="javascript:void(0)" onclick="openTermsModal()" class="text-emerald-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"><i class="fa-solid fa-file-contract text-[10px]"></i><span>Términos y Condiciones</span></a></li>
           </ul>
         </div>
 
@@ -4928,7 +5260,9 @@
           © 2026 BuscaYa. Plataforma desarrollada, operada y bajo licencia oficial de <b class="text-white">Neural Media House</b>. Todos los derechos reservados.
         </div>
         <div class="flex items-center space-x-4">
-          <a href="aviso-de-privacidad.html" target="_blank" class="text-gray-300 hover:text-[#25D366] transition-colors underline">Aviso de Privacidad</a>
+          <a href="javascript:void(0)" onclick="openPrivacyModal()" class="text-gray-300 hover:text-[#25D366] transition-colors underline cursor-pointer">Aviso de Privacidad</a>
+          <span>•</span>
+          <a href="javascript:void(0)" onclick="openTermsModal()" class="text-gray-300 hover:text-[#25D366] transition-colors underline cursor-pointer">Términos y Condiciones</a>
           <span>•</span>
           <span class="text-gray-400">LPU IA & Meta WhatsApp Cloud API</span>
         </div>

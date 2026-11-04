@@ -1894,9 +1894,24 @@ function renderAdminTable() {
     const days = calculateDaysRemaining(b.expiresAt);
     const effStatus = getEffectiveStatus(b);
 
-    // Status Badge
+    // Status Badge & Semáforo de Calidad
     let statusBadge = "";
-    if (effStatus === "active") {
+    if (b.qualityStrikes >= 3 || b.qualityAlert) {
+      statusBadge = `
+        <div class="space-y-1">
+          <span class="bg-red-600 text-white font-black px-2 py-0.5 rounded-full text-[10px] inline-flex items-center space-x-1 animate-pulse" title="3 reportes de usuarios por falta de atención">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>🔴 Alerta Calidad (3 Strikes)</span>
+          </span>
+          <div class="flex items-center space-x-1">
+            <button onclick="handleQualityAction('${b.id}', 'reset_strikes')" class="text-[9px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold cursor-pointer" title="Restablecer semáforo a 0">Restablecer</button>
+            <button onclick="handleQualityAction('${b.id}', 'deactivate')" class="text-[9px] bg-red-100 hover:bg-red-200 text-red-700 px-1.5 py-0.5 rounded font-bold cursor-pointer" title="Dar de baja de inmediato">Dar de Baja</button>
+          </div>
+        </div>
+      `;
+    } else if (b.status === "grace_period") {
+      statusBadge = '<span class="bg-amber-100 text-amber-800 font-black px-2 py-0.5 rounded-full text-[10px] inline-flex items-center space-x-1"><i class="fa-solid fa-hourglass-half text-amber-600"></i><span>🟡 Gracia (24h)</span></span>';
+    } else if (effStatus === "active") {
       statusBadge = '<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Suscripción Pro</span>';
     } else if (effStatus === "demo") {
       statusBadge = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Demo (7 días)</span>';
@@ -3594,6 +3609,7 @@ function switchAdminSubTab(tabName) {
   const tabBtnCrm = document.getElementById("adminTabBtnCrmBroadcast");
   const tabBtnRetarget = document.getElementById("adminTabBtnRetargeting");
   const tabBtnHandoff = document.getElementById("adminTabBtnHandoff");
+  const tabBtnMarket = document.getElementById("adminTabBtnMarketDemand");
 
   const contentDir = document.getElementById("adminTabContentDirectory");
   const contentAi = document.getElementById("adminTabContentAiTraining");
@@ -3602,6 +3618,7 @@ function switchAdminSubTab(tabName) {
   const contentCrm = document.getElementById("adminTabContentCrmBroadcast");
   const contentRetarget = document.getElementById("adminTabContentRetargeting");
   const contentHandoff = document.getElementById("adminTabContentHandoff");
+  const contentMarket = document.getElementById("adminTabContentMarketDemand");
 
   // Ocultar todos los contenedores
   if (contentDir) contentDir.classList.add("hidden");
@@ -3611,6 +3628,7 @@ function switchAdminSubTab(tabName) {
   if (contentCrm) contentCrm.classList.add("hidden");
   if (contentRetarget) contentRetarget.classList.add("hidden");
   if (contentHandoff) contentHandoff.classList.add("hidden");
+  if (contentMarket) contentMarket.classList.add("hidden");
 
   // Estilos inactivos por defecto para los botones
   const inactiveBtnClass = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:bg-gray-100 border border-gray-300";
@@ -3621,6 +3639,7 @@ function switchAdminSubTab(tabName) {
   if (tabBtnCrm) tabBtnCrm.className = inactiveBtnClass;
   if (tabBtnRetarget) tabBtnRetarget.className = inactiveBtnClass;
   if (tabBtnHandoff) tabBtnHandoff.className = inactiveBtnClass + " relative";
+  if (tabBtnMarket) tabBtnMarket.className = inactiveBtnClass;
 
   if (tabName === "ai-training") {
     if (contentAi) contentAi.classList.remove("hidden");
@@ -3648,10 +3667,15 @@ function switchAdminSubTab(tabName) {
     if (contentHandoff) contentHandoff.classList.remove("hidden");
     if (tabBtnHandoff) tabBtnHandoff.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-red-600 text-white shadow-md relative";
     loadHandoffSessionsUI();
+  } else if (tabName === "market-demand") {
+    if (contentMarket) contentMarket.classList.remove("hidden");
+    if (tabBtnMarket) tabBtnMarket.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-blue-700 text-white shadow-md";
+    loadMarketDemandUI();
   } else {
     // default: directory
     if (contentDir) contentDir.classList.remove("hidden");
     if (tabBtnDir) tabBtnDir.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-[#075E54] text-white shadow-md";
+    loadViewSimulationUI();
   }
 }
 
@@ -7270,6 +7294,271 @@ async function runSwarmDiagnostics() {
   }
 }
 
+// ==============================================================
+// MÓDULO 1: SIMULADOR DE IMPULSO DE VISTAS (FRONTEND)
+// ==============================================================
+let gViewSimulationConfig = { enabled: true, businesses: {} };
+
+async function loadViewSimulationUI() {
+  try {
+    const res = await fetch("/api/admin/view-simulation");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+
+    gViewSimulationConfig = data.simulation || { enabled: true, businesses: {} };
+    const businesses = data.businesses || [];
+
+    const badge = document.getElementById("viewSimStatusBadge");
+    const badgeText = document.getElementById("viewSimStatusBadgeText");
+    const toggleBtnText = document.getElementById("btnToggleGlobalViewSimText");
+    const toggleBtn = document.getElementById("btnToggleGlobalViewSim");
+    const lastRunLabel = document.getElementById("viewSimLastRunDate");
+    const totalAccLabel = document.getElementById("viewSimTotalAccumulated");
+    const eligibleLabel = document.getElementById("viewSimEligibleCount");
+
+    if (gViewSimulationConfig.enabled) {
+      if (badge) badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center space-x-1 bg-emerald-100 text-emerald-800 border border-emerald-300";
+      if (badgeText) badgeText.textContent = "🟢 ACTIVO (Tracción)";
+      if (toggleBtn) toggleBtn.className = "px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer";
+      if (toggleBtnText) toggleBtnText.textContent = "🟢 ACTIVO";
+    } else {
+      if (badge) badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center space-x-1 bg-red-100 text-red-800 border border-red-300";
+      if (badgeText) badgeText.textContent = "🔴 INACTIVO (Solo Reales)";
+      if (toggleBtn) toggleBtn.className = "px-4 py-2 rounded-xl bg-gray-600 hover:bg-gray-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer";
+      if (toggleBtnText) toggleBtnText.textContent = "🔴 INACTIVO";
+    }
+
+    if (lastRunLabel) lastRunLabel.textContent = gViewSimulationConfig.lastRunDate || "Hoy";
+    if (totalAccLabel) totalAccLabel.textContent = (gViewSimulationConfig.simulatedViewsTotal || 0).toLocaleString();
+    if (eligibleLabel) eligibleLabel.textContent = businesses.length;
+
+    renderViewSimBusinesses(businesses);
+  } catch (e) {
+    console.warn("[Load View Simulation Error]", e);
+  }
+}
+
+function renderViewSimBusinesses(businesses) {
+  const tbody = document.getElementById("viewSimBusinessesTableBody");
+  if (!tbody) return;
+
+  if (!businesses || businesses.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-400">No hay negocios registrados para simular vistas.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = businesses.map(b => {
+    const isSimActive = b.simulationEnabled !== false;
+    return `
+      <tr class="hover:bg-gray-50/80">
+        <td class="py-2.5 px-3">
+          <div class="font-bold text-gray-900">${b.businessName}</div>
+          <div class="text-[10px] text-gray-400">${b.ownerName || 'Propietario'}</div>
+        </td>
+        <td class="py-2.5 px-3 font-mono font-bold text-gray-700">${b.realViews || 0}</td>
+        <td class="py-2.5 px-3 font-mono font-bold text-indigo-600">+${b.simulatedViews || 0}</td>
+        <td class="py-2.5 px-3 font-mono font-black text-emerald-700">${b.totalViews || 0}</td>
+        <td class="py-2.5 px-3 text-right">
+          <button type="button" onclick="toggleBizViewSimulation('${b.id}')" class="px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${isSimActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">
+            ${isSimActive ? '🟢 Simular' : '⚪ Pausado'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function toggleGlobalViewSimulation() {
+  try {
+    const newState = !gViewSimulationConfig.enabled;
+    const res = await fetch("/api/admin/view-simulation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: newState })
+    });
+    if (res.ok) {
+      showToast(newState ? "Simulador de vistas activado (5 a 10 diarias)." : "Simulador pausado. Contabilizando solo vistas reales.", "success");
+      loadViewSimulationUI();
+    }
+  } catch (e) {
+    showToast("Error al cambiar estado del simulador", "error");
+  }
+}
+
+async function toggleBizViewSimulation(bizId) {
+  try {
+    const current = gViewSimulationConfig.businesses[bizId] !== false;
+    const updated = { ...gViewSimulationConfig.businesses, [bizId]: !current };
+    const res = await fetch("/api/admin/view-simulation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businesses: updated })
+    });
+    if (res.ok) {
+      showToast("Preferencia de simulación actualizada para el negocio", "success");
+      loadViewSimulationUI();
+    }
+  } catch (e) {
+    showToast("Error al actualizar negocio", "error");
+  }
+}
+
+async function runViewSimulationNow() {
+  try {
+    const res = await fetch("/api/admin/view-simulation/run-now", {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (data.success && data.result) {
+      showToast(`Ciclo ejecutado: +${data.result.viewsAdded || 0} vistas añadidas en ${data.result.count || 0} negocios.`, "success");
+      loadViewSimulationUI();
+    } else {
+      showToast("El simulador está inactivo o no hay negocios elegibles.", "info");
+    }
+  } catch (e) {
+    showToast("Error al ejecutar ciclo diario", "error");
+  }
+}
+
+// ==============================================================
+// MÓDULO 2: INTELIGENCIA DE MERCADO Y DEMANDA (FRONTEND)
+// ==============================================================
+async function loadMarketDemandUI() {
+  try {
+    const res = await fetch("/api/market-demand");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+
+    renderMarketDemandTables(data.marketDemand || { unsatisfied: [], satisfied: [] });
+  } catch (e) {
+    console.warn("[Market Demand Load Error]", e);
+  }
+}
+
+function renderMarketDemandTables(demand) {
+  const unsatisfied = Array.isArray(demand.unsatisfied) ? demand.unsatisfied : [];
+  const satisfied = Array.isArray(demand.satisfied) ? demand.satisfied : [];
+
+  const unsatTbody = document.getElementById("marketDemandUnsatisfiedTableBody");
+  const satTbody = document.getElementById("marketDemandSatisfiedTableBody");
+
+  const unsatCount = document.getElementById("marketDemandUnsatisfiedCount");
+  const satCount = document.getElementById("marketDemandSatisfiedCount");
+  const covRate = document.getElementById("marketDemandCoverageRate");
+
+  const totalReq = unsatisfied.reduce((a, b) => a + (b.count || 1), 0) + satisfied.reduce((a, b) => a + (b.count || 1), 0);
+  const totalSat = satisfied.reduce((a, b) => a + (b.count || 1), 0);
+  const rate = totalReq > 0 ? Math.round((totalSat / totalReq) * 100) : 100;
+
+  if (unsatCount) unsatCount.textContent = unsatisfied.length;
+  if (satCount) satCount.textContent = satisfied.length;
+  if (covRate) covRate.textContent = `${rate}%`;
+
+  // Tabla Demanda Insatisfecha
+  if (unsatTbody) {
+    if (unsatisfied.length === 0) {
+      unsatTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">Excelente noticia: No hay búsquedas insatisfechas registradas al momento.</td></tr>`;
+    } else {
+      const sortedUnsat = [...unsatisfied].sort((a, b) => (b.count || 0) - (a.count || 0));
+      unsatTbody.innerHTML = sortedUnsat.map((item) => `
+        <tr class="hover:bg-red-50/40 transition-colors">
+          <td class="py-3 px-4 font-black text-gray-900">${item.giro}</td>
+          <td class="py-3 px-4 text-gray-700"><i class="fa-solid fa-location-dot text-red-500 mr-1"></i>${item.colonia}</td>
+          <td class="py-3 px-4 text-center font-mono font-black text-red-600 bg-red-50/50 rounded-lg">${item.count}</td>
+          <td class="py-3 px-4 text-[11px] text-gray-500">${new Date(item.lastRequestedAt).toLocaleDateString("es-MX", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+          <td class="py-3 px-4 font-mono text-[11px] text-gray-700">${item.phone || 'No capturado'}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="openAddBusinessForGiro('${item.giro}', '${item.colonia}')" class="px-3 py-1 bg-[#075E54] hover:bg-[#128C7E] text-white text-[10px] font-black rounded-lg transition-all shadow-xs cursor-pointer">
+              + Afiliar Giro
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    }
+  }
+
+  // Tabla Demanda Atendida
+  if (satTbody) {
+    if (satisfied.length === 0) {
+      satTbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-400">Aún no hay registros de demanda atendida.</td></tr>`;
+    } else {
+      const sortedSat = [...satisfied].sort((a, b) => (b.count || 0) - (a.count || 0));
+      satTbody.innerHTML = sortedSat.map(item => `
+        <tr class="hover:bg-emerald-50/40 transition-colors">
+          <td class="py-3 px-4 font-bold text-gray-900">${item.giro}</td>
+          <td class="py-3 px-4 text-gray-700"><i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i>${item.colonia}</td>
+          <td class="py-3 px-4 text-center font-mono font-black text-emerald-700 bg-emerald-50/50 rounded-lg">${item.count}</td>
+          <td class="py-3 px-4 text-[11px] text-gray-700">${(item.businessesShown || []).slice(0, 3).join(", ") || 'Comercios activos'}</td>
+          <td class="py-3 px-4 text-[11px] text-gray-500">${new Date(item.lastRequestedAt).toLocaleDateString("es-MX", { day: '2-digit', month: 'short' })}</td>
+        </tr>
+      `).join("");
+    }
+  }
+}
+
+function openAddBusinessForGiro(giro, colonia) {
+  openAddModal();
+  setTimeout(() => {
+    const catInput = document.getElementById("adminAddCategory");
+    const colInput = document.getElementById("adminAddCustomColInput");
+    if (catInput) catInput.value = giro;
+    if (colInput) colInput.value = colonia;
+  }, 100);
+}
+
+function downloadMarketDemandPdf() {
+  showToast("Generando reporte PDF con membrete de Neural Media House...", "info");
+  window.open("/api/market-demand/export-pdf", "_blank");
+}
+
+// ==============================================================
+// MÓDULO 3.2: ACCIONES DE SEMÁFORO DE CALIDAD (3 STRIKES)
+// ==============================================================
+async function handleQualityAction(businessId, action) {
+  try {
+    const res = await fetch("/api/business/quality-action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId, action })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, "success");
+      if (typeof initDatabase === "function") await initDatabase();
+      renderAdminTable();
+    } else {
+      showToast("Error: " + (data.error || "No se pudo actualizar"), "error");
+    }
+  } catch (e) {
+    showToast("Error de conexión al procesar alerta de calidad", "error");
+  }
+}
+
+// ==============================================================
+// MÓDULO 6: MODALES LEGALES (AVISO DE PRIVACIDAD & TÉRMINOS)
+// ==============================================================
+function openPrivacyModal() {
+  const m = document.getElementById("modalPrivacyPolicy");
+  if (m) m.classList.remove("hidden");
+}
+
+function closePrivacyModal() {
+  const m = document.getElementById("modalPrivacyPolicy");
+  if (m) m.classList.add("hidden");
+}
+
+function openTermsModal() {
+  const m = document.getElementById("modalTermsConditions");
+  if (m) m.classList.remove("hidden");
+}
+
+function closeTermsModal() {
+  const m = document.getElementById("modalTermsConditions");
+  if (m) m.classList.add("hidden");
+}
+
 // Exponer funciones principales en el ámbito global (window) para garantizar interactividad total
 window.loadPromoBannerConfig = loadPromoBannerConfig;
 window.handlePromoImageFileSelect = handlePromoImageFileSelect;
@@ -7359,6 +7648,28 @@ if (typeof handleOpenGoogleSheetsDirect === "function") window.handleOpenGoogleS
 if (typeof openGoogleSheetsConfigModal === "function") window.openGoogleSheetsConfigModal = openGoogleSheetsConfigModal;
 if (typeof closeGoogleSheetsConfigModal === "function") window.closeGoogleSheetsConfigModal = closeGoogleSheetsConfigModal;
 if (typeof handleSaveGoogleSheetsConfigModal === "function") window.handleSaveGoogleSheetsConfigModal = handleSaveGoogleSheetsConfigModal;
+
+// Exportaciones de Simulador de Impulso de Vistas
+window.loadViewSimulationUI = loadViewSimulationUI;
+window.renderViewSimBusinesses = renderViewSimBusinesses;
+window.toggleGlobalViewSimulation = toggleGlobalViewSimulation;
+window.toggleBizViewSimulation = toggleBizViewSimulation;
+window.runViewSimulationNow = runViewSimulationNow;
+
+// Exportaciones de Inteligencia de Mercado y Demanda
+window.loadMarketDemandUI = loadMarketDemandUI;
+window.renderMarketDemandTables = renderMarketDemandTables;
+window.openAddBusinessForGiro = openAddBusinessForGiro;
+window.downloadMarketDemandPdf = downloadMarketDemandPdf;
+
+// Exportaciones de Semáforo de Calidad
+window.handleQualityAction = handleQualityAction;
+
+// Exportaciones de Modales Legales
+window.openPrivacyModal = openPrivacyModal;
+window.closePrivacyModal = closePrivacyModal;
+window.openTermsModal = openTermsModal;
+window.closeTermsModal = closeTermsModal;
 
 console.log("App Inicializada");
 
