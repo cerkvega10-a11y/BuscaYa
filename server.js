@@ -1968,29 +1968,7 @@ function generateSpintaxVariations(baseMessage) {
   });
 }
 
-// -------------------------------------------------------------
-// ANÁLISIS DE SENTIMIENTO PARA REACCIONES NATIVAS DE WHATSAPP
-// -------------------------------------------------------------
-function detectReactionEmoji(text) {
-  if (!text) return "👍";
-  const lower = text.toLowerCase();
-  if (/(hambre|pizza|taco|comer|cenar|antojo|comida|restaurante|postre|antojitos)/i.test(lower)) {
-    return "🤤";
-  }
-  if (/(duele|enfermo|malestar|farmacia|medicina|doctor|urgente|fuga|tubo|emergencia|ayuda|problema)/i.test(lower)) {
-    return "😢";
-  }
-  if (/(gracias|muchas\s+gracias|excelente|genial|cool|increible|chido|top|perfecto|te\s+quiero|me\s+gusta)/i.test(lower)) {
-    return "❤️";
-  }
-  if (/(jaja|jeje|gracioso|risa|chiste)/i.test(lower)) {
-    return "😂";
-  }
-  if (/(wow|sorpresa|en\s+serio|increible|apoco|que\s+loco)/i.test(lower)) {
-    return "😮";
-  }
-  return "👍";
-}
+
 
 // -------------------------------------------------------------
 // RECONOCIMIENTO DE NÚMERO DE DUEÑO DE NEGOCIO
@@ -2557,9 +2535,12 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
 /**
  * Detección Contextual y Expresiva de Emojis de Reacción
  * Cero pulgares genéricos: emojis adaptados a la intención y categoría del mensaje
+ * Compatible con firma completa (intent, family, term, text) o firma simple (text)
  */
-function detectReactionEmoji(intent, family, term, text) {
-  const lower = (text || '').toLowerCase();
+function detectReactionEmoji(intentOrText, family = null, term = null, maybeText = null) {
+  const text = (maybeText !== null && maybeText !== undefined) ? maybeText : (intentOrText || '');
+  const intent = (maybeText !== null && maybeText !== undefined) ? intentOrText : null;
+  const lower = String(text || '').toLowerCase();
 
   // 1. Emergencias específicas
   if (/(?:asalto|robo|ladron|ratero|pistola|secuestr|dispar|balacera|policia|patrulla|denuncia)/i.test(lower)) return '🚨';
@@ -2580,8 +2561,10 @@ function detectReactionEmoji(intent, family, term, text) {
   if (intent === 'PEDIR_MAS_OPCIONES') return '🔍';
   if (intent === 'DAR_COLONIA') return '📍';
   if (intent === 'CONVERSACIONAL_NO_GIRO') return '✨';
+  if (/(?:jaja|jeje|gracioso|chiste|broma)/i.test(lower)) return '😂';
+  if (/(?:wow|sorpresa|en\s+serio|increible|apoco|que\s+loco)/i.test(lower)) return '😮';
 
-  // 3. Familias y Giros comerciales
+  // 4. Familias y Giros comerciales
   if (family === 'ALIMENTOS_Y_BEBIDAS' || /(?:taco|pizza|comida|comer|hambre|cenar|antojo|restaurante|cafe|pan|postre|hamburguesa|sushi|torta|alitas|bar)/i.test(lower)) return '🤤';
   if (family === 'SALUD_Y_BIENESTAR' || /(?:doctor|farmacia|medicina|dentista|dent|clinica|dolor|muela|enfermo|optica|terapia)/i.test(lower)) return '🏥';
   if (family === 'MASCOTAS' || /(?:veterin|perr|gat|mascota|croqueta|estetica\s+canina|animal)/i.test(lower)) return '🐶';
