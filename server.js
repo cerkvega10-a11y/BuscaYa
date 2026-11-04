@@ -1009,6 +1009,7 @@ const GIRO_FAMILIES = {
       "Postres, Panaderías y Pastelerías",
       "Fondas y Cocinas Económicas",
       "Marisquerías y Pescados",
+      "Comida Saludable, Ensaladas y Bowls",
       "Bares, Alitas y Cervecerías",
       "Restaurantes",
       "Pizzerías",
@@ -1022,12 +1023,14 @@ const GIRO_FAMILIES = {
       "Postres y Panaderías"
     ],
     keywords: [
-      "hambre", "comer", "comida", "cenar", "cena", "desayunar", "desayuno", "lonche",
+      "comida saludable", "saludable", "ensaladas", "ensalada", "bowls", "sano",
+      "mariscos", "marisco", "pescado", "pescados", "ceviche", "aguachile", "camarones", "pulpo", "marisqueria",
+      "desayunar", "desayuno", "desayunos", "bistro", "brunch", "chilaquiles",
+      "hambre", "comer", "comida", "cenar", "cena", "lonche",
       "pizza", "pizzas", "pizzeria", "pizzería", "taco", "tacos", "taqueria", "taquería",
-      "mariscos", "marisco", "pescado", "ceviche", "birria", "pancita", "chilaquiles", "sushi",
-      "hamburguesa", "hamburguesas", "alitas", "café", "cafe", "cafeteria", "cafetería", "bar",
-      "cerveza", "chela", "chelas", "postre", "postres", "pastel", "pasteles", "pan", "panaderia",
-      "panadería", "antojo", "algo rico", "antojitos"
+      "birria", "pancita", "sushi", "hamburguesa", "hamburguesas", "alitas",
+      "café", "cafe", "cafeteria", "cafetería", "bar", "cerveza", "chela", "chelas",
+      "postre", "postres", "pastel", "pasteles", "pan", "panaderia", "panadería", "antojo", "algo rico", "antojitos"
     ]
   },
   "SALUD": {
@@ -2501,6 +2504,60 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
 
   const unshown = activeBusinesses.filter(b => !shownBusinessIds.includes(b.id));
 
+  // Matriz de Subsegmentación Estricta de Alimentos (Para evitar devolver tacos o pizzas ante mariscos o comida saludable)
+  const FOOD_SUBSEGMENTS = {
+    MARISCOS: {
+      name: "Mariscos y Pescados",
+      tokens: ["marisco", "mariscos", "pescado", "pescados", "ceviche", "ceviches", "aguachile", "camaron", "camarones", "pulpo", "ostion", "ostiones", "marisqueria", "marisquerias"]
+    },
+    SALUDABLE: {
+      name: "Comida Saludable y Ensaladas",
+      tokens: ["saludable", "sano", "sana", "ensalada", "ensaladas", "bowl", "bowls", "fit", "fitness", "vegano", "vegetariano", "nutritivo", "jugos", "organico", "diet"]
+    },
+    DESAYUNO_CAFE: {
+      name: "Desayunos y Cafeterías",
+      tokens: ["desayun", "desayuno", "desayunos", "desayunar", "cafe", "cafeteria", "bistro", "brunch", "panaderia", "pan", "chilaquiles", "hot cakes", "huevos", "pan dulce", "reposteria"]
+    },
+    TACOS: {
+      name: "Taquerías y Antojitos",
+      tokens: ["taco", "tacos", "taqueria", "taquerias", "pastor", "carnitas", "suadero", "birria", "barbacoa", "gringa", "gringas", "alambre"]
+    },
+    PIZZA: {
+      name: "Pizzerías y Comida Italiana",
+      tokens: ["pizza", "pizzas", "pizzeria", "pizzerias", "pasta", "pastas", "italiana", "lasagna", "trattoria"]
+    },
+    SUSHI: {
+      name: "Sushi y Comida Asiática",
+      tokens: ["sushi", "roll", "rolls", "ramen", "japonesa", "asiatica", "oriental"]
+    },
+    HAMBURGUESAS: {
+      name: "Hamburguesas y Alitas",
+      tokens: ["hamburguesa", "hamburguesas", "burger", "burgers", "alita", "alitas", "boneless"]
+    }
+  };
+
+  let detectedFoodSubsegment = null;
+  if (isFoodFamily && lockedTerm) {
+    const termClean = lockedTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    for (const [subKey, subData] of Object.entries(FOOD_SUBSEGMENTS)) {
+      if (subData.tokens.some(tok => termClean.includes(tok) || tok.includes(termClean))) {
+        detectedFoodSubsegment = subKey;
+        break;
+      }
+    }
+  }
+
+  const bizMatchesSubsegment = (b, subKey) => {
+    if (!subKey || !FOOD_SUBSEGMENTS[subKey]) return true;
+    const tokens = FOOD_SUBSEGMENTS[subKey].tokens;
+    const bCat = (b.category || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bName = (b.businessName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bServ = (b.services || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bTags = (Array.isArray(b.tags) ? b.tags.join(" ") : (b.tags || "")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const combined = `${bName} ${bCat} ${bServ} ${bTags}`;
+    return tokens.some(tok => new RegExp('(?:^|\\b)' + tok + '(?:\\b|$)', 'i').test(combined));
+  };
+
   const familyFiltered = unshown.filter(b => {
     const bCat = (b.category || '').toLowerCase();
     const bName = (b.businessName || '').toLowerCase();
@@ -2524,7 +2581,13 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
       if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
       const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
       const isFoodKw = familyDef ? familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ) || new RegExp(`\\b${kw}\\b`, 'i').test(bTags)) : false;
-      return isFoodCat || isFoodKw;
+      if (!isFoodCat && !isFoodKw) return false;
+
+      // Segmentación estricta de alimentos
+      if (detectedFoodSubsegment) {
+        return bizMatchesSubsegment(b, detectedFoodSubsegment);
+      }
+      return true;
     }
 
     if (familyDef) {
@@ -2596,6 +2659,24 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
 
     const distKm = haversineDistanceKm(userLat, userLng, bLat, bLng);
     let score = 0;
+
+    // Priorización categórica estricta por subsegmento (Taquería para Tacos, Marisquería para Mariscos, etc.)
+    if (detectedFoodSubsegment) {
+      const bCat = (b.category || '').toLowerCase();
+      const bName = (b.businessName || '').toLowerCase();
+      if (detectedFoodSubsegment === 'TACOS' && (bCat.includes('taqu') || bName.includes('taqu') || bName.includes('taco') || bName.includes('pastor'))) {
+        score += 800;
+      } else if (detectedFoodSubsegment === 'MARISCOS' && (bCat.includes('marisc') || bCat.includes('pescad') || bName.includes('marisc') || bName.includes('arcos') || bName.includes('puerto'))) {
+        score += 800;
+      } else if (detectedFoodSubsegment === 'SALUDABLE' && (bCat.includes('saludable') || bCat.includes('ensalada') || bName.includes('verde') || bName.includes('sano') || bName.includes('green'))) {
+        score += 800;
+      } else if (detectedFoodSubsegment === 'DESAYUNO_CAFE' && (bCat.includes('cafe') || bCat.includes('bistro') || bName.includes('bistro') || bName.includes('cafe'))) {
+        score += 800;
+      } else if (detectedFoodSubsegment === 'PIZZA' && (bCat.includes('pizza') || bName.includes('pizza') || bName.includes('trattoria'))) {
+        score += 800;
+      }
+    }
+
     if (directNameMatch(b)) score += 400;
     if (b.isSponsored || b.plan === "plus" || b.featured) score += 60;
     if (isSameColonia(b)) score += 50;
@@ -3058,8 +3139,8 @@ async function extractStructuredNLU(text, userSession = {}) {
     };
   }
 
-  // 2. Intención de Registro B2B / Unirse al Directorio - CERO BÚSQUEDA
-  const isRegistrationB2B = /(?:tengo\s+un\s+negocio|quiero\s+unirme|c[oó]mo\s+me\s+registro|c[oó]mo\s+registro|registrar(?:lo|la|me)?|quiero\s+aparecer|c[oó]mo\s+le\s+hago\s+para\s+estar\s+en\s+el\s+directorio|c[oó]mo\s+le\s+hago|me\s+das\s+informaci[oó]n|(?:^|\b)(?:costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta)(?:$|[?!\s])|quiero\s+(?:anunciar|registrar|promocionar|afiliar|publicar|subir|sumar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa|mi\s+servicio)?|c[oó]mo\s+(?:anunciar|registrar|afiliar|sumar|publicar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa)?|quiero\s+(?:formar\s+parte|ser\s+parte|estar\s+en\s+el\s+directorio|estar\s+en\s+buscaya|anunciarme|registrarme)|informes\s+(?:para\s+negocios|para\s+anunciarme|de\s+registro)|unir\s+mi\s+negocio)/i.test(lower);
+  // 2. Intención de Registro B2B / Unirse al Directorio / Solicitud de Información General - CERO BÚSQUEDA
+  const isRegistrationB2B = /(?:tengo\s+un\s+negocio|quiero\s+unirme|c[oó]mo\s+me\s+registro|c[oó]mo\s+registro|registrar(?:lo|la|me)?|quiero\s+aparecer|c[oó]mo\s+le\s+hago\s+para\s+estar\s+en\s+el\s+directorio|c[oó]mo\s+le\s+hago|me\s+das\s+informaci[oó]n|dame\s+informaci[oó]n|quiero\s+informaci[oó]n|m[aá]s\s+informaci[oó]n|(?:^|\b)(?:informaci[oó]n|informes)(?:$|[?!\s])|(?:^|\b)(?:costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta)(?:$|[?!\s])|quiero\s+(?:anunciar|registrar|promocionar|afiliar|publicar|subir|sumar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa|mi\s+servicio)?|c[oó]mo\s+(?:anunciar|registrar|afiliar|sumar|publicar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa)?|quiero\s+(?:formar\s+parte|ser\s+parte|estar\s+en\s+el\s+directorio|estar\s+en\s+buscaya|anunciarme|registrarme)|informes\s+(?:para\s+negocios|para\s+anunciarme|de\s+registro)|unir\s+mi\s+negocio)/i.test(lower);
   if (isRegistrationB2B) {
     return {
       intencion: 'DUDA_REGISTRO',
@@ -3105,8 +3186,8 @@ async function extractStructuredNLU(text, userSession = {}) {
     };
   }
 
-  // 6. Pedir más opciones / Expansión de distancia (incluye Caso 85: Siguiente opción)
-  if (/(?:siguiente\s+opci[oó]n|mu[eé]strame\s+la\s+siguiente|otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa)/i.test(lower)) {
+  // 6. Pedir más opciones / Alternativa / Rechazo / Siguiente opción (Cero bucles al decir "prefiero otra cosa" o "no me gusta")
+  if (/(?:siguiente\s+opci[oó]n|mu[eé]strame\s+la\s+siguiente|otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa|prefiero\s+otr[ao]|otra\s+cosa|algo\s+(?:m[aá]s|diferente|distinto|ligero)|no\s+me\s+gusta|no\s+me\s+convence|busca\s+otr[ao]|cambiar|no\s+quiero\s+(?:eso|este)|tienes\s+algo\s+m[aá]s|^no$|^nop$)/i.test(lower)) {
     return {
       intencion: 'PEDIR_MAS_OPCIONES',
       familia_giro: userSession.lockedFamily || null,
@@ -3182,29 +3263,40 @@ async function extractStructuredNLU(text, userSession = {}) {
     matchedFamily = 'ENTRETENIMIENTO_Y_ARTE';
     matchedTerm = 'Caramelo Media Music';
   } else {
+    // Buscar en todas las familias ordenando keywords por longitud descendente para dar prioridad a frases como "comida saludable"
+    const allGiroCandidates = [];
     for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
       if (fData && Array.isArray(fData.keywords)) {
         for (const kw of fData.keywords) {
-          const regex = new RegExp('\\b' + kw + '\\b', 'i');
-          if (regex.test(lower)) {
-            matchedFamily = fKey;
-            matchedTerm = kw.charAt(0).toUpperCase() + kw.slice(1);
-            break;
-          }
+          allGiroCandidates.push({ family: fKey, keyword: kw, len: kw.length });
         }
       }
-      if (matchedFamily) break;
+    }
+    allGiroCandidates.sort((a, b) => b.len - a.len);
+
+    for (const item of allGiroCandidates) {
+      const regex = new RegExp('(?:^|\\b)' + item.keyword + '(?:\\b|$)', 'i');
+      if (regex.test(lower)) {
+        matchedFamily = item.family;
+        matchedTerm = item.keyword.charAt(0).toUpperCase() + item.keyword.slice(1);
+        break;
+      }
     }
   }
 
   // 10. Resolución Estricta de Intención
-  // A. Si está esperando colonia o el mensaje inicia con prefijo de ubicación
-  if ((isWaitingColonia && detectedColonia) || (isColoniaPrefix && detectedColonia && !matchedFamily)) {
+  // A. Si está esperando colonia o el mensaje inicia con prefijo de ubicación (ELIMINACIÓN TOTAL DEL LOOP DE UBICACIÓN)
+  if ((isWaitingColonia && !matchedFamily) || (isColoniaPrefix && detectedColonia && !matchedFamily)) {
+    let resolvedCol = detectedColonia;
+    if (!resolvedCol) {
+      const cleanRef = t.replace(/^(?:estoy\s+en|en|por|cerca\s+de|vivo\s+en|aqui\s+en|aquí\s+en)\s+/i, '').trim();
+      resolvedCol = cleanRef || 'Álvaro Obregón';
+    }
     return {
       intencion: 'DAR_COLONIA',
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
-      colonia_o_referencia: detectedColonia,
+      colonia_o_referencia: resolvedCol,
       emoji_reaccion: '📍'
     };
   }
@@ -3371,7 +3463,7 @@ async function processBuscaYaMessage({
     }
   }
 
-  // C. Ubicación GPS nativa
+  // C. Ubicación GPS nativa (Cero bucles al enviar pin de WhatsApp)
   let rawLat = latitude;
   let rawLng = longitude;
   if (location && typeof location.latitude === 'number' && typeof location.longitude === 'number') {
@@ -3385,7 +3477,9 @@ async function processBuscaYaMessage({
     rawLng = Number(rawPayload.location.longitude);
   }
 
-  if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
+  const isGpsPinMessage = (incomingType === "location" || (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)));
+
+  if (isGpsPinMessage) {
     const geo = reverseGeocodeServer(rawLat, rawLng);
     userSession.coloniaActual = geo?.neighborhood || "Álvaro Obregón";
     userSession.lastLocation = {
@@ -3461,6 +3555,16 @@ async function processBuscaYaMessage({
   if (normMsg && DATASET_QUERY_LOOKUP && DATASET_QUERY_LOOKUP.has(normMsg)) {
     const datasetResponse = DATASET_QUERY_LOOKUP.get(normMsg);
     finalBotReplyText = datasetResponse;
+
+    // Preservar estado en la sesión para evitar pérdida de contexto o bucles al responder con ubicación
+    const quickNlu = await extractStructuredNLU(messageText, userSession);
+    if (quickNlu.familia_giro) userSession.lockedFamily = quickNlu.familia_giro;
+    if (quickNlu.termino_especifico) userSession.lockedTerm = quickNlu.termino_especifico;
+    if (quickNlu.colonia_o_referencia) userSession.coloniaActual = quickNlu.colonia_o_referencia;
+    if (datasetResponse.includes('colonia') || datasetResponse.includes('ubicación') || datasetResponse.includes('referencia') || datasetResponse.includes('avenida')) {
+      userSession.intencion_actual = 'esperando_ubicacion';
+    }
+
     const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => b.trim()).filter(Boolean);
     const bubbles = rawBubbles.length ? rawBubbles : [finalBotReplyText];
     userSession.lastBotReplyText = finalBotReplyText;
@@ -3473,13 +3577,34 @@ async function processBuscaYaMessage({
       replyText: finalBotReplyText,
       bubbles: bubbles,
       emoji_reaccion: detectReactionEmoji(null, null, null, messageText),
-      debugState: { fromDatasetGroundTruth: true, matchedQuery: normMsg },
+      debugState: { fromDatasetGroundTruth: true, matchedQuery: normMsg, lockedFamily: userSession.lockedFamily, lockedTerm: userSession.lockedTerm },
       botReply: { recipient: senderPhone, responseMessage: finalBotReplyText, timestamp }
     };
   }
 
   // 4. ANÁLISIS ESTRUCTURADO NLU
-  const nluResult = await extractStructuredNLU(messageText, userSession);
+  let nluResult;
+  if (isGpsPinMessage) {
+    if (userSession.lockedFamily) {
+      nluResult = {
+        intencion: 'DAR_COLONIA',
+        familia_giro: userSession.lockedFamily,
+        termino_especifico: userSession.lockedTerm,
+        colonia_o_referencia: userSession.coloniaActual,
+        emoji_reaccion: '📍'
+      };
+    } else {
+      nluResult = {
+        intencion: 'UBICACION_WHATSAPP_CONFIRMADA',
+        familia_giro: null,
+        termino_especifico: null,
+        colonia_o_referencia: userSession.coloniaActual,
+        emoji_reaccion: '📍'
+      };
+    }
+  } else {
+    nluResult = await extractStructuredNLU(messageText, userSession);
+  }
   console.log(`[BuscaYa NLU Extractor] Phone: ${senderPhone} | Intent: ${nluResult.intencion} | Family: ${nluResult.familia_giro} | Term: ${nluResult.termino_especifico} | Colonia: ${nluResult.colonia_o_referencia} | Emoji: ${nluResult.emoji_reaccion}`);
 
   // Reacción Nativa Inmediata (Meta Cloud API)
@@ -3571,16 +3696,16 @@ async function processBuscaYaMessage({
     finalBotReplyText = "¡Qué onda! 😎🍺 Para recomendarte los mejores bares o lugares de fiesta, dime en qué colonia o zona te encuentras hoy. 📍✨";
   }
 
-  // B. INTENCIÓN DE REGISTRO B2B / UNIRSE AL DIRECTORIO (CERO BÚSQUEDA)
+  // B. INTENCIÓN DE REGISTRO B2B / INFORMACIÓN GENERAL (CERO BÚSQUEDA - ENLACE + TELÉFONO PERSONAL)
   else if (nluResult.intencion === 'DUDA_REGISTRO') {
     currentPhase = 5;
     userSession.intencion_actual = "duda_registro";
     if (/costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta/i.test(messageText)) {
-      finalBotReplyText = "Contamos con registro básico sin costo y membresías Pro desde $499 MXN al mes con posicionamiento preferente y métricas en vivo. Más info en https://buscaya.neuralmediahouse.com/ 💳📊";
+      finalBotReplyText = "Contamos con registro básico sin costo y membresías Pro desde $499 MXN al mes con posicionamiento preferente y métricas en vivo 💳📊.\n\n🌐 Revisa todos los detalles y paquetes en: https://buscaya.neuralmediahouse.com/\n📱 O comunícate directamente a nuestra línea de atención personalizada: 5645234452 🤝✨";
     } else if (/independiente|freelance|por\s+mi\s+cuenta/i.test(messageText)) {
-      finalBotReplyText = "¡Por supuesto! 🛠️ Plomeros, electricistas, psicólogos y profesionales independientes son bienvenidos. Regístrate en https://buscaya.neuralmediahouse.com/ indicando tu zona de cobertura. 📲✨";
+      finalBotReplyText = "¡Por supuesto! 🛠️ Plomeros, electricistas, psicólogos, médicos y cualquier prestador de servicios independiente son bienvenidos.\n\n🌐 Realiza tu registro oficial aquí: https://buscaya.neuralmediahouse.com/\n📱 Y si deseas asesoría personalizada, comunícate con nosotros al: 5645234452 📲✨";
     } else {
-      finalBotReplyText = "¡Excelente decisión para impulsar tus ventas! 📈 Inscríbete en minutos en nuestro portal oficial: https://buscaya.neuralmediahouse.com/ o envíanos tus datos comerciales por aquí para comenzar. 🚀";
+      finalBotReplyText = "¡Con mucho gusto te brindo toda la información! 😊🙌 En BuscaYa conectamos a los mejores negocios y servicios locales con miles de clientes en la Ciudad de México.\n\n🌐 Puedes consultar los detalles de la plataforma y registrar tu negocio en nuestro portal oficial: https://buscaya.neuralmediahouse.com/\n\n📱 Y si prefieres una atención directa o platicar con una persona de nuestro equipo de manera personal, comunícate con nosotros al: 5645234452 🤝✨ ¡Estamos a tus órdenes!";
     }
   }
 
@@ -3629,11 +3754,43 @@ async function processBuscaYaMessage({
     finalBotReplyText = "No alcancé a entender bien tu mensaje 🤔. Dime con confianza qué negocio, comida o servicio estás buscando y en qué colonia te encuentras para ayudarte al instante. 🔎📍";
   }
 
-  // D.2. PREGUNTA CONVERSACIONAL GENERAL (NO ES UN GIRO COMERCIAL - CERO BÚSQUEDA)
+  // D.2. PREGUNTA CONVERSACIONAL GENERAL (NO ES UN GIRO COMERCIAL - CERO BÚSQUEDA - IA INTEGRADA)
   else if (nluResult.intencion === 'CONVERSACIONAL_NO_GIRO') {
     currentPhase = 1;
     userSession.intencion_actual = "conversacional_no_giro";
-    finalBotReplyText = "¡Hola! 😊 En BuscaYa te ayudo a encontrar los mejores negocios, comida, oficios y servicios locales verificados cerca de ti en la Ciudad de México 📍✨\n\nPuedes pedirme por ejemplo: tacos, pizzería, cerrajero, plomero, veterinaria, médico, farmacia o cualquier negocio local que necesites. ¿Qué te gustaría buscar hoy? 🙌";
+
+    let aiReplied = false;
+    if (messageText && messageText.trim().length >= 4 && !/^(?:hola|buenas|hey|saludos)$/i.test(messageText.trim())) {
+      try {
+        const aiPrompt = `Mensaje del usuario: "${messageText}".
+Contexto:
+- Ubicación actual: ${userSession.coloniaActual || 'Álvaro Obregón / CDMX'}
+- Giro previo: ${userSession.lockedTerm || userSession.lockedFamily || 'ninguno'}
+Instrucciones:
+Responde de forma concisa, cálida y natural en español mexicano como BuscaYa (creado exclusivamente por Neural Media House).
+Si pregunta por comida o negocios, invítalo amablemente a buscar mariscos, comida saludable, tacos, cafeterías u oficios.
+Si pide información o contacto personal, proporciona https://buscaya.neuralmediahouse.com/ y el teléfono 5645234452.
+Usa viñetas con emojis (cero guiones ni asteriscos).`;
+
+        const aiRes = await callGroqApi({
+          prompt: aiPrompt,
+          systemInstruction: "Eres BuscaYa, asistente de WhatsApp en CDMX desarrollado por Neural Media House. Responde conciso, coherente, empático y en español mexicano.",
+          model: "qwen/qwen3.8-27b",
+          temperature: 0.3
+        });
+
+        if (aiRes.success && aiRes.reply && aiRes.reply.trim().length > 15) {
+          finalBotReplyText = aiRes.reply.trim();
+          aiReplied = true;
+        }
+      } catch (aiErr) {
+        console.warn("[Groq AI Coherence Notice]:", aiErr.message);
+      }
+    }
+
+    if (!aiReplied) {
+      finalBotReplyText = "¡Hola! 😊 En BuscaYa te ayudo a encontrar los mejores negocios, comida, oficios y servicios locales verificados cerca de ti en la Ciudad de México 📍✨\n\nPuedes pedirme por ejemplo: mariscos, comida saludable, tacos, pizzería, cerrajero, plomero, veterinaria, médico, farmacia o cualquier negocio local que necesites. ¿Qué te gustaría buscar hoy? 🙌";
+    }
   }
 
   // E. AGRADECIMIENTO / DESPEDIDA
@@ -3785,7 +3942,11 @@ async function processBuscaYaMessage({
         finalBotReplyText = `¡Claro que sí! Aquí tienes otra excelente alternativa de ${userSession.lockedTerm || userSession.lockedFamily} 😊👇\n|||SEPARAR|||\n${card}\n|||SEPARAR|||\n${controlQuestion}`;
       } else {
         const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
-        finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento ya son todas las opciones de ${giroLabel} que tenemos registradas en el sistema 😔📍 ¡Muy pronto sumaremos más negocios en tu colonia! Si deseas buscar algún otro giro diferente, dime cuál necesitas y con gusto te ayudo 😊🙌`;
+        if (userSession.lockedFamily === 'ALIMENTOS_Y_BEBIDAS') {
+          finalBotReplyText = `¡Con mucho gusto te busco otra alternativa! 😊 Cerquita de ti en ${userSession.coloniaActual || 'tu zona'} tenemos varias opciones deliciosas. ¿Tienes antojo de algún tipo de comida en específico? Por ejemplo: mariscos, comida saludable, tacos, pizza, sushi o comida corrida 🍽️✨ Cuéntame qué se te antoja hoy.`;
+        } else {
+          finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento ya son todas las opciones de ${giroLabel} que tenemos registradas en el sistema 😔📍 ¡Muy pronto sumaremos más negocios en tu colonia! Si deseas buscar algún otro giro diferente, dime cuál necesitas y con gusto te ayudo 😊🙌`;
+        }
       }
     } else {
       finalBotReplyText = "¡Aquí tienes la siguiente opción recomendada! 🌟🏪 Si gustas que busque algún giro en específico o en otra colonia, dímelo con gusto. 📍✨";
@@ -7867,6 +8028,8 @@ server.getColoniaCoordinates = getColoniaCoordinates;
 server.resolveAddressOrColonia = resolveAddressOrColonia;
 server.queryBuscaYaDatabase = queryBuscaYaDatabase;
 server.processBuscaYaMessage = processBuscaYaMessage;
+server.extractStructuredNLU = extractStructuredNLU;
+server.callGroqApi = callGroqApi;
 server.ALVARO_OBREGON_COLONIAS = ALVARO_OBREGON_COLONIAS;
 server.SERVER_ADMIN_USERS = SERVER_ADMIN_USERS;
 
