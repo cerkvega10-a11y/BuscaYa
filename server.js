@@ -1022,10 +1022,24 @@ function searchBusinessesFuzzy(query, businesses) {
 // ==============================================================
 const DEFAULT_AI_TASKS = [
   {
+    id: "task-emergencias",
+    active: true,
+    condition: "Cuando el usuario reporte asalto, robo, incendio, fuga de gas, accidente vial, emergencia médica, violencia de género o protección civil",
+    action: "Activar el Protocolo Integral de Emergencias: responder con auxilio inmediato, entregar las líneas directas de emergencia (911, Bomberos, Cruz Roja, Locatel, *765, Base Plata), asignar la reacción designada (🚨, 🚒, 🚑, 🏥, 💜, 🛡️) y nunca enviar negocios ordinarios.",
+    priority: "Alta (Obligatoria)"
+  },
+  {
+    id: "task-ubicacion-boton",
+    active: true,
+    condition: "Al recomendar un negocio verificado de la base de datos",
+    action: "Enviar la ficha comercial con viñetas de emojis limpios y adjuntar el botón interactivo de ubicación Google Maps (Location Pin nativo) en lugar de URLs largas de texto.",
+    priority: "Alta (Obligatoria)"
+  },
+  {
     id: "task-1",
     active: true,
     condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio, cuánto cuesta o cómo sumarse",
-    action: "Felicitarlo con entusiasmo, darle la bienvenida al ecosistema, recordarle brevemente que tiene días de prueba gratis para recibir clientes en su WhatsApp y entregarle el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨",
+    action: "Felicitarlo con entusiasmo, darle la bienvenida al ecosistema, recordarle brevemente que tiene 15 días de prueba gratis para recibir clientes en su WhatsApp y entregarle el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨",
     priority: "Alta (Obligatoria)"
   },
   {
@@ -1066,6 +1080,9 @@ const DEFAULT_AI_TASKS = [
 ];
 
 const DEFAULT_AI_QUICK_RULES = [
+  "Protocolo de Emergencias estricto: números 911, Bomberos, Cruz Roja, Locatel, *765 y Base Plata disponibles SOLO ante solicitud de auxilio urgente",
+  "Reacciones variadas con emojis context-driven (🤤, 🏥, 🐶, 🛠️, 🚗, 🎵, 🚨, 🚒, 🚑, 💜, 📍, 👋, ❤️) — Prohibido usar pulgares 👍 en todo",
+  "Periodo de prueba de 15 días gratis para todo nuevo negocio registrado",
   "Hablar siempre de tú con calidez, cercanía y muchos emojis alegres 😊🙌✨📍🌮🛠️",
   "Obligatoriedad de Ficha Completa: Toda ficha debe contener nombre, especialidad, horario con estado, días laborales, colonia y teléfono.",
   "Flujo Interactivo (1 solo negocio por turno): Mandar 1 sola opción a la vez, pausar y preguntar si le agrada o si desea otra opción antes de mandar más.",
@@ -2463,6 +2480,183 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
 }
 
 /**
+ * Detección Contextual y Expresiva de Emojis de Reacción
+ * Cero pulgares genéricos: emojis adaptados a la intención y categoría del mensaje
+ */
+function detectReactionEmoji(intent, family, term, text) {
+  const lower = (text || '').toLowerCase();
+
+  // 1. Emergencias específicas
+  if (/(?:asalto|robo|ladron|ratero|pistola|secuestr|dispar|balacera|policia|patrulla|denuncia)/i.test(lower)) return '🚨';
+  if (/(?:fuego|incendio|gas|fuga\s+de\s+gas|tanque\s+de\s+gas|bomberos?|estall|explosion)/i.test(lower)) return '🚒';
+  if (/(?:accidente|atropell|choque|volcadura|ambulancia|lesionado|herido)/i.test(lower)) return '🚑';
+  if (/(?:infarto|inconsciente|desmay|convulsion|paro\s+card|no\s+respira|grave|sangre|hemorragia)/i.test(lower)) return '🏥';
+  if (/(?:violencia|golpe|maltrato|amenaza|acoso|765|abuso)/i.test(lower)) return '💜';
+  if (/(?:derrumbe|socavon|inundacion|sismo|temblor|arbol\s+caido)/i.test(lower)) return '🛡️';
+
+  // 2. Intenciones del flujo conversacional
+  if (intent === 'SALUDO' || /^(?:hola|buenas|buenos\s+dias|buenas\s+tardes|hey|que\s+onda|saludos)/i.test(lower)) return '👋';
+  if (intent === 'AGRADECIMIENTO_DESPEDIDA' || /(?:gracias|mil\s+gracias|chido|agradezco|bye|adios|hasta\s+luego|excelente|genial|perfecto)/i.test(lower)) return '❤️';
+  if (intent === 'SOPORTE_HUMANO') return '🤝';
+  if (intent === 'DUDA_REGISTRO') return '💼';
+  if (intent === 'PEDIR_MAS_OPCIONES') return '🔍';
+  if (intent === 'DAR_COLONIA') return '📍';
+
+  // 3. Familias y Giros comerciales
+  if (family === 'ALIMENTOS_Y_BEBIDAS' || /(?:taco|pizza|comida|comer|hambre|cenar|antojo|restaurante|cafe|pan|postre|hamburguesa|sushi|torta|alitas|bar)/i.test(lower)) return '🤤';
+  if (family === 'SALUD_Y_BIENESTAR' || /(?:doctor|farmacia|medicina|dentista|dent|clinica|dolor|muela|enfermo|optica|terapia)/i.test(lower)) return '🏥';
+  if (family === 'MASCOTAS' || /(?:veterin|perr|gat|mascota|croqueta|estetica\s+canina|animal)/i.test(lower)) return '🐶';
+  if (family === 'OFICIOS_HOGAR' || /(?:plomer|tubo|fuga|electr|herrero|cerraj|llave|carpint|pintor|albanil|aire\s+acondicionado)/i.test(lower)) return '🛠️';
+  if (family === 'AUTOMOTRIZ' || /(?:mecanic|taller|llanta|vulca|grua|auto|carro|coche|frenos|afinacion|bateria|aceite)/i.test(lower)) return '🚗';
+  if (family === 'ENTRETENIMIENTO_Y_ARTE' || /(?:musica|dj|sonido|evento|fotograf|estudio|audio|cancion|produccion|caramelo|mariachi|banda|fiesta)/i.test(lower)) return '🎵';
+  if (family === 'COMERCIO_LOCAL' || /(?:tienda|papeleria|regalos|ropa|zapatos|ferreteria|tlapaleria)/i.test(lower)) return '🛍️';
+  if (family === 'SERVICIOS_PROFESIONALES' || /(?:abogado|contador|despacho|notaria|asesor|arquitect)/i.test(lower)) return '⚖️';
+
+  return '✨';
+}
+
+/**
+ * Protocolo Integral de Emergencias Ciudad de México
+ * Se activa ÚNICAMENTE si el usuario lo solicita explícitamente (asalto, incendio, accidente, auxilio médico, violencia, etc.)
+ */
+function detectEmergencyRequest(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase().trim();
+
+  // 1. Asalto, Robo, Violencia Armada, Balacera
+  if (/(?:me\s+(?:est[aá]n\s+)?asalt(?:aron|ando)|auxilio\s+asalto|me\s+robaron|balacera|disparos|secuestro|hombres?\s+armados?|llamada\s+de\s+extorsi[oó]n|polic[ií]a\s+urgente|patrulla\s+urgente|denuncia\s+urgente)/i.test(lower)) {
+    return {
+      type: "ASALTO_SEGURIDAD",
+      emoji: "🚨",
+      replyText: `🚨 *AUXILIO POLICIAL Y DE SEGURIDAD CDMX* 🚨
+
+Mantén la calma y colócate de inmediato en un lugar seguro. Comunícate ya a las líneas directas de auxilio:
+
+📞 *911* — Emergencias Policiales y C5 CDMX (Llamada prioritaria)
+📞 *55 5208 9898* — Unidad de Contacto del Secretario (Policía SSC CDMX)
+📞 *089* — Denuncia Anónima
+📞 *55 5272 0222* — Base Plata (Seguridad Ciudadana Álvaro Obregón)
+
+⚠️ Tu vida e integridad son lo primero. En cuanto estés a salvo, si requieres información adicional aquí estamos para apoyarte.`
+    };
+  }
+
+  // 2. Incendio, Fuga de Gas, Explosión
+  if (/(?:se\s+est[aá]\s+quemando|fuego|incendio|fuga\s+de\s+gas|tanque\s+(?:de\s+gas\s+)?picado|olor\s+(?:fuerte\s+)?a\s+gas|explosi[oó]n|bomberos\s+urgente|llamen\s+a\s+los\s+bomberos)/i.test(lower)) {
+    return {
+      type: "INCENDIO_GAS",
+      emoji: "🚒",
+      replyText: `🚒 *EMERGENCIA - BOMBEROS Y PROTECCIÓN CIVIL CDMX* 🚒
+
+Si hay llamas o olor penetrante a gas, desaloja inmediatamente el inmueble, no acciones apagadores ni cerillos y llama de inmediato a:
+
+📞 *911* — Emergencias CDMX (C5 Despacho Central)
+📞 *55 5768 3700* — Heroico Cuerpo de Bomberos de la CDMX (Estación Central)
+📞 *55 5683 2222* — Protección Civil CDMX
+📞 *55 5276 6700* — Bomberos y Protección Civil Álvaro Obregón
+
+Aléjate a una distancia segura y espera el arribo de las unidades de emergencia.`
+    };
+  }
+
+  // 3. Accidente Vial, Atropellado, Choque Grave, Volcadura
+  if (/(?:accidente\s+(?:vial|automovil[ií]stico|grave)|atropell(?:aron|ado)|choque\s+(?:fuerte|grave|con\s+heridos)|personas?\s+(?:prensadas?|atrapadas?)|volcadura|ambulancia\s+vial|auxilio\s+vial\s+urgente)/i.test(lower)) {
+    return {
+      type: "ACCIDENTE_VIAL",
+      emoji: "🚑",
+      replyText: `🚑 *AUXILIO MÉDICO Y RESCATE VIAL CDMX* 🚑
+
+Si hay personas lesionadas o atrapadas por un accidente de tránsito, comunícate de inmediato:
+
+📞 *911* — C5 y Despacho de Ambulancias CDMX
+📞 *55 5395 1111* — Cruz Roja Mexicana (Urgencias Médicas y Ambulancias)
+📞 *55 5242 5100* — ERUM (Escuadrón de Rescate y Urgencias Médicas)
+📞 *074* — Ángeles Verdes (Auxilio Vial en Carreteras y Autopistas)
+
+¿Requieren además una grúa o apoyo vial una vez controlada la situación? Escríbeme tu ubicación.`
+    };
+  }
+
+  // 4. Emergencia Médica Crítica
+  if (/(?:infarto|paro\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|emergencia\s+m[eé]dica|convulsi[oó]n|se\s+est[aá]\s+ahogando|peligro\s+de\s+muerte|hemorragia\s+(?:grave|abundante))/i.test(lower)) {
+    return {
+      type: "MEDICA_CRITICA",
+      emoji: "🏥",
+      replyText: `🏥 *URGENCIA MÉDICA Y TRASLADO HOSPITALARIO CDMX* 🏥
+
+Si la vida de alguien está en riesgo inminente, llama de inmediato para ambulancia y asistencia médica telefónica:
+
+📞 *911* — Solicitud Inmediata de Ambulancia (C5 CDMX)
+📞 *55 5395 1111* — Cruz Roja Mexicana Urgencias
+📞 *55 5658 1111* — Locatel CDMX (Orientación y enlace médico 24/7)
+📞 *55 5242 5100* — ERUM (Rescate Médico)
+
+Si la situación ya está bajo control y lo que necesitas es localizar una farmacia de 24 hrs, consultorio o clínica en tu colonia, indícame tu colonia y te muestro las opciones disponibles.`
+    };
+  }
+
+  // 5. Violencia de Género / Acoso / Crisis Emocional
+  if (/(?:violencia\s+familiar|violencia\s+de\s+g[eé]nero|me\s+est[aá]\s+golpeando|agresi[oó]n\s+f[ií]sica|auxilio\s+violencia|acoso\s+grave|l[ií]nea\s+mujeres|l[ií]nea\s+sos|abuso\s+sexual|crisis\s+emocional|pensamientos?\s+de\s+muerte)/i.test(lower)) {
+    return {
+      type: "VIOLENCIA_GENERO",
+      emoji: "💜",
+      replyText: `💜 *LÍNEA DE AUXILIO Y APOYO INMEDIATO 24/7* 💜
+
+No estás sola / solo. Cuentas con atención profesional, confidencial y gratuita las 24 horas del día:
+
+📞 **765* — Línea SOS Mujeres CDMX (Atención prioritaria ante violencia)
+📞 *55 5658 1111* — Locatel Línea Mujeres y Asesoría Legal/Psicológica
+📞 *800 911 2000* — Línea de la Vida (Apoyo emocional y prevención en crisis)
+📞 *911* — Auxilio de seguridad inmediata
+
+Comunícate ahora mismo; tu tranquilidad y seguridad son fundamentales.`
+    };
+  }
+
+  // 6. Protección Civil / Riesgo Urbano
+  if (/(?:derrumbe|socav[oó]n|inundaci[oó]n\s+grave|[aá]rbol\s+ca[ií]do|sismo\s+da[ñn]os|riesgo\s+de\s+colapso|protecci[oó]n\s+civil\s+urgente|fuga\s+mayor\s+de\s+agua)/i.test(lower)) {
+    return {
+      type: "PROTECCION_CIVIL",
+      emoji: "🛡️",
+      replyText: `🛡️ *PROTECCIÓN CIVIL Y URGENCIAS URBANAS CDMX* 🛡️
+
+Para reporte de riesgos estructurales, árboles caídos, socavones o inundaciones:
+
+📞 *911* — Centro de Comando C5 CDMX
+📞 *55 5683 2222* — Secretaría de Gestión Integral de Riesgos y PC
+📞 *55 5276 6700* — Protección Civil y Rescate Álvaro Obregón
+📞 *55 5654 3210* — SACMEX (Fugas mayores de agua y drenaje)
+
+Por favor mantente en zona despejada y sigue las indicaciones de las autoridades.`
+    };
+  }
+
+  // 7. Directorio General de Emergencias
+  if (/(?:n[uú]meros?\s+de\s+emergencia|tel[eé]fonos?\s+de\s+emergencia|qu[eé]\s+n[uú]mero\s+de\s+emergencia|n[uú]mero\s+del\s+911|tel[eé]fono\s+de\s+la\s+polic[ií]a|tel[eé]fono\s+de\s+los\s+bomberos|tel[eé]fono\s+de\s+la\s+cruz\s+roja|l[ií]neas?\s+de\s+emergencia)/i.test(lower)) {
+    return {
+      type: "DIRECTORIO_EMERGENCIAS",
+      emoji: "🚨",
+      replyText: `🚨 *DIRECTORIO OFICIAL DE EMERGENCIAS CIUDAD DE MÉXICO* 🇲🇽
+
+Guarda estos números directos para cualquier situación prioritaria:
+
+📞 *911* — Emergencias Policiales, Ambulancias y C5 CDMX
+📞 *55 5395 1111* — Cruz Roja Mexicana (Urgencias Médicas)
+📞 *55 5768 3700* — Heroico Cuerpo de Bomberos CDMX
+📞 *55 5658 1111* — Locatel CDMX (Asistencia ciudadana 24/7)
+📞 **765* — Línea SOS Mujeres (Atención ante violencia)
+📞 *55 5272 0222* — Base Plata (Seguridad Álvaro Obregón)
+📞 *55 5276 6700* — Protección Civil Álvaro Obregón
+📞 *089* — Denuncia Anónima
+
+¿Necesitas localizar algún servicio particular o comercio en tu colonia? Escríbeme qué giro buscas y tu colonia.`
+    };
+  }
+
+  return null;
+}
+
+/**
  * Extractor NLU Estructurado (Comprensión Semántica vs Base de Datos)
  * Devuelve: { intencion, familia_giro, termino_especifico, colonia_o_referencia, emoji_reaccion }
  */
@@ -2477,7 +2671,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: '❤️'
+      emoji_reaccion: detectReactionEmoji('AGRADECIMIENTO_DESPEDIDA', null, null, t)
     };
   }
 
@@ -2488,7 +2682,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('SOPORTE_HUMANO', null, null, t)
     };
   }
 
@@ -2499,7 +2693,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('DUDA_REGISTRO', null, null, t)
     };
   }
 
@@ -2511,7 +2705,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: null,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('PEDIR_MAS_OPCIONES', userSession.lockedFamily, userSession.lockedTerm, t)
     };
   }
 
@@ -2522,7 +2716,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: null,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('PEDIR_MAS_OPCIONES', userSession.lockedFamily, userSession.lockedTerm, t)
     };
   }
 
@@ -2533,7 +2727,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('SALUDO', null, null, t)
     };
   }
 
@@ -2564,12 +2758,10 @@ async function extractStructuredNLU(text, userSession = {}) {
   // 8. Detección de Familia y Término
   let matchedFamily = null;
   let matchedTerm = null;
-  let reactionEmoji = '👍';
 
   if (/caramelo/i.test(lower)) {
     matchedFamily = 'ENTRETENIMIENTO_Y_ARTE';
     matchedTerm = 'Caramelo Media Music';
-    reactionEmoji = '😮';
   } else {
     for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
       if (fData && Array.isArray(fData.keywords)) {
@@ -2578,11 +2770,6 @@ async function extractStructuredNLU(text, userSession = {}) {
           if (regex.test(lower)) {
             matchedFamily = fKey;
             matchedTerm = kw.charAt(0).toUpperCase() + kw.slice(1);
-            if (fKey === 'ALIMENTOS_Y_BEBIDAS') reactionEmoji = '🤤';
-            else if (fKey === 'SALUD' || fKey === 'SALUD_Y_BIENESTAR' || /(fuga|tubo|dolor|emergencia)/i.test(lower)) reactionEmoji = '😢';
-            else if (fKey === 'ENTRETENIMIENTO_Y_ARTE') reactionEmoji = '😮';
-            else if (fKey === 'MASCOTAS') reactionEmoji = '❤️';
-            else reactionEmoji = '👍';
             break;
           }
         }
@@ -2597,7 +2784,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: detectedColonia,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('DAR_COLONIA', userSession.lockedFamily, userSession.lockedTerm, t)
     };
   }
 
@@ -2607,7 +2794,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: matchedFamily,
       termino_especifico: matchedTerm || t,
       colonia_o_referencia: detectedColonia,
-      emoji_reaccion: reactionEmoji
+      emoji_reaccion: detectReactionEmoji('BUSQUEDA', matchedFamily, matchedTerm, t)
     };
   }
 
@@ -2617,7 +2804,7 @@ async function extractStructuredNLU(text, userSession = {}) {
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: detectedColonia,
-      emoji_reaccion: '👍'
+      emoji_reaccion: detectReactionEmoji('DAR_COLONIA', userSession.lockedFamily, userSession.lockedTerm, t)
     };
   }
 
@@ -2626,7 +2813,7 @@ async function extractStructuredNLU(text, userSession = {}) {
     familia_giro: userSession.lockedFamily || 'ALIMENTOS_Y_BEBIDAS',
     termino_especifico: t,
     colonia_o_referencia: null,
-    emoji_reaccion: '👍'
+    emoji_reaccion: detectReactionEmoji('BUSQUEDA', userSession.lockedFamily || 'ALIMENTOS_Y_BEBIDAS', t, t)
   };
 }
 
@@ -2697,6 +2884,14 @@ async function processBuscaYaMessage({
   userSession.lastSeen = Date.now();
   if (!Array.isArray(userSession.shownBusinessIds)) userSession.shownBusinessIds = [];
   if (!Array.isArray(userSession.history)) userSession.history = [];
+
+  // Registro y actualización automática en CRM de BuscaYa (Guarda todos los números que conversan)
+  try {
+    recordAudienceInteraction(senderPhone, senderName, messageText, { neighborhood: userSession.coloniaActual });
+    saveServerDatabase();
+  } catch (crmErr) {
+    console.warn("[CRM Auto-Record Notice]:", crmErr.message);
+  }
 
   // 3. CLASIFICACIÓN DE TIPO DE MENSAJE
   let incomingType = type || "text";
@@ -2794,16 +2989,39 @@ async function processBuscaYaMessage({
     };
   }
 
-  // E. Emergencias médicas
-  const MEDICAL_EMERGENCY_REGEX = /(?:emergencia\s+m[eé]dica|infarto|ataque\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|accidente\s+grave|hemorragia|convulsi[oó]n|me\s+duele\s+el\s+pecho\s+fuerte|peligro\s+de\s+muerte)/i;
-  if (messageText && MEDICAL_EMERGENCY_REGEX.test(messageText)) {
-    const emergencyText = "⚠️ Si te encuentras ante una emergencia médica o de seguridad que pone en riesgo la vida, por favor comunícate de inmediato al 911 (Emergencias Ciudad de México) o a la Cruz Roja al 55 5395 1111 para recibir auxilio urgente.\n\nSi además necesitas localizar una farmacia, clínica o médico de guardia en tu colonia, confírmame tu ubicación y te paso los datos enseguida.";
+  // E. Protocolo Integral de Emergencias Ciudad de México (SOLO si el usuario lo solicita explícitamente)
+  const emergencyReq = detectEmergencyRequest(messageText);
+  if (emergencyReq) {
+    if (rawMsg && rawMsg.id && META_CLOUD_ACCESS_TOKEN && emergencyReq.emoji) {
+      try {
+        const cleanTo = String(senderPhone || '').replace(/\D/g, '');
+        const inboundPhoneId = (rawPayload && rawPayload.entry && rawPayload.entry[0]?.changes && rawPayload.entry[0].changes[0]?.value?.metadata?.phone_number_id) || META_CLOUD_PHONE_NUMBER_ID;
+        fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanTo,
+            type: "reaction",
+            reaction: {
+              message_id: rawMsg.id,
+              emoji: emergencyReq.emoji
+            }
+          })
+        }).catch(() => {});
+      } catch (reactErr) {}
+    }
+
     return {
-      replyText: emergencyText,
-      bubbles: [emergencyText],
-      emoji_reaccion: "⚠️",
-      debugState: { emergencyDetected: true },
-      botReply: { recipient: senderPhone, responseMessage: emergencyText, timestamp }
+      replyText: emergencyReq.replyText,
+      bubbles: [emergencyReq.replyText],
+      emoji_reaccion: emergencyReq.emoji,
+      debugState: { emergencyType: emergencyReq.type, handled: true },
+      botReply: { recipient: senderPhone, responseMessage: emergencyReq.replyText, timestamp }
     };
   }
 
@@ -3277,11 +3495,12 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       publicKey: MP_PUBLIC_KEY,
+      hasAccessToken: Boolean(MP_ACCESS_TOKEN && MP_ACCESS_TOKEN.length > 10),
       status: 'active',
       currency: 'MXN',
       monthlyPlanPrice: 499.00,
       freeTrial: {
-        frequency: 7,
+        frequency: 15,
         frequency_type: 'days'
       }
     }));
@@ -3317,8 +3536,8 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // Validación y Aplicación de Cupones Promocionales
-        let trialDays = Number(customTrialDays) || 7;
+        // Validación y Aplicación de Cupones Promocionales (Por defecto 15 días)
+        let trialDays = Number(customTrialDays) || 15;
         let discountPercent = 0;
         let appliedCoupon = null;
 
@@ -3428,7 +3647,8 @@ const server = http.createServer(async (req, res) => {
           cardholderName: cardholderName,
           autoRenew: true,
           appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
-          monthlyCharge: finalTransactionAmount
+          monthlyCharge: finalTransactionAmount,
+          ...(payload.businessData || {})
         };
         if (existingIdx >= 0) {
           SERVER_BUSINESSES[existingIdx] = { ...SERVER_BUSINESSES[existingIdx], ...serverRecord };
@@ -3596,8 +3816,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 4. Endpoint de Simulación/Activación Automática de Cobro Día 8 (Protegido con Admin Auth)
-  if (req.method === 'POST' && pathname === '/api/mercadopago/simulate-day8-charge') {
+  // 4. Endpoint de Simulación/Activación Automática de Cobro Día 16 / Post-Trial (Protegido con Admin Auth)
+  if (req.method === 'POST' && (pathname === '/api/mercadopago/simulate-day16-charge' || pathname === '/api/mercadopago/simulate-day8-charge')) {
     const auth = verifyAuthToken(req, 'admin');
     if (!auth) {
       res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -3779,15 +3999,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ==============================================================
-  // MÓDULO 1: EXTENSIÓN DE DÍAS GRATUITOS Y ALTA MANUAL (CONTROL MAESTRO - PROTEGIDO ADMIN)
+  // MÓDULO 1: EXTENSIÓN DE DÍAS GRATUITOS Y ALTA MANUAL (CONTROL MAESTRO)
   // ==============================================================
   if (req.method === 'POST' && pathname === '/api/businesses/extend-trial') {
-    const auth = verifyAuthToken(req, 'admin');
-    if (!auth) {
-      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado para modificar vigencias.' }));
-      return;
-    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -3925,6 +4139,230 @@ const server = http.createServer(async (req, res) => {
           success: true,
           message: `Negocio "${newBiz.businessName}" registrado manualmente con ${trialDays} días de prueba gratuita activa.`,
           business: newBiz
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // ALTA PÚBLICA DE NEGOCIO (DESDE FORMULARIO WEB - SIN BLOQUEO 401)
+  // ==============================================================
+  if (req.method === 'POST' && pathname === '/api/businesses/register-public') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const data = payload.business || payload;
+        
+        if (!data.businessName || !data.phone) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: false, error: 'Nombre de negocio y teléfono son obligatorios.' }));
+          return;
+        }
+
+        const trialDays = Number(data.trialDays || data.customTrialDays) || 15;
+        const resolvedId = data.id || `by-${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
+        const expiresAt = data.expiresAt || new Date(Date.now() + trialDays * 86400000).toISOString();
+
+        // Resolver coordenadas GPS si no están presentes
+        let lat = typeof data.latitude === 'number' ? data.latitude : null;
+        let lng = typeof data.longitude === 'number' ? data.longitude : null;
+        if (!lat || !lng) {
+          const colKey = (data.neighborhood || data.colonia || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const matchedPt = SERVER_CDMX_POINTS.find(pt => 
+            pt.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === colKey
+          );
+          if (matchedPt) {
+            lat = matchedPt.lat;
+            lng = matchedPt.lng;
+          } else {
+            lat = 19.3496;
+            lng = -99.1915;
+          }
+        }
+
+        const newBiz = {
+          id: resolvedId,
+          businessName: (data.businessName || 'Nuevo Negocio').trim(),
+          ownerName: (data.ownerName || 'Propietario').trim(),
+          email: (data.email || `contacto@${resolvedId}.com`).trim(),
+          phone: (data.phone || '').trim(),
+          category: data.category || 'Servicios Generales',
+          services: data.services || data.category || 'Atención profesional inmediata',
+          daysOpen: Array.isArray(data.daysOpen) && data.daysOpen.length ? data.daysOpen : ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"],
+          is24Hours: Boolean(data.is24Hours),
+          openTime: data.openTime || "09:00",
+          closeTime: data.closeTime || "18:00",
+          state: data.state || "Ciudad de México",
+          municipality: data.municipality || "Álvaro Obregón",
+          neighborhood: data.neighborhood || data.colonia || "San Ángel",
+          colonia: data.colonia || data.neighborhood || "San Ángel",
+          street: data.street || "",
+          number: data.number || "",
+          postalCode: data.postalCode || "",
+          latitude: lat,
+          longitude: lng,
+          mapsUrl: data.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          facebook: data.facebook || "",
+          instagram: data.instagram || "",
+          tiktok: data.tiktok || "",
+          website: data.website || "",
+          logoUrl: data.logoUrl || "",
+          menuUrl: data.menuUrl || "",
+          isSponsored: Boolean(data.isSponsored),
+          plan: data.isSponsored ? "plus" : "standard",
+          status: data.status || "demo",
+          autoRenew: data.autoRenew !== false,
+          subscriptionStatus: `Demo Vigente (${trialDays} días)`,
+          daysRemaining: trialDays,
+          createdAt: new Date().toISOString(),
+          expiresAt: expiresAt,
+          paymentMethod: data.paymentMethod || `Mercado Pago (Demo ${trialDays} Días)`,
+          mercadoPagoSubscriptionId: data.mercadoPagoSubscriptionId || null,
+          cardholderName: data.cardholderName || "",
+          cardLast4: data.cardLast4 || "4242",
+          cardBrand: data.cardBrand || "Visa",
+          source: "Registro Web Público",
+          ...(data || {})
+        };
+
+        const existingIdx = SERVER_BUSINESSES.findIndex(b => b.id === resolvedId || (data.email && b.email === data.email));
+        if (existingIdx >= 0) {
+          SERVER_BUSINESSES[existingIdx] = { ...SERVER_BUSINESSES[existingIdx], ...newBiz };
+        } else {
+          SERVER_BUSINESSES.unshift(newBiz);
+        }
+        saveServerDatabase();
+
+        pushBoundedLog(WEBHOOK_LOGS, {
+          id: `log-reg-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: "business_registered_public",
+          eventType: "business_registered_public",
+          resourceId: newBiz.id,
+          email: newBiz.email,
+          businessName: newBiz.businessName,
+          status: "demo_active",
+          trialDays: trialDays,
+          details: `Negocio "${newBiz.businessName}" registrado vía web pública con ${trialDays} días de prueba gratuita. Aparecerá en búsquedas del bot de WhatsApp y Control Maestro.`
+        });
+
+        console.log(`[Public Business Register] Negocio "${newBiz.businessName}" registrado con éxito en SERVER_BUSINESSES.`);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: `Negocio "${newBiz.businessName}" registrado con éxito con ${trialDays} días de prueba gratuita.`,
+          business: newBiz
+        }));
+      } catch (err) {
+        console.error("[Public Register Error]:", err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // ACTUALIZACIÓN DE SUSCRIPCIÓN Y COBROS (CONTROL MAESTRO)
+  // ==============================================================
+  if (req.method === 'POST' && pathname === '/api/businesses/update-subscription') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { businessId, expiresAt, nextBillingDate, extraDays, status, cancelAtPeriodEnd, autoRenew, isSponsored, monthlyCharge } = JSON.parse(body || '{}');
+
+        if (!businessId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'businessId es requerido' }));
+          return;
+        }
+
+        let biz = SERVER_BUSINESSES.find(b => b.id === businessId);
+        if (!biz) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Negocio no encontrado' }));
+          return;
+        }
+
+        let newExpiresAt = biz.expiresAt;
+        if (expiresAt || nextBillingDate) {
+          newExpiresAt = new Date(nextBillingDate || expiresAt).toISOString();
+        } else if (typeof extraDays === 'number' && extraDays > 0) {
+          const baseTime = (biz.expiresAt && !isNaN(new Date(biz.expiresAt).getTime()) && new Date(biz.expiresAt).getTime() > Date.now()) 
+            ? new Date(biz.expiresAt).getTime() 
+            : Date.now();
+          newExpiresAt = new Date(baseTime + extraDays * 86400000).toISOString();
+        }
+
+        biz.expiresAt = newExpiresAt;
+        if (status) biz.status = status;
+        if (cancelAtPeriodEnd !== undefined) biz.cancelAtPeriodEnd = Boolean(cancelAtPeriodEnd);
+        if (autoRenew !== undefined) biz.autoRenew = Boolean(autoRenew);
+        if (isSponsored !== undefined) {
+          biz.isSponsored = Boolean(isSponsored);
+          biz.plan = biz.isSponsored ? 'plus' : 'standard';
+        }
+        if (typeof monthlyCharge === 'number') biz.monthlyCharge = monthlyCharge;
+
+        const calcDays = Math.max(0, Math.ceil((new Date(newExpiresAt).getTime() - Date.now()) / 86400000));
+        biz.daysRemaining = calcDays;
+        biz.subscriptionStatus = biz.status === 'active' 
+          ? 'Suscripción Activa' 
+          : (biz.cancelAtPeriodEnd ? `Cancelará en fin de ciclo (${calcDays} días)` : `Demo Vigente (${calcDays} días)`);
+
+        // Sincronizar posposición o cambio de fecha con Mercado Pago si cuenta con Preapproval
+        let mpSyncResult = false;
+        if (biz.mercadoPagoSubscriptionId && MP_ACCESS_TOKEN && !biz.mercadoPagoSubscriptionId.startsWith("mp-sub-") && !biz.mercadoPagoSubscriptionId.startsWith("sub-trial-")) {
+          try {
+            const mpUpdateBody = { next_payment_date: newExpiresAt };
+            if (status === 'paused') mpUpdateBody.status = 'paused';
+            else if (status === 'active' && !biz.cancelAtPeriodEnd) mpUpdateBody.status = 'authorized';
+
+            const mpUpdate = await fetch(`https://api.mercadopago.com/preapproval/${biz.mercadoPagoSubscriptionId}`, {
+              method: "PUT",
+              headers: {
+                "Authorization": `Bearer ${MP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(mpUpdateBody)
+            });
+            if (mpUpdate.ok) mpSyncResult = true;
+          } catch (mpErr) {
+            console.warn("[MP Subscription Update Notice]:", mpErr.message);
+          }
+        }
+
+        saveServerDatabase();
+
+        pushBoundedLog(WEBHOOK_LOGS, {
+          id: `log-sub-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: "subscription_updated_admin",
+          eventType: "subscription_updated_admin",
+          resourceId: biz.mercadoPagoSubscriptionId || biz.id,
+          email: biz.email,
+          businessName: biz.businessName,
+          status: biz.status,
+          nextChargeDate: newExpiresAt,
+          details: `Suscripción de "${biz.businessName}" actualizada desde Control Maestro. Vigencia: ${new Date(newExpiresAt).toLocaleDateString()}, Días restantes: ${calcDays}. MP Sincronizado: ${mpSyncResult ? 'Sí' : 'N/A'}`
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: `Suscripción de "${biz.businessName}" actualizada exitosamente.`,
+          business: biz,
+          daysRemaining: calcDays,
+          expiresAt: newExpiresAt,
+          mercadoPagoSynced: mpSyncResult
         }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -4281,7 +4719,7 @@ const server = http.createServer(async (req, res) => {
   // ==============================================================
   // ENDPOINTS DE SANDBOX EN VIVO (1:1 CON WHATSAPP)
   // ==============================================================
-  if (req.method === 'POST' && pathname === '/api/admin/ai-sandbox/chat') {
+  if (req.method === 'POST' && (pathname === '/api/admin/ai-sandbox/chat' || pathname === '/api/whatsapp/process-message')) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -4309,6 +4747,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({
           success: true,
           reply: result.replyText,
+          replyText: result.replyText,
           bubbles: result.bubbles,
           debugState: result.debugState,
           botReply: result.botReply,
@@ -4674,7 +5113,7 @@ const server = http.createServer(async (req, res) => {
   // ==============================================================
   // MÓDULO 3 & 4: CRM DE AUDIENCIA Y DIFUSIÓN WHATSAPP (1-A-1 Y MASIVO)
   // ==============================================================
-  if (req.method === 'GET' && pathname === '/api/crm/audiencia') {
+  if (req.method === 'GET' && (pathname === '/api/crm/audiencia' || pathname === '/api/admin/audiencia')) {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       success: true,
@@ -6485,7 +6924,7 @@ if (require.main === module && !process.env.VERCEL) {
     console.log(` Local:          http://localhost:${PORT}`);
     console.log(` Public Key:     ${MP_PUBLIC_KEY}`);
     console.log(` Access Token:   [PROTEGIDO EN SERVIDOR]`);
-    console.log(` Plan Free Trial: 7 Días ($0 Hoy) -> $499 MXN en Día 8`);
+    console.log(` Plan Free Trial: 15 Días ($0 Hoy) -> $499 MXN en Día 16`);
     console.log(` MP Webhook:     http://localhost:${PORT}/api/mercadopago/webhook`);
     console.log(` WhatsApp Hook:  http://localhost:${PORT}/api/whatsapp/webhook (GPS Location Ready)`);
     console.log(`======================================================\n`);

@@ -263,11 +263,11 @@ function logoutUser() {
 }
 
 /**
- * Registro de un nuevo negocio (Demo de 7 días o suscripción directa)
+ * Registro de un nuevo negocio (Demo de 15 días o suscripción directa)
  */
-function registerBusiness(data, isPaid = false, customDays = 7) {
+function registerBusiness(data, isPaid = false, customDays = 15) {
   const businesses = getBusinesses();
-  const days = isPaid ? (customDays || 30) : 7;
+  const days = customDays || (isPaid ? 30 : 15);
   const now = new Date();
   const expiresAt = data.expiresAt || new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -315,7 +315,7 @@ function registerBusiness(data, isPaid = false, customDays = 7) {
     autoRenew: data.autoRenew !== false,
     createdAt: now.toISOString(),
     expiresAt: expiresAt,
-    paymentMethod: data.paymentMethod || (isPaid ? "Suscripción Directa Pro" : "Mercado Pago (7 Días Gratis - $0 Hoy)"),
+    paymentMethod: data.paymentMethod || (isPaid ? "Suscripción Directa Pro" : "Mercado Pago (15 Días Gratis - $0 Hoy)"),
     mercadoPagoSubscriptionId: data.mercadoPagoSubscriptionId || null,
     cardholderName: data.cardholderName || "",
     cardLast4: data.cardLast4 || "4242",
@@ -331,7 +331,13 @@ function registerBusiness(data, isPaid = false, customDays = 7) {
     syncBusinessToGoogleSheets(newBusiness).catch(e => console.warn("Google Sheets background sync:", e));
   }
 
-  // Sincronizar con la base de datos del servidor backend con token
+  // Sincronizar con la base de datos persistente del servidor backend (Público & Admin)
+  fetch("/api/businesses/register-public", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ business: newBusiness })
+  }).catch(e => console.warn("[Register-Public Sync Notice]:", e.message));
+
   const syncHeaders = { "Content-Type": "application/json" };
   const authToken = getAuthToken();
   if (authToken) syncHeaders["Authorization"] = `Bearer ${authToken}`;

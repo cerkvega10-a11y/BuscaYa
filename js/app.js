@@ -675,7 +675,7 @@ async function handleRegisterSubmit(event) {
   const resetRegisterSubmitBtn = () => {
     if (submitBtn) submitBtn.disabled = false;
     if (submitIcon) submitIcon.className = "fa-solid fa-circle-check text-xl";
-    if (submitText) submitText.textContent = "Activar mi Demo de 7 Días GRATIS";
+    if (submitText) submitText.textContent = "Activar mi Demo de 15 Días GRATIS";
     if (mpAlert) mpAlert.classList.add("hidden");
   };
 
@@ -964,7 +964,7 @@ function renderClientPanel() {
     daysText.textContent = `${daysRemaining} días restantes de suscripción`;
     statusIcon.className = "w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold bg-emerald-100 text-[#075E54]";
   } else if (effectiveStatus === "demo") {
-    statusTitle.textContent = "Demo de 7 Días";
+    statusTitle.textContent = "Demo de 15 Días";
     if (!business.cancelAtPeriodEnd) {
       statusPill.textContent = "Prueba Gratuita";
       statusPill.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
@@ -1930,7 +1930,7 @@ function renderAdminTable() {
     } else if (effStatus === "active") {
       statusBadge = '<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Suscripción Pro</span>';
     } else if (effStatus === "demo") {
-      statusBadge = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Demo (7 días)</span>';
+      statusBadge = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Demo (15 días)</span>';
     } else {
       statusBadge = '<span class="bg-red-100 text-red-800 font-black px-2 py-0.5 rounded-full text-[10px] inline-flex items-center space-x-1" title="Negocio excluido de las respuestas de la IA"><i class="fa-solid fa-ban text-red-600 text-[9px]"></i><span>Vencido / Pausado (Sin IA)</span></span>';
     }
@@ -3623,6 +3623,7 @@ function handleResetAiConfig() {
 function switchAdminSubTab(tabName) {
   const tabBtnDir = document.getElementById("adminTabBtnDirectory");
   const tabBtnAi = document.getElementById("adminTabBtnAiTraining");
+  const tabBtnBilling = document.getElementById("adminTabBtnBilling");
   const tabBtnCms = document.getElementById("adminTabBtnLandingCms");
   const tabBtnCoupons = document.getElementById("adminTabBtnCoupons");
   const tabBtnCrm = document.getElementById("adminTabBtnCrmBroadcast");
@@ -3632,6 +3633,7 @@ function switchAdminSubTab(tabName) {
 
   const contentDir = document.getElementById("adminTabContentDirectory");
   const contentAi = document.getElementById("adminTabContentAiTraining");
+  const contentBilling = document.getElementById("adminTabContentBilling");
   const contentCms = document.getElementById("adminTabContentLandingCms");
   const contentCoupons = document.getElementById("adminTabContentCoupons");
   const contentCrm = document.getElementById("adminTabContentCrmBroadcast");
@@ -3642,6 +3644,7 @@ function switchAdminSubTab(tabName) {
   // Ocultar todos los contenedores
   if (contentDir) contentDir.classList.add("hidden");
   if (contentAi) contentAi.classList.add("hidden");
+  if (contentBilling) contentBilling.classList.add("hidden");
   if (contentCms) contentCms.classList.add("hidden");
   if (contentCoupons) contentCoupons.classList.add("hidden");
   if (contentCrm) contentCrm.classList.add("hidden");
@@ -3653,6 +3656,7 @@ function switchAdminSubTab(tabName) {
   const inactiveBtnClass = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:bg-gray-100 border border-gray-300";
   if (tabBtnDir) tabBtnDir.className = inactiveBtnClass;
   if (tabBtnAi) tabBtnAi.className = inactiveBtnClass;
+  if (tabBtnBilling) tabBtnBilling.className = inactiveBtnClass;
   if (tabBtnCms) tabBtnCms.className = inactiveBtnClass;
   if (tabBtnCoupons) tabBtnCoupons.className = inactiveBtnClass;
   if (tabBtnCrm) tabBtnCrm.className = inactiveBtnClass;
@@ -3665,6 +3669,10 @@ function switchAdminSubTab(tabName) {
     if (tabBtnAi) tabBtnAi.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-purple-700 text-white shadow-md";
     loadAiTrainingConfigUI();
     loadMemorySettingsUI();
+  } else if (tabName === "billing") {
+    if (contentBilling) contentBilling.classList.remove("hidden");
+    if (tabBtnBilling) tabBtnBilling.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-emerald-700 text-white shadow-md";
+    loadBillingSubscriptionsTable();
   } else if (tabName === "landing-cms") {
     if (contentCms) contentCms.classList.remove("hidden");
     if (tabBtnCms) tabBtnCms.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-indigo-700 text-white shadow-md";
@@ -3696,6 +3704,298 @@ function switchAdminSubTab(tabName) {
     if (tabBtnDir) tabBtnDir.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-[#075E54] text-white shadow-md";
     loadViewSimulationUI();
     if (typeof loadBiweeklyReportsUI === "function") loadBiweeklyReportsUI();
+  }
+}
+
+// ==============================================================
+// GESTIÓN DE SUSCRIPCIONES Y COBROS MERCADO PAGO
+// ==============================================================
+let ALL_BILLING_SUBSCRIPTIONS = [];
+
+async function loadBillingSubscriptionsTable() {
+  try {
+    const res = await fetch("/api/businesses");
+    let businesses = [];
+    if (res.ok) {
+      const data = await res.json();
+      businesses = Array.isArray(data) ? data : (data.businesses || []);
+    } else {
+      businesses = typeof getBusinesses === "function" ? getBusinesses() : [];
+    }
+    ALL_BILLING_SUBSCRIPTIONS = businesses;
+
+    let totalCount = businesses.length;
+    let demosCount = 0;
+    let paidCount = 0;
+    let graceCount = 0;
+    let projectedRev = 0;
+
+    businesses.forEach(b => {
+      const isPaid = b.status === "active" || b.isSponsored;
+      const isDemo = b.status === "demo" || (!b.status && !isPaid);
+      if (b.cancelAtPeriodEnd) graceCount++;
+      if (isPaid) {
+        paidCount++;
+        projectedRev += (b.monthlyCharge || 300);
+      } else if (isDemo) {
+        demosCount++;
+      }
+    });
+
+    const elTotal = document.getElementById("billingStatTotal");
+    const elDemos = document.getElementById("billingStatDemos");
+    const elPaid = document.getElementById("billingStatPaid");
+    const elGrace = document.getElementById("billingStatGrace");
+    const elRev = document.getElementById("billingStatRevenue");
+
+    if (elTotal) elTotal.textContent = totalCount;
+    if (elDemos) elDemos.textContent = demosCount;
+    if (elPaid) elPaid.textContent = paidCount;
+    if (elGrace) elGrace.textContent = graceCount;
+    if (elRev) elRev.textContent = `$${projectedRev.toLocaleString()} MXN`;
+
+    renderBillingTable(businesses);
+  } catch (err) {
+    console.warn("[Billing Subscriptions Load Notice]:", err.message);
+  }
+}
+
+function renderBillingTable(businesses) {
+  const tbody = document.getElementById("billingSubscriptionsTableBody");
+  if (!tbody) return;
+
+  if (!businesses.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">No se encontraron suscripciones registradas.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = businesses.map(b => {
+    const isPaid = b.status === "active" || b.isSponsored;
+    const isGrace = !!b.cancelAtPeriodEnd;
+    const isPaused = b.status === "paused";
+    const daysRem = b.daysRemaining !== undefined ? b.daysRemaining : (typeof calculateDaysRemaining === 'function' ? calculateDaysRemaining(b.expiresAt) : 15);
+    
+    let statusBadge = "";
+    if (isGrace) {
+      statusBadge = `<span class="bg-rose-100 text-rose-800 border border-rose-300 font-bold px-2 py-0.5 rounded-full text-[10px]">🛑 Cancelará en fin de ciclo (${daysRem}d)</span>`;
+    } else if (isPaused) {
+      statusBadge = `<span class="bg-gray-100 text-gray-700 border border-gray-300 font-bold px-2 py-0.5 rounded-full text-[10px]">⏸️ Pausado</span>`;
+    } else if (isPaid) {
+      statusBadge = `<span class="bg-purple-100 text-purple-800 border border-purple-300 font-bold px-2 py-0.5 rounded-full text-[10px]">👑 VIP $300 Activo</span>`;
+    } else {
+      statusBadge = `<span class="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded-full text-[10px]">✨ Demo 15 Días (${daysRem}d restantes)</span>`;
+    }
+
+    const expStr = b.expiresAt ? new Date(b.expiresAt).toLocaleDateString("es-MX", { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Sin fecha programada";
+    const mpId = b.mercadoPagoSubscriptionId || "Registro Local";
+    const cleanId = String(b.id || "");
+    const safeName = (b.businessName || "Negocio").replace(/'/g, "\\'");
+
+    return `
+      <tr class="hover:bg-gray-50/80 transition-colors">
+        <td class="p-3.5">
+          <span class="font-extrabold text-gray-900 block text-xs">${b.businessName || "Sin Nombre"}</span>
+          <span class="text-[11px] text-gray-500 block">Titular: ${b.ownerName || "No especificado"}</span>
+          ${b.category ? `<span class="text-[10px] text-gray-400 block">${b.category} • ${b.neighborhood || 'CDMX'}</span>` : ''}
+        </td>
+        <td class="p-3.5">
+          <span class="font-mono text-gray-800 block text-xs">${b.phone || "Sin teléfono"}</span>
+          <span class="text-[11px] text-gray-500 block truncate max-w-[160px]">${b.email || "Sin email"}</span>
+        </td>
+        <td class="p-3.5">
+          ${statusBadge}
+          ${b.appliedCoupon ? `<span class="block text-[10px] text-emerald-700 font-bold mt-1">🎟️ Cupón: ${b.appliedCoupon}</span>` : ''}
+        </td>
+        <td class="p-3.5 font-mono text-xs text-gray-700">
+          <span>${expStr}</span>
+        </td>
+        <td class="p-3.5 font-mono text-[11px] text-gray-500 truncate max-w-[140px]" title="${mpId}">
+          ${mpId}
+        </td>
+        <td class="p-3.5 text-right space-x-1 shrink-0">
+          <button type="button" onclick="openModalBillingDate('${cleanId}', '${safeName}', '${b.expiresAt || ''}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition-all border border-emerald-200 cursor-pointer" title="Modificar fecha de corte/cobro">
+            📅 Fecha
+          </button>
+          <button type="button" onclick="handleAddGraceDays('${cleanId}', 7)" class="px-2 py-1.5 rounded-lg bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 text-[10px] font-bold border border-gray-200 cursor-pointer" title="Agregar 7 días de gracia">+7d</button>
+          <button type="button" onclick="handleAddGraceDays('${cleanId}', 15)" class="px-2 py-1.5 rounded-lg bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 text-[10px] font-bold border border-gray-200 cursor-pointer" title="Agregar 15 días de gracia">+15d</button>
+          <button type="button" onclick="handleAddGraceDays('${cleanId}', 30)" class="px-2 py-1.5 rounded-lg bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 text-[10px] font-bold border border-gray-200 cursor-pointer" title="Agregar 30 días de gracia">+30d</button>
+          <button type="button" onclick="handleTogglePauseSubscription('${cleanId}', '${b.status || 'active'}')" class="px-2.5 py-1.5 rounded-lg ${isPaused ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-50 text-amber-800'} text-[11px] font-bold border border-gray-200 cursor-pointer" title="${isPaused ? 'Reactivar servicio' : 'Pausar temporalmente'}">
+            ${isPaused ? '▶️' : '⏸️'}
+          </button>
+          <button type="button" onclick="handleCancelSubscriptionWithGrace('${cleanId}')" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold border border-rose-200 cursor-pointer" title="Cancelar renovación respetando días pagados restantes">
+            ❌
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function filterBillingTable() {
+  const query = (document.getElementById("billingSearchInput")?.value || "").toLowerCase().trim();
+  const filter = document.getElementById("billingStatusFilter")?.value || "all";
+
+  let filtered = ALL_BILLING_SUBSCRIPTIONS.filter(b => {
+    const textMatch = !query || 
+      (b.businessName || "").toLowerCase().includes(query) ||
+      (b.ownerName || "").toLowerCase().includes(query) ||
+      (b.email || "").toLowerCase().includes(query) ||
+      (b.phone || "").includes(query);
+
+    if (!textMatch) return false;
+
+    if (filter === "demo") return b.status === "demo" || (!b.status && !b.isSponsored);
+    if (filter === "active") return (b.status === "active" || b.isSponsored) && !b.cancelAtPeriodEnd;
+    if (filter === "cancelAtPeriodEnd") return !!b.cancelAtPeriodEnd;
+    if (filter === "paused") return b.status === "paused";
+    if (filter === "expired") return b.status === "expired";
+    return true;
+  });
+
+  renderBillingTable(filtered);
+}
+
+function openModalBillingDate(bizId, bizName, currentExpiresAt) {
+  const modal = document.getElementById("modalBillingDate");
+  const elId = document.getElementById("modalBillingBizId");
+  const elName = document.getElementById("modalBillingBizName");
+  const elInput = document.getElementById("modalBillingNewDateInput");
+
+  if (elId) elId.value = bizId;
+  if (elName) elName.textContent = bizName;
+
+  if (elInput) {
+    if (currentExpiresAt && !isNaN(new Date(currentExpiresAt).getTime())) {
+      const dt = new Date(currentExpiresAt);
+      const pad = n => String(n).padStart(2, '0');
+      elInput.value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    } else {
+      const dt = new Date(Date.now() + 15 * 86400000);
+      const pad = n => String(n).padStart(2, '0');
+      elInput.value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    }
+  }
+
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeModalBillingDate() {
+  const modal = document.getElementById("modalBillingDate");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function submitModalBillingDate() {
+  const bizId = document.getElementById("modalBillingBizId")?.value;
+  const newDateVal = document.getElementById("modalBillingNewDateInput")?.value;
+
+  if (!bizId || !newDateVal) {
+    showToast("Por favor selecciona una fecha válida.", "warning");
+    return;
+  }
+
+  const isoDate = new Date(newDateVal).toISOString();
+
+  try {
+    const res = await fetch("/api/businesses/update-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessId: bizId,
+        expiresAt: isoDate,
+        nextBillingDate: isoDate
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Fecha de cobro actualizada exitosamente.", "success");
+      closeModalBillingDate();
+      await loadBillingSubscriptionsTable();
+    } else {
+      showToast(data.error || "No se pudo actualizar la fecha.", "error");
+    }
+  } catch (err) {
+    showToast("Error al comunicar con el servidor: " + err.message, "error");
+  }
+}
+
+async function handleAddGraceDays(bizId, days) {
+  try {
+    const res = await fetch("/api/businesses/extend-trial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId: bizId, extraDays: days })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Se agregaron +${days} días exitosamente.`, "success");
+      await loadBillingSubscriptionsTable();
+    } else {
+      showToast(data.error || "Error al agregar días.", "error");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message, "error");
+  }
+}
+
+async function handleTogglePauseSubscription(bizId, currentStatus) {
+  const newStatus = currentStatus === "paused" ? "active" : "paused";
+  try {
+    const res = await fetch("/api/businesses/update-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId: bizId, status: newStatus })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Suscripción ${newStatus === 'paused' ? 'pausada' : 'reactivada'}.`, "success");
+      await loadBillingSubscriptionsTable();
+    } else {
+      showToast(data.error || "Error al actualizar estado.", "error");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message, "error");
+  }
+}
+
+async function handleCancelSubscriptionWithGrace(bizId) {
+  if (!confirm("¿Deseas cancelar la renovación de esta suscripción? El negocio conservará su visibilidad y servicio activo hasta concluir sus días restantes del periodo pagado.")) {
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/mercadopago/cancel-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId: bizId, reason: "Cancelación solicitada desde Control Maestro (Periodo de gracia activo)" })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast("Cancelación procesada: renovación detenida y días restantes respetados.", "success");
+      await loadBillingSubscriptionsTable();
+    } else {
+      showToast(data.error || "Error al procesar cancelación.", "error");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message, "error");
+  }
+}
+
+async function triggerDay16ChargeCheck() {
+  try {
+    showToast("Ejecutando verificación de cobros Día 16...", "info");
+    const res = await fetch("/api/mercadopago/cron-worker/run-now", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Chequeo completado: ${data.processedCount || 0} suscripciones evaluadas.`, "success");
+      await loadBillingSubscriptionsTable();
+    } else {
+      showToast("Chequeo ejecutado en segundo plano.", "success");
+    }
+  } catch (err) {
+    showToast("Aviso al ejecutar chequeo: " + err.message, "info");
   }
 }
 
@@ -5958,7 +6258,7 @@ async function submitExtendDaysForm() {
 const DEFAULT_PROMO_DATA = {
   bannerImage: "assets/promo-7dias.jpg",
   badge: "Promoción Especial de Lanzamiento",
-  title: "¡Prueba la Plataforma 7 Días GRATIS!",
+  title: "¡Prueba la Plataforma 15 Días GRATIS!",
   description: "¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.",
   buttonText: "¡Regístrate Hoy!",
   buttonLink: "register",
@@ -6047,8 +6347,8 @@ function syncPromoAdminInputs(cfg) {
   const urlInput = document.getElementById("promoImageUrlInput");
   const badgeInput = document.getElementById("promoBadgeInput");
   const titleInput = document.getElementById("promoTitleInput");
-  const descInput = document.getElementById("promoDescInput");
-  const btnInput = document.getElementById("promoBtnTextInput");
+  const descInput = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
   const waInput = document.getElementById("promoWaTextInput");
   const visibleInput = document.getElementById("promoIsVisibleInput");
 
@@ -6095,8 +6395,8 @@ function updatePromoLivePreview() {
   const urlInput = document.getElementById("promoImageUrlInput");
   const badgeInput = document.getElementById("promoBadgeInput");
   const titleInput = document.getElementById("promoTitleInput");
-  const descInput = document.getElementById("promoDescInput");
-  const btnInput = document.getElementById("promoBtnTextInput");
+  const descInput = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
   const waInput = document.getElementById("promoWaTextInput");
 
   const prevImg = document.getElementById("promoPreviewImg");
@@ -6110,7 +6410,7 @@ function updatePromoLivePreview() {
     prevImg.src = (urlInput && urlInput.value.trim()) ? urlInput.value.trim() : "assets/promo-7dias.jpg";
   }
   if (prevBadge && badgeInput) prevBadge.textContent = badgeInput.value || "Promoción Especial de Lanzamiento";
-  if (prevTitle && titleInput) prevTitle.textContent = titleInput.value || "¡Prueba la Plataforma 7 Días GRATIS!";
+  if (prevTitle && titleInput) prevTitle.textContent = titleInput.value || "¡Prueba la Plataforma 15 Días GRATIS!";
   if (prevDesc && descInput) prevDesc.textContent = descInput.value || "";
   if (prevBtn && btnInput) prevBtn.textContent = btnInput.value || "¡Regístrate Hoy!";
   if (prevWa && waInput) prevWa.textContent = waInput.value || "Probar Concierge en WhatsApp";
@@ -6122,8 +6422,8 @@ async function handleSavePromoBanner(event) {
   const urlInput = document.getElementById("promoImageUrlInput");
   const badgeInput = document.getElementById("promoBadgeInput");
   const titleInput = document.getElementById("promoTitleInput");
-  const descInput = document.getElementById("promoDescInput");
-  const btnInput = document.getElementById("promoBtnTextInput");
+  const descInput = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+  const btnInput = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
   const waInput = document.getElementById("promoWaTextInput");
   const visibleInput = document.getElementById("promoIsVisibleInput");
   const saveBtn = document.getElementById("btnSavePromoBanner");
@@ -6131,7 +6431,7 @@ async function handleSavePromoBanner(event) {
   const updatedConfig = {
     bannerImage: (urlInput && urlInput.value.trim()) ? urlInput.value.trim() : "assets/promo-7dias.jpg",
     badge: (badgeInput && badgeInput.value.trim()) ? badgeInput.value.trim() : "Promoción Especial de Lanzamiento",
-    title: (titleInput && titleInput.value.trim()) ? titleInput.value.trim() : "¡Prueba la Plataforma 7 Días GRATIS!",
+    title: (titleInput && titleInput.value.trim()) ? titleInput.value.trim() : "¡Prueba la Plataforma 15 Días GRATIS!",
     description: (descInput && descInput.value.trim()) ? descInput.value.trim() : "",
     buttonText: (btnInput && btnInput.value.trim()) ? btnInput.value.trim() : "¡Regístrate Hoy!",
     whatsappText: (waInput && waInput.value.trim()) ? waInput.value.trim() : "Probar Concierge en WhatsApp",
@@ -6837,12 +7137,12 @@ let CURRENT_LANDING_CMS = {
     badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
     title: "Encuentra lo que necesitas en segundos por WhatsApp",
     subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
-    ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+    ctaTrialText: "Prueba nuestro sistema por 15 días GRATIS",
     ctaChatText: "Probar Chat en Vivo"
   },
   sections: [
     { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
-    { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+    { id: "promo", name: "Banner Promoción 15 Días", visible: true, order: 2 },
     { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
     { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
     { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
@@ -6918,6 +7218,21 @@ function syncLandingCmsInputs(cms) {
     if (lbl) lbl.textContent = cBg.value;
   }
 
+  if (cms.promo) {
+    const promoUrl = document.getElementById("promoImageUrlInput");
+    const promoBadge = document.getElementById("promoBadgeInput");
+    const promoTitle = document.getElementById("promoTitleInput");
+    const promoDesc = document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput");
+    const promoCta = document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput");
+
+    if (promoUrl && cms.promo.bannerImage) promoUrl.value = cms.promo.bannerImage;
+    if (promoBadge && cms.promo.badge) promoBadge.value = cms.promo.badge;
+    if (promoTitle && cms.promo.title) promoTitle.value = cms.promo.title;
+    if (promoDesc && cms.promo.description) promoDesc.value = cms.promo.description;
+    if (promoCta && cms.promo.buttonText) promoCta.value = cms.promo.buttonText;
+    if (typeof updatePromoLivePreview === "function") updatePromoLivePreview();
+  }
+
   renderCmsSectionsList(cms.sections || []);
   updateLandingCmsPreview();
 }
@@ -6987,7 +7302,7 @@ function updateLandingCmsPreview() {
   if (prevBadge && bInput) prevBadge.textContent = bInput.value || "DIRECTORIO INTELIGENTE EN WHATSAPP";
   if (prevTitle && tInput) prevTitle.textContent = tInput.value || "Encuentra lo que necesitas en segundos por WhatsApp";
   if (prevSubtitle && sInput) prevSubtitle.textContent = sInput.value || "";
-  if (prevCta1 && cta1) prevCta1.textContent = cta1.value || "Prueba 7 días GRATIS";
+  if (prevCta1 && cta1) prevCta1.textContent = cta1.value || "Prueba 15 días GRATIS";
   if (prevCta2 && cta2) prevCta2.textContent = cta2.value || "Chat en Vivo";
 
   if (cPri) {
@@ -7027,7 +7342,7 @@ async function handleSaveLandingCms() {
     badge: bInput?.value?.trim() || "DIRECTORIO INTELIGENTE EN WHATSAPP",
     title: tInput?.value?.trim() || "Encuentra lo que necesitas en segundos por WhatsApp",
     subtitle: sInput?.value?.trim() || "",
-    ctaTrialText: cta1?.value?.trim() || "Prueba nuestro sistema por 7 días GRATIS",
+    ctaTrialText: cta1?.value?.trim() || "Prueba nuestro sistema por 15 días GRATIS",
     ctaChatText: cta2?.value?.trim() || "Probar Chat en Vivo"
   };
 
@@ -7037,6 +7352,25 @@ async function handleSaveLandingCms() {
     accent: cAcc?.value || "#25D366",
     bg: cBg?.value || "#F0F2F5"
   };
+
+  const promoUrl = document.getElementById("promoImageUrlInput")?.value?.trim();
+  const promoBadge = document.getElementById("promoBadgeInput")?.value?.trim();
+  const promoTitle = document.getElementById("promoTitleInput")?.value?.trim();
+  const promoDesc = (document.getElementById("promoSubtitleInput") || document.getElementById("promoDescInput"))?.value?.trim();
+  const promoCta = (document.getElementById("promoCtaBtnInput") || document.getElementById("promoBtnTextInput"))?.value?.trim();
+
+  if (promoUrl || promoTitle) {
+    CURRENT_LANDING_CMS.promo = {
+      bannerImage: promoUrl || "assets/promo-7dias.jpg",
+      badge: promoBadge || "Promoción Especial de Lanzamiento",
+      title: promoTitle || "¡Prueba la Plataforma 15 Días GRATIS!",
+      description: promoDesc || "",
+      buttonText: promoCta || "Activar 15 Días GRATIS"
+    };
+    if (typeof handleSavePromoBanner === "function") {
+      handleSavePromoBanner().catch(() => {});
+    }
+  }
 
   try {
     const res = await fetch("/api/cms/landing", {
@@ -7067,12 +7401,12 @@ async function handleResetLandingCms() {
       badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
       title: "Encuentra lo que necesitas en segundos por WhatsApp",
       subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
-      ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+      ctaTrialText: "Prueba nuestro sistema por 15 días GRATIS",
       ctaChatText: "Probar Chat en Vivo"
     },
     sections: [
       { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
-      { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+      { id: "promo", name: "Banner Promoción 15 Días", visible: true, order: 2 },
       { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
       { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
       { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
@@ -7115,7 +7449,21 @@ function applyCmsToLandingPage(cms) {
     if (span) span.textContent = cms.hero.ctaChatText;
   }
 
-  // 2. Visibilidad de secciones
+  // 2. Banner de Promoción Principal (Flyer y Textos)
+  if (cms.promo) {
+    const promoImg = document.getElementById("promoBannerImg");
+    if (promoImg && cms.promo.bannerImage) promoImg.src = cms.promo.bannerImage;
+    const promoBadge = document.getElementById("promoBannerBadgeText");
+    if (promoBadge && cms.promo.badge) promoBadge.textContent = cms.promo.badge;
+    const promoTitle = document.getElementById("promoBannerTitle");
+    if (promoTitle && cms.promo.title) promoTitle.textContent = cms.promo.title;
+    const promoDesc = document.getElementById("promoBannerDescription");
+    if (promoDesc && cms.promo.description) promoDesc.textContent = cms.promo.description;
+    const promoCta = document.getElementById("promoBannerCtaBtnText");
+    if (promoCta && cms.promo.buttonText) promoCta.textContent = cms.promo.buttonText;
+  }
+
+  // 3. Visibilidad de secciones
   if (Array.isArray(cms.sections)) {
     cms.sections.forEach(sec => {
       let el = null;
@@ -7344,7 +7692,7 @@ async function handleResetAiTrainingConfig() {
       id: "task-1",
       active: true,
       condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio",
-      action: "Felicitarlo con entusiasmo, informarle que tiene 7 días gratis sin costo y compartirle el enlace oficial: https://buscaya.neuralmediahouse.com/",
+      action: "Felicitarlo con entusiasmo, informarle que tiene 15 días gratis sin costo y compartirle el enlace oficial: https://buscaya.neuralmediahouse.com/",
       priority: "Alta (Obligatoria)"
     },
     {
@@ -8059,6 +8407,18 @@ window.downloadMarketDemandPdf = downloadMarketDemandPdf;
 
 // Exportaciones de Semáforo de Calidad
 window.handleQualityAction = handleQualityAction;
+
+// Exportaciones de Control de Suscripciones & Cobros Mercado Pago
+window.loadBillingSubscriptionsTable = loadBillingSubscriptionsTable;
+window.renderBillingTable = renderBillingTable;
+window.filterBillingTable = filterBillingTable;
+window.openModalBillingDate = openModalBillingDate;
+window.closeModalBillingDate = closeModalBillingDate;
+window.submitModalBillingDate = submitModalBillingDate;
+window.handleAddGraceDays = handleAddGraceDays;
+window.handleTogglePauseSubscription = handleTogglePauseSubscription;
+window.handleCancelSubscriptionWithGrace = handleCancelSubscriptionWithGrace;
+window.triggerDay16ChargeCheck = triggerDay16ChargeCheck;
 
 // Exportaciones de Modales Legales
 window.openPrivacyModal = openPrivacyModal;
