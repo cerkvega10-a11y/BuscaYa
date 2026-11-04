@@ -3,67 +3,67 @@
   "rewrites": [
     {
       "source": "/api/mercadopago/(.*)",
-      "destination": "/api/serverless-backend?path=/api/mercadopago/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/mercadopago",
-      "destination": "/api/serverless-backend?path=/api/mercadopago"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/businesses/(.*)",
-      "destination": "/api/serverless-backend?path=/api/businesses/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/businesses",
-      "destination": "/api/serverless-backend?path=/api/businesses"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/business/(.*)",
-      "destination": "/api/serverless-backend?path=/api/business/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/admin/(.*)",
-      "destination": "/api/serverless-backend?path=/api/admin/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/ai/(.*)",
-      "destination": "/api/serverless-backend?path=/api/ai/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/crm/(.*)",
-      "destination": "/api/serverless-backend?path=/api/crm/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/marketing/(.*)",
-      "destination": "/api/serverless-backend?path=/api/marketing/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/handoff/(.*)",
-      "destination": "/api/serverless-backend?path=/api/handoff/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/system/(.*)",
-      "destination": "/api/serverless-backend?path=/api/system/$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/whatsapp/status",
-      "destination": "/api/serverless-backend?path=/api/whatsapp/status"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/whatsapp/messages-log",
-      "destination": "/api/serverless-backend?path=/api/whatsapp/messages-log"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/whatsapp/restart(.*)",
-      "destination": "/api/serverless-backend?path=/api/whatsapp/restart$1"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/whatsapp/request-pair-code",
-      "destination": "/api/serverless-backend?path=/api/whatsapp/request-pair-code"
+      "destination": "/api/serverless-backend"
     },
     {
       "source": "/api/whatsapp/disconnect",
-      "destination": "/api/serverless-backend?path=/api/whatsapp/disconnect"
+      "destination": "/api/serverless-backend"
     }
   ]
 }
