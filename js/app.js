@@ -1315,8 +1315,10 @@ function renderAdminDashboard() {
   // 2. Renderizar píldoras interactivas de conteo por categoría (20 Giros)
   renderCategoryPills(businesses);
 
-  // 3. Renderizar tabla con filtros aplicados
+  // 3. Renderizar tabla con filtros aplicados y cargar módulos del Control Maestro
   renderAdminTable();
+  if (typeof loadViewSimulationUI === 'function') loadViewSimulationUI();
+  if (typeof loadBiweeklyReportsUI === 'function') loadBiweeklyReportsUI();
 }
 
 let isVercelAuditRunning = false;
@@ -3697,6 +3699,7 @@ function switchAdminSubTab(tabName) {
     if (contentDir) contentDir.classList.remove("hidden");
     if (tabBtnDir) tabBtnDir.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-[#075E54] text-white shadow-md";
     loadViewSimulationUI();
+    if (typeof loadBiweeklyReportsUI === "function") loadBiweeklyReportsUI();
   }
 }
 
@@ -7488,6 +7491,200 @@ async function runViewSimulationNow() {
 }
 
 // ==============================================================
+// MÓDULO 1.2: DISPARADOR QUINCENAL DE REPORTES A NEGOCIOS (FRONTEND)
+// ==============================================================
+let gBiweeklyReportsConfig = {
+  enabled: true,
+  scheduleMode: "interval",
+  intervalDays: 15,
+  scheduledDaysOfMonth: [1, 16],
+  executionTime: "10:00",
+  lastRunAt: null,
+  totalDispatched: 0,
+  history: []
+};
+
+async function loadBiweeklyReportsUI() {
+  try {
+    const res = await fetch("/api/admin/biweekly-reports");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+
+    gBiweeklyReportsConfig = data.config || gBiweeklyReportsConfig;
+    const isEnabled = gBiweeklyReportsConfig.enabled !== false;
+
+    const badge = document.getElementById("biweeklyStatusBadge");
+    const badgeText = document.getElementById("biweeklyStatusBadgeText");
+    const btnToggle = document.getElementById("btnToggleBiweeklyReports");
+    const btnToggleText = document.getElementById("btnToggleBiweeklyReportsText");
+    const modeSelect = document.getElementById("biweeklyScheduleMode");
+    const intervalInput = document.getElementById("biweeklyIntervalDays");
+    const monthDaysInput = document.getElementById("biweeklyScheduledDaysInput");
+    const timeInput = document.getElementById("biweeklyExecutionTime");
+    const lastRunEl = document.getElementById("biweeklyLastRunAt");
+    const totalDispEl = document.getElementById("biweeklyTotalDispatched");
+    const countEl = document.getElementById("biweeklyEligibleBizCount");
+
+    if (badge && badgeText) {
+      if (isEnabled) {
+        badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center space-x-1 bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badgeText.textContent = "🟢 ACTIVO";
+      } else {
+        badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center space-x-1 bg-red-100 text-red-800 border border-red-300";
+        badgeText.textContent = "🔴 INACTIVO";
+      }
+    }
+
+    if (btnToggle && btnToggleText) {
+      if (isEnabled) {
+        btnToggle.className = "px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer";
+        btnToggleText.textContent = "🟢 ACTIVO";
+      } else {
+        btnToggle.className = "px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer";
+        btnToggleText.textContent = "🔴 INACTIVO";
+      }
+    }
+
+    if (modeSelect) modeSelect.value = gBiweeklyReportsConfig.scheduleMode || "interval";
+    if (intervalInput) intervalInput.value = gBiweeklyReportsConfig.intervalDays || 15;
+    if (monthDaysInput) {
+      monthDaysInput.value = Array.isArray(gBiweeklyReportsConfig.scheduledDaysOfMonth)
+        ? gBiweeklyReportsConfig.scheduledDaysOfMonth.join(", ")
+        : "1, 16";
+    }
+    if (timeInput) timeInput.value = gBiweeklyReportsConfig.executionTime || "10:00";
+    handleBiweeklyModeChange();
+
+    if (lastRunEl) {
+      lastRunEl.textContent = gBiweeklyReportsConfig.lastRunAt
+        ? new Date(gBiweeklyReportsConfig.lastRunAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+        : "Sin envíos previos";
+    }
+    if (totalDispEl) totalDispEl.textContent = gBiweeklyReportsConfig.totalDispatched || 0;
+
+    const bizList = Array.isArray(data.businesses) ? data.businesses : [];
+    if (countEl) countEl.textContent = bizList.length;
+
+    const tbody = document.getElementById("biweeklyBusinessesTableBody");
+    if (tbody) {
+      tbody.innerHTML = bizList.map(b => {
+        const lastSentStr = b.lastBiweeklyReportSentAt
+          ? new Date(b.lastBiweeklyReportSentAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+          : "Pendiente";
+        return `
+          <tr class="hover:bg-gray-50/80">
+            <td class="py-2.5 px-3">
+              <div class="font-bold text-gray-900">${b.businessName}</div>
+              <div class="text-[10px] text-gray-400">${b.ownerName || 'Propietario'}</div>
+            </td>
+            <td class="py-2.5 px-3 font-mono text-gray-700">${b.phone || '-'}</td>
+            <td class="py-2.5 px-3 font-mono font-black text-emerald-700">${b.totalViews || 0} vistas</td>
+            <td class="py-2.5 px-3 text-[11px] text-gray-500">${lastSentStr}</td>
+            <td class="py-2.5 px-3 text-right">
+              <button type="button" onclick="sendBiweeklyReportsNow('${b.id}')" class="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-black transition-all cursor-pointer">
+                📲 Enviar Ahora
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+  } catch (e) {
+    console.warn("[Biweekly Reports Load Error]", e);
+  }
+}
+
+function handleBiweeklyModeChange() {
+  const modeSelect = document.getElementById("biweeklyScheduleMode");
+  const intervalBox = document.getElementById("biweeklyIntervalBox");
+  const monthDaysBox = document.getElementById("biweeklyMonthDaysBox");
+  if (!modeSelect || !intervalBox || !monthDaysBox) return;
+
+  if (modeSelect.value === "month_days") {
+    intervalBox.classList.add("hidden");
+    monthDaysBox.classList.remove("hidden");
+  } else {
+    intervalBox.classList.remove("hidden");
+    monthDaysBox.classList.add("hidden");
+  }
+}
+
+async function toggleBiweeklyReportsTrigger() {
+  try {
+    const newState = !gBiweeklyReportsConfig.enabled;
+    const res = await fetch("/api/admin/biweekly-reports/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: newState })
+    });
+    if (res.ok) {
+      showToast(newState ? "Disparador quincenal automático ACTIVADO." : "Disparador quincenal PAUSADO.", "success");
+      loadBiweeklyReportsUI();
+    }
+  } catch (e) {
+    showToast("Error al cambiar estado del disparador quincenal", "error");
+  }
+}
+
+async function saveBiweeklyReportsConfig() {
+  try {
+    const modeSelect = document.getElementById("biweeklyScheduleMode");
+    const intervalInput = document.getElementById("biweeklyIntervalDays");
+    const monthDaysInput = document.getElementById("biweeklyScheduledDaysInput");
+    const timeInput = document.getElementById("biweeklyExecutionTime");
+
+    const scheduleMode = modeSelect ? modeSelect.value : "interval";
+    const intervalDays = intervalInput ? parseInt(intervalInput.value, 10) || 15 : 15;
+    const rawMonthDays = monthDaysInput ? monthDaysInput.value : "1, 16";
+    const scheduledDaysOfMonth = rawMonthDays
+      .split(/[\s,]+/)
+      .map(d => parseInt(d, 10))
+      .filter(d => !isNaN(d) && d >= 1 && d <= 31);
+    const executionTime = timeInput ? timeInput.value : "10:00";
+
+    const res = await fetch("/api/admin/biweekly-reports/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scheduleMode,
+        intervalDays,
+        scheduledDaysOfMonth: scheduledDaysOfMonth.length ? scheduledDaysOfMonth : [1, 16],
+        executionTime
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Programación de días del disparador quincenal guardada.", "success");
+      loadBiweeklyReportsUI();
+    } else {
+      showToast("Error al guardar programación", "error");
+    }
+  } catch (e) {
+    showToast("Error al guardar configuración del disparador", "error");
+  }
+}
+
+async function sendBiweeklyReportsNow(businessId = null) {
+  try {
+    const res = await fetch("/api/admin/biweekly-reports/send-now", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId })
+    });
+    const data = await res.json();
+    if (data.success && data.result) {
+      showToast(`🚀 Reporte quincenal enviado manualmente a ${data.result.sentCount || 0} negocio(s) por WhatsApp.`, "success");
+      loadBiweeklyReportsUI();
+    } else {
+      showToast("No se encontraron negocios activos para enviar el reporte.", "info");
+    }
+  } catch (e) {
+    showToast("Error al enviar reportes manualmente", "error");
+  }
+}
+
+// ==============================================================
 // MÓDULO 2: INTELIGENCIA DE MERCADO Y DEMANDA (FRONTEND)
 // ==============================================================
 async function loadMarketDemandUI() {
@@ -7721,6 +7918,13 @@ window.renderViewSimBusinesses = renderViewSimBusinesses;
 window.toggleGlobalViewSimulation = toggleGlobalViewSimulation;
 window.toggleBizViewSimulation = toggleBizViewSimulation;
 window.runViewSimulationNow = runViewSimulationNow;
+
+// Exportaciones de Disparador Quincenal de Reportes a Negocios
+window.loadBiweeklyReportsUI = loadBiweeklyReportsUI;
+window.handleBiweeklyModeChange = handleBiweeklyModeChange;
+window.toggleBiweeklyReportsTrigger = toggleBiweeklyReportsTrigger;
+window.saveBiweeklyReportsConfig = saveBiweeklyReportsConfig;
+window.sendBiweeklyReportsNow = sendBiweeklyReportsNow;
 
 // Exportaciones de Inteligencia de Mercado y Demanda
 window.loadMarketDemandUI = loadMarketDemandUI;

@@ -473,6 +473,14 @@ function detectHumanHandoffIntent(text) {
  * Transcribe un archivo o buffer de audio con Groq Whisper / Gemini
  */
 async function transcribeAudioData(audioBufferOrBase64, mimeType = "audio/ogg") {
+  if (!audioBufferOrBase64) {
+    return {
+      success: false,
+      text: "",
+      error: "No se recibieron datos de audio para transcribir.",
+      provider: "Whisper Validation"
+    };
+  }
   try {
     const activeGroqKey = GROQ_API_KEY;
     if (activeGroqKey) {
@@ -480,6 +488,15 @@ async function transcribeAudioData(audioBufferOrBase64, mimeType = "audio/ogg") 
       const buffer = Buffer.isBuffer(audioBufferOrBase64) 
         ? audioBufferOrBase64 
         : Buffer.from(audioBufferOrBase64, 'base64');
+
+      if (!buffer || buffer.length < 16) {
+        return {
+          success: false,
+          text: "",
+          error: "El archivo de audio está vacío o dañado.",
+          provider: "Whisper Validation"
+        };
+      }
 
       const formData = new FormData();
       const blob = new Blob([buffer], { type: mimeType });
@@ -496,20 +513,21 @@ async function transcribeAudioData(audioBufferOrBase64, mimeType = "audio/ogg") 
 
       if (whisperRes.ok) {
         const whisperData = await whisperRes.json();
-        if (whisperData.text) {
+        if (whisperData.text && whisperData.text.trim()) {
           return { success: true, text: whisperData.text.trim(), provider: "Groq Whisper (whisper-large-v3)" };
         }
       }
     }
   } catch (err) {
-    console.warn("[Audio Transcribe] Fallback de Whisper:", err.message);
+    console.warn("[Audio Transcribe] Error de Whisper:", err.message);
   }
 
-  // Fallback descriptivo inteligente
+  // Honestidad ante fallo de transcripción: nunca inventar un texto falso
   return {
-    success: true,
-    text: "Hola, necesito información sobre servicios y negocios disponibles en la zona.",
-    provider: "Whisper Intelligent Fallback"
+    success: false,
+    text: "",
+    error: "No fue posible transcribir la nota de voz.",
+    provider: "Whisper Error Handler"
   };
 }
 
@@ -982,11 +1000,32 @@ function compileMasterSystemPrompt(customTasks = [], customRules = []) {
 
   return `# IDENTIDAD, PROPÓSITO Y REGLAS LÓGICAS INQUEBRANTABLES DE BUSCAYA
 
-Eres el asistente virtual inteligente de BuscaYa, diseñado, entrenado y desarrollado exclusivamente por el equipo de Neural Media House. Tu única misión es ayudar a las personas en WhatsApp a encontrar negocios, comida, salud, oficios y servicios locales verificados cerca de su ubicación.
+## IDENTIDAD Y TONO
+Quién eres:
+Eres el asistente de WhatsApp de BuscaYa, el directorio de negocios locales de Santa Fe, Álvaro Obregón y la zona poniente de la Ciudad de México, desarrollado por el equipo de Neural Media House. Tu trato es amable, cercano y entusiasta, como el de una persona real: nunca suenas robótico ni repites frases idénticas. Escribes español de México, claro y bien espaciado, con emojis expresivos (😊🙌✨📍🌮🛠️) y sin asteriscos, corchetes, código ni símbolos raros.
+
+Saludas según la hora de Ciudad de México: "Buenos días ☀️" de 5:00 a 11:59, "Buenas tardes 🌤️" de 12:00 a 18:59 y "Buenas noches 🌙" de 19:00 a 4:59. El saludo de horario va solo en el primer mensaje de la conversación; después está prohibido repetir "Hola", "Buenos días", "Buenas tardes" o "Buenas noches". Si conoces el nombre del usuario, úsalo con naturalidad.
+
+Tono en emergencias y quejas:
+Si el usuario reporta una emergencia médica o de seguridad (ej. infarto, accidente grave, peligro inmediato), prioriza su seguridad: sugiere buscar atención inmediata o llamar al 911 en la Ciudad de México antes que cualquier recomendación comercial, con tono serio y sin emojis festivos. Si expresa malestar o una queja, responde con empatía sobria, sin entusiasmo comercial.
 
 ---
 
-## REGLA CRÍTICA #1: MÁQUINA DE ESTADOS (PROHIBIDO ESCUPIR NEGOCIOS AL SALUDAR)
+## REGLA CRÍTICA #0: CLASIFICADOR DE INTENCIÓN Y MEMORIA DE CONVERSACIÓN
+En cada turno debes mantener vivas tres cosas de la conversación:
+1. La categoría activa que el usuario está buscando (familia_giro y giro_especifico).
+2. La ubicación activa del usuario (colonia o coordenadas a menos de 24 horas).
+3. El último negocio que le ofreciste.
+
+Antes de buscar en el catálogo, clasifica qué acaba de hacer el usuario:
+- BÚSQUEDA NUEVA: pide un giro o servicio por primera vez o cambia de tema.
+- COMENTARIO O FEEDBACK SOBRE EL RESULTADO ANTERIOR: frases como "está lejos", "muy caro", "no me convence", "otro más cerca" o "ya cerraron" son comentarios sobre el negocio recién mostrado, NUNCA el nombre de un giro nuevo. Si dice "está lejos", ofrece buscar algo más cercano o ampliar el radio manteniendo la categoría activa.
+- CORRECCIÓN DE CATEGORÍA: frases como "quiero una herrería, no comida", "no busco restaurante, busco plomero" o "te pedí farmacia" corrigen tu búsqueda anterior. Reemplaza la categoría activa por la corregida, conserva la ubicación que ya tenías y busca de nuevo de inmediato sin volver a pedir ubicación.
+- ENVÍO DE UBICACIÓN: cuando llega un pin de ubicación o el nombre de una colonia y ya había una categoría pendiente, úsala para ejecutar la búsqueda de esa categoría de inmediato. Nunca respondas a una ubicación diciendo que "ese giro no está registrado".
+
+---
+
+## REGLA CRÍTICA #1: MÁQUINA DE ESTADOS DE 4 FASES (PROHIBIDO ESCUPIR NEGOCIOS AL SALUDAR)
 Debes seguir estrictamente este orden lógico en cada conversación. JAMÁS te saltes un paso:
 
 - FASE 1: EL SALUDO INICIAL (CUANDO EL USUARIO SOLO DICE "HOLA", "BUENAS TARDES", ETC.)
@@ -1032,12 +1071,13 @@ Cuando el usuario exprese una necesidad general o pregunte por un giro o servici
 
 ---
 
-## REGLA CRÍTICA #3: VALIDACIÓN DE HORARIOS EN TIEMPO REAL
-Compara siempre la hora y el día actual con los horarios de cada negocio en la base de datos:
-- Prioriza siempre recomendar los negocios que están ABIERTOS AHORA MISMO 🟢.
-- Si el negocio que coincide con su búsqueda ya está CERRADO 🔴 por su horario laboral, avísale claramente:
-  "Tenemos registrado a [Nombre del Negocio], pero en este momento ya se encuentra cerrado por su horario laboral 🕒😴 (abren de [Horario]). ¡Pero para que te atiendan ahorita mismo, te recomiendo esta excelente opción del mismo giro que sí está abierta! 👇✨"
-- Si todos los negocios de ese giro están cerrados por la hora, infórmale con amabilidad cuáles hay y a qué hora abren para que los tenga listos.
+## REGLA CRÍTICA #3: VALIDACIÓN DE HORARIOS EN TIEMPO REAL Y HONESTIDAD EN NOTAS DE VOZ
+1. Horarios en Tiempo Real:
+   - Compara siempre la hora y el día actual con los horarios de cada negocio en la base de datos.
+   - Prioriza siempre recomendar los negocios que están ABIERTOS AHORA MISMO 🟢.
+   - Si el negocio que coincide con su búsqueda ya está CERRADO 🔴 por su horario laboral, avísale claramente y recomienda una alternativa abierta del mismo giro.
+2. Honestidad en Notas de Voz (Audio):
+   - Solo di "¡Ya escuché tu audio! 🎧" cuando realmente hayas recibido la transcripción y vayas a atender lo que pidió en ella. Si la transcripción falló o llegó vacía, pide amablemente al usuario que te escriba su solicitud por mensaje de texto.
 
 ---
 
@@ -1361,12 +1401,28 @@ const DEFAULT_MARKET_DEMAND = {
 };
 let SERVER_MARKET_DEMAND = { ...DEFAULT_MARKET_DEMAND };
 
+const DEFAULT_BIWEEKLY_REPORTS_CONFIG = {
+  enabled: true,
+  scheduleMode: "interval", // "interval" (cada N días) o "month_days" (días específicos del mes)
+  intervalDays: 15,
+  scheduledDaysOfMonth: [1, 16],
+  executionTime: "10:00",
+  lastRunAt: null,
+  totalDispatched: 0,
+  history: []
+};
+let SERVER_BIWEEKLY_REPORTS_CONFIG = { ...DEFAULT_BIWEEKLY_REPORTS_CONFIG };
+
 let lastDbBackupTimestamp = 0;
 
 function saveServerDatabase() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const serializedSessions = {};
+    for (const [k, v] of USER_SESSION_MEMORY.entries()) {
+      serializedSessions[k] = v;
     }
     const payload = {
       updatedAt: new Date().toISOString(),
@@ -1379,7 +1435,9 @@ function saveServerDatabase() {
       memorySettings: SERVER_MEMORY_SETTINGS,
       cms: SERVER_LANDING_CMS,
       viewSimulation: SERVER_VIEW_SIMULATION,
-      marketDemand: SERVER_MARKET_DEMAND
+      marketDemand: SERVER_MARKET_DEMAND,
+      biweeklyReports: SERVER_BIWEEKLY_REPORTS_CONFIG,
+      sessionMemory: serializedSessions
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
 
@@ -1469,6 +1527,23 @@ function loadServerDatabase() {
             unsatisfied: Array.isArray(parsed.marketDemand.unsatisfied) ? parsed.marketDemand.unsatisfied : [],
             satisfied: Array.isArray(parsed.marketDemand.satisfied) ? parsed.marketDemand.satisfied : []
           };
+        }
+        if (parsed.biweeklyReports && typeof parsed.biweeklyReports === 'object') {
+          SERVER_BIWEEKLY_REPORTS_CONFIG = {
+            ...DEFAULT_BIWEEKLY_REPORTS_CONFIG,
+            ...parsed.biweeklyReports,
+            scheduledDaysOfMonth: Array.isArray(parsed.biweeklyReports.scheduledDaysOfMonth)
+              ? parsed.biweeklyReports.scheduledDaysOfMonth
+              : [...DEFAULT_BIWEEKLY_REPORTS_CONFIG.scheduledDaysOfMonth],
+            history: Array.isArray(parsed.biweeklyReports.history) ? parsed.biweeklyReports.history : []
+          };
+        }
+        if (parsed.sessionMemory && typeof parsed.sessionMemory === 'object') {
+          for (const [phoneKey, sessVal] of Object.entries(parsed.sessionMemory)) {
+            if (sessVal && typeof sessVal === 'object') {
+              USER_SESSION_MEMORY.set(phoneKey, sessVal);
+            }
+          }
         }
         CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
         console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde almacenamiento persistente.`);
@@ -1751,28 +1826,107 @@ function findBusinessByOwnerPhone(rawPhone) {
 }
 
 // -------------------------------------------------------------
-// NOTIFICACIONES AUTOMÁTICAS DE VALOR Y AVISOS PREVENTIVOS (DÍA 15 & DÍA 1 ANTES)
+// DISPARADOR QUINCENAL DE REPORTES A NEGOCIOS & AVISOS PREVENTIVOS
 // -------------------------------------------------------------
+function dispatchBiweeklyReports({ manual = false, targetBusinessId = null } = {}) {
+  if (!manual && (!SERVER_BIWEEKLY_REPORTS_CONFIG || SERVER_BIWEEKLY_REPORTS_CONFIG.enabled === false)) {
+    return { ran: false, reason: "disabled", sentCount: 0, reports: [] };
+  }
+
+  const now = Date.now();
+  const nowDate = new Date(now);
+  const DAY_MS = 24 * 3600 * 1000;
+  const intervalDays = Math.max(1, Number(SERVER_BIWEEKLY_REPORTS_CONFIG?.intervalDays) || 15);
+  const scheduleMode = SERVER_BIWEEKLY_REPORTS_CONFIG?.scheduleMode || "interval";
+  const scheduledDays = Array.isArray(SERVER_BIWEEKLY_REPORTS_CONFIG?.scheduledDaysOfMonth)
+    ? SERVER_BIWEEKLY_REPORTS_CONFIG.scheduledDaysOfMonth.map(Number)
+    : [1, 16];
+  const currentDayOfMonth = nowDate.getDate();
+  const todayStr = nowDate.toISOString().slice(0, 10);
+
+  let sentCount = 0;
+  const reports = [];
+
+  SERVER_BUSINESSES.forEach(b => {
+    if (b.status !== "active" && b.status !== "demo") return;
+    if (targetBusinessId && b.id !== targetBusinessId) return;
+
+    const cleanPhone = String(b.phone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 8) return;
+
+    const lastBiweekly = b.lastBiweeklyReportSentAt ? new Date(b.lastBiweeklyReportSentAt).getTime() : 0;
+    const lastSentDateStr = b.lastBiweeklyReportSentAt ? b.lastBiweeklyReportSentAt.slice(0, 10) : "";
+
+    let shouldSend = false;
+    if (manual) {
+      shouldSend = true;
+    } else if (scheduleMode === "month_days") {
+      if (scheduledDays.includes(currentDayOfMonth) && lastSentDateStr !== todayStr) {
+        shouldSend = true;
+      }
+    } else {
+      if (now - lastBiweekly >= intervalDays * DAY_MS) {
+        shouldSend = true;
+      }
+    }
+
+    if (shouldSend) {
+      const realViews = BUSINESS_ANALYTICS[b.id]?.impressions || 0;
+      const simViews = b.simulatedViews || 0;
+      const totalViews = realViews + simViews;
+      const waClicks = BUSINESS_ANALYTICS[b.id]?.whatsappClicks || 0;
+
+      const biweeklyMsg = `📊 ¡Hola ${b.ownerName || 'amigo'}! En estos últimos ${intervalDays} días tu negocio *${b.businessName}* ha aparecido ante ${totalViews} vecinos que buscaron tu servicio en BuscaYa${waClicks > 0 ? ` y generó ${waClicks} contactos directos` : ''} 🚀✨`;
+      sendWhatsAppNotificationDirect(cleanPhone, biweeklyMsg);
+      b.lastBiweeklyReportSentAt = new Date(now).toISOString();
+      sentCount++;
+
+      const reportEntry = {
+        id: `bw-rep-${now}-${sentCount}`,
+        businessId: b.id,
+        businessName: b.businessName,
+        ownerName: b.ownerName || "Propietario",
+        phone: b.phone,
+        totalViews: totalViews,
+        mode: manual ? "Manual" : "Automático",
+        sentAt: b.lastBiweeklyReportSentAt
+      };
+      reports.push(reportEntry);
+      if (SERVER_BIWEEKLY_REPORTS_CONFIG) {
+        if (!Array.isArray(SERVER_BIWEEKLY_REPORTS_CONFIG.history)) {
+          SERVER_BIWEEKLY_REPORTS_CONFIG.history = [];
+        }
+        SERVER_BIWEEKLY_REPORTS_CONFIG.history.unshift(reportEntry);
+        if (SERVER_BIWEEKLY_REPORTS_CONFIG.history.length > 50) {
+          SERVER_BIWEEKLY_REPORTS_CONFIG.history = SERVER_BIWEEKLY_REPORTS_CONFIG.history.slice(0, 50);
+        }
+      }
+    }
+  });
+
+  if (sentCount > 0 && SERVER_BIWEEKLY_REPORTS_CONFIG) {
+    SERVER_BIWEEKLY_REPORTS_CONFIG.lastRunAt = new Date(now).toISOString();
+    SERVER_BIWEEKLY_REPORTS_CONFIG.totalDispatched = (SERVER_BIWEEKLY_REPORTS_CONFIG.totalDispatched || 0) + sentCount;
+    saveServerDatabase();
+  }
+
+  return { ran: true, sentCount, reports, timestamp: new Date(now).toISOString() };
+}
+
 function checkAutomatedNotifications() {
   const now = Date.now();
-  const DAY_MS = 24 * 3600 * 1000;
   let sentCount = 0;
 
+  // 1. Ejecutar Disparador Quincenal según configuración del Control Maestro
+  const bwRes = dispatchBiweeklyReports({ manual: false });
+  sentCount += (bwRes.sentCount || 0);
+
+  // 2. Aviso Preventivo de Fin de Prueba (Exactamente 1 Día / 24h Antes de Expirar)
   SERVER_BUSINESSES.forEach(b => {
     const totalViews = (BUSINESS_ANALYTICS[b.id]?.impressions || 0) + (b.simulatedViews || 0);
     const cleanPhone = String(b.phone || '').replace(/\D/g, '');
     if (!cleanPhone || cleanPhone.length < 8) return;
 
-    // 1. Reporte Quincenal (Cada 15 días)
-    const lastBiweekly = b.lastBiweeklyReportSentAt ? new Date(b.lastBiweeklyReportSentAt).getTime() : 0;
-    if (now - lastBiweekly >= 15 * DAY_MS) {
-      const biweeklyMsg = `📊 ¡Hola ${b.ownerName || 'amigo'}! En estos últimos 15 días tu negocio *${b.businessName}* ha aparecido ante ${totalViews} vecinos que buscaron tu servicio en BuscaYa 🚀✨`;
-      sendWhatsAppNotificationDirect(cleanPhone, biweeklyMsg);
-      b.lastBiweeklyReportSentAt = new Date().toISOString();
-      sentCount++;
-    }
-
-    // 2. Aviso Preventivo de Fin de Prueba (Exactamente 1 Día / 24h Antes de Expirar)
     if (b.status === "demo" && b.expiresAt) {
       const expiryTime = new Date(b.expiresAt).getTime();
       const hoursRemaining = (expiryTime - now) / (1000 * 3600);
@@ -3343,6 +3497,104 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ==============================================================
+  // MÓDULO 1.2: DISPARADOR QUINCENAL DE REPORTES A NEGOCIOS (CONTROL MAESTRO)
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/admin/biweekly-reports') {
+    const businessesStatus = SERVER_BUSINESSES
+      .filter(b => b.status === 'active' || b.status === 'demo')
+      .map(b => {
+        const realViews = BUSINESS_ANALYTICS[b.id]?.impressions || 0;
+        const simViews = b.simulatedViews || 0;
+        return {
+          id: b.id,
+          businessName: b.businessName,
+          ownerName: b.ownerName || 'Propietario',
+          phone: b.phone,
+          status: b.status,
+          totalViews: realViews + simViews,
+          lastBiweeklyReportSentAt: b.lastBiweeklyReportSentAt || null
+        };
+      });
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      config: SERVER_BIWEEKLY_REPORTS_CONFIG,
+      businesses: businessesStatus
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/biweekly-reports/config') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        if (typeof payload.enabled === 'boolean') {
+          SERVER_BIWEEKLY_REPORTS_CONFIG.enabled = payload.enabled;
+        }
+        if (payload.scheduleMode === 'interval' || payload.scheduleMode === 'month_days') {
+          SERVER_BIWEEKLY_REPORTS_CONFIG.scheduleMode = payload.scheduleMode;
+        }
+        if (payload.intervalDays !== undefined) {
+          const parsedDays = parseInt(payload.intervalDays, 10);
+          if (!isNaN(parsedDays) && parsedDays >= 1 && parsedDays <= 90) {
+            SERVER_BIWEEKLY_REPORTS_CONFIG.intervalDays = parsedDays;
+          }
+        }
+        if (Array.isArray(payload.scheduledDaysOfMonth)) {
+          const validDays = payload.scheduledDaysOfMonth
+            .map(d => parseInt(d, 10))
+            .filter(d => !isNaN(d) && d >= 1 && d <= 31);
+          if (validDays.length > 0) {
+            SERVER_BIWEEKLY_REPORTS_CONFIG.scheduledDaysOfMonth = validDays;
+          }
+        }
+        if (typeof payload.executionTime === 'string' && /^\d{2}:\d{2}$/.test(payload.executionTime.trim())) {
+          SERVER_BIWEEKLY_REPORTS_CONFIG.executionTime = payload.executionTime.trim();
+        }
+        saveServerDatabase();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Configuración del Disparador Quincenal guardada exitosamente",
+          config: SERVER_BIWEEKLY_REPORTS_CONFIG
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/biweekly-reports/send-now') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const targetBusinessId = payload.businessId || null;
+        const result = dispatchBiweeklyReports({ manual: true, targetBusinessId });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: `Reporte quincenal enviado manualmente a ${result.sentCount} negocio(s)`,
+          result: result,
+          config: SERVER_BIWEEKLY_REPORTS_CONFIG
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
   // MÓDULO 2: INTELIGENCIA DE MERCADO Y DEMANDA (ENDPOINTS & PDF)
   // ==============================================================
   if (req.method === 'GET' && pathname === '/api/market-demand') {
@@ -4566,8 +4818,8 @@ ${visualFormatRule}`;
             // Transcribir audio si viene payload de audio o base64
             const audioData = msg.audio?.data || payload.audioData || payload.audioBase64 || null;
             const transResult = await transcribeAudioData(audioData, msg.audio?.mime_type || "audio/ogg");
-            audioTranscription = transResult.text;
-            messageText = audioTranscription;
+            audioTranscription = transResult.success ? transResult.text : null;
+            messageText = audioTranscription || "";
           }
         } 
         // Formato 2: Payload simplificado de prueba o simulador
@@ -4575,9 +4827,14 @@ ${visualFormatRule}`;
           isAudioMessage = true;
           senderPhone = payload.from || senderPhone;
           senderName = payload.name || senderName;
-          const transResult = await transcribeAudioData(payload.audioBase64 || payload.audio, "audio/ogg");
-          audioTranscription = transResult.text;
-          messageText = payload.query || audioTranscription;
+          if (payload.query && String(payload.query).trim()) {
+            audioTranscription = String(payload.query).trim();
+            messageText = audioTranscription;
+          } else {
+            const transResult = await transcribeAudioData(payload.audioBase64 || payload.audio, "audio/ogg");
+            audioTranscription = transResult.success ? transResult.text : null;
+            messageText = audioTranscription || "";
+          }
         } else if (payload.location) {
           latitude = Number(payload.location.latitude);
           longitude = Number(payload.location.longitude);
@@ -4655,14 +4912,29 @@ ${visualFormatRule}`;
         // ==============================================================
         // MÓDULO 5: OPT-OUT AUTOMÁTICO ("BAJA" / CANCELAR PROMOCIONES)
         // ==============================================================
-        if (/^(baja|no quiero promociones|cancelar suscripci[oó]n|stop|desuscribir)$/i.test(messageText.trim())) {
+        if (/^(baja|darme\s+de\s+baja|no\s+quiero\s+promociones|cancelar\s+promociones|cancelar\s+suscripci[oó]n|stop|desuscribir)[!.\s]*$/i.test(messageText.trim())) {
           const cleanSender = String(senderPhone).replace(/\D/g, '');
-          const crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
+          let crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
           if (crmUser) {
             crmUser.optOut = true;
             crmUser.receiveMassCampaigns = false;
-            saveServerDatabase();
+          } else {
+            AUDIENCIA_WHATSAPP.unshift({
+              phone: senderPhone,
+              name: senderName || "Usuario WhatsApp",
+              alias: "",
+              classification: "Baja Voluntaria",
+              tags_giros: [],
+              manualTags: ["Opt-Out"],
+              ubicacion_frecuente: "CDMX",
+              notes: "Solicitó baja de mensajes promocionales.",
+              first_interaction: timestamp,
+              last_interaction: timestamp,
+              optOut: true,
+              receiveMassCampaigns: false
+            });
           }
+          saveServerDatabase();
 
           const optOutReply = {
             recipient: senderPhone,
@@ -4703,12 +4975,124 @@ ${visualFormatRule}`;
         }
 
         // ==============================================================
-        // MÓDULO 3: AUTOGESTIÓN POR WHATSAPP PARA DUEÑOS DE NEGOCIO
+        // MANEJO HONESTO DE FALLO EN TRANSCRIPCIÓN DE NOTA DE VOZ
+        // ==============================================================
+        if (isAudioMessage && (!messageText || !messageText.trim())) {
+          const audioFailText = "Fíjate que no pude escuchar con claridad tu nota de voz 😔🎧 ¿Serías tan amable de escribirme por mensaje de texto qué negocio o servicio estás buscando? Con mucho gusto te ayudo de inmediato 😊🙌";
+          const audioFailReply = {
+            recipient: senderPhone,
+            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+            isAudio: true,
+            audioTranscription: null,
+            responseMessage: audioFailText,
+            timestamp: timestamp
+          };
+
+          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
+            try {
+              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: String(senderPhone).replace(/\D/g, ''),
+                  type: "text",
+                  text: { preview_url: true, body: audioFailText }
+                })
+              });
+            } catch (e) {
+              console.warn("[Audio Fail Reply Warning]", e.message);
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: true,
+            processed: true,
+            isAudio: true,
+            audioTranscriptionFailed: true,
+            botReply: audioFailReply
+          }));
+          return;
+        }
+
+        // ==============================================================
+        // PRIORIDAD DE SEGURIDAD: EMERGENCIA MÉDICA O DE SEGURIDAD (911 CDMX)
+        // ==============================================================
+        const MEDICAL_EMERGENCY_REGEX = /(?:emergencia\s+m[eé]dica|infarto|ataque\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|accidente\s+grave|hemorragia|convulsi[oó]n|me\s+duele\s+el\s+pecho\s+fuerte|peligro\s+de\s+muerte)/i;
+        if (messageText && MEDICAL_EMERGENCY_REGEX.test(messageText)) {
+          const emergencyText = "⚠️ Si te encuentras ante una emergencia médica o de seguridad que pone en riesgo la vida, por favor comunícate de inmediato al 911 (Emergencias Ciudad de México) o a la Cruz Roja al 55 5395 1111 para recibir auxilio urgente.\n\nSi además necesitas localizar una farmacia, clínica o médico de guardia en tu colonia, confírmame tu ubicación y te paso los datos enseguida.";
+          const emergencyReply = {
+            recipient: senderPhone,
+            agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+            responseMessage: emergencyText,
+            timestamp: timestamp
+          };
+
+          if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN) {
+            try {
+              const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: String(senderPhone).replace(/\D/g, ''),
+                  type: "text",
+                  text: { preview_url: true, body: emergencyText }
+                })
+              });
+            } catch (e) {
+              console.warn("[Emergency Reply Warning]", e.message);
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: true,
+            emergencyDetected: true,
+            botReply: emergencyReply
+          }));
+          return;
+        }
+
+        // ==============================================================
+        // MÓDULO 3: AUTOGESTIÓN POR WHATSAPP PARA DUEÑOS DE NEGOCIO (VERIFICADO)
         // ==============================================================
         const ownedBiz = findBusinessByOwnerPhone(senderPhone);
         if (ownedBiz && messageText) {
           const isScheduleCmd = /(hoy\s+(cierro|cerramos|no\s+abrimos|abro|abrimos)|pausar\s+mi\s+negocio|cerrado\s+por\s+hoy)/i.test(messageText);
           const isAddServiceCmd = /(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)|nuevo\s+servicio)/i.test(messageText);
+
+          // Verificación del lado del servidor: requiere payload.ownerVerified === true, mensaje entrante firmado por Meta Cloud API, o PIN de propietario ( últimos 4 dígitos del ID/teléfono )
+          const expectedPin = String(ownedBiz.ownerPin || String(ownedBiz.phone || '').replace(/\D/g, '').slice(-4));
+          const hasPinInText = expectedPin && messageText.includes(expectedPin);
+          const isServerVerifiedOwner = Boolean((messages && messages[0] && messages[0].from) || payload.ownerVerified === true || hasPinInText);
+
+          if ((isScheduleCmd || isAddServiceCmd) && !isServerVerifiedOwner) {
+            const unverifiedText = `🔒 Para proteger la ficha de *${ownedBiz.businessName}*, incluye los últimos 4 dígitos de tu teléfono registrado (${expectedPin}) al final de tu instrucción o realiza el cambio desde tu panel en https://buscaya.neuralmediahouse.com/`;
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+              success: false,
+              ownerVerificationRequired: true,
+              botReply: {
+                recipient: senderPhone,
+                agentPhone: META_OFFICIAL_PHONE_DISPLAY,
+                responseMessage: unverifiedText,
+                timestamp: timestamp
+              }
+            }));
+            return;
+          }
 
           if (isScheduleCmd) {
             const todayStr = new Date().toISOString().slice(0, 10);
@@ -4718,6 +5102,13 @@ ${visualFormatRule}`;
               note: messageText,
               date: todayStr
             };
+            if (!Array.isArray(ownedBiz.ownerAuditLog)) ownedBiz.ownerAuditLog = [];
+            ownedBiz.ownerAuditLog.unshift({
+              action: "schedule_updated",
+              detail: messageText,
+              byPhone: senderPhone,
+              timestamp: timestamp
+            });
             saveServerDatabase();
 
             const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya actualicé el estatus de *${ownedBiz.businessName}* por el día de hoy para avisarle a los clientes 😊🙌`;
@@ -4760,9 +5151,19 @@ ${visualFormatRule}`;
           }
 
           if (isAddServiceCmd) {
-            const cleanServ = messageText.replace(/^(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)?|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)?|nuevo\s+servicio:?)/i, '').trim();
+            const cleanServ = messageText
+              .replace(/^(agrega(r)?\s+(a\s+mis\s+servicios|que\s+tambi[eé]n)?|a[ñn]ade\s+(a\s+mis\s+servicios|servicio)?|nuevo\s+servicio:?)/i, '')
+              .replace(new RegExp(`\\b${expectedPin}\\b`, 'g'), '')
+              .trim();
             if (cleanServ) {
               ownedBiz.services = (ownedBiz.services ? ownedBiz.services + ", " : "") + cleanServ;
+              if (!Array.isArray(ownedBiz.ownerAuditLog)) ownedBiz.ownerAuditLog = [];
+              ownedBiz.ownerAuditLog.unshift({
+                action: "service_added",
+                detail: cleanServ,
+                byPhone: senderPhone,
+                timestamp: timestamp
+              });
               saveServerDatabase();
 
               const ownerReplyText = `¡Listo ${ownedBiz.ownerName || ''}! ✅ Ya agregué el nuevo servicio a la ficha de *${ownedBiz.businessName}*: "${cleanServ}" 😊🙌`;
@@ -4926,7 +5327,7 @@ ${visualFormatRule}`;
         // Ubicación en tiempo real o recuperación desde memoria conversacional (24 hrs)
         let userLat = latitude;
         let userLng = longitude;
-        let userLocationColonia = geoResult?.neighborhood || null;
+        let userLocationColonia = (isLocationMessage && geoResult?.neighborhood) ? geoResult.neighborhood : null;
         let locationIsFromMemory = false;
 
         if (isLocationMessage && latitude && longitude) {
@@ -4944,12 +5345,46 @@ ${visualFormatRule}`;
           locationIsFromMemory = true;
         }
 
-        // Si el usuario escribió el nombre de una colonia en el texto
+        // Si el usuario escribió el nombre de una colonia en el texto o coincide con un punto conocido de CDMX
         if (!isLocationMessage && messageText) {
-          const colMatch = messageText.match(/(?:en|colonia|col\.?)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]{3,25})/i);
+          const colMatch = messageText.match(/(?:en|colonia|col\.?|estoy\s+en|por)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]{3,25})/i);
           if (colMatch && colMatch[1]) {
             const detectedCol = colMatch[1].trim();
-            if (detectedCol.length > 3) userLocationColonia = detectedCol;
+            if (detectedCol.length > 3) {
+              userLocationColonia = detectedCol;
+              const matchedPt = SERVER_CDMX_POINTS.find(p => p.neighborhood.toLowerCase() === detectedCol.toLowerCase() || detectedCol.toLowerCase().includes(p.neighborhood.toLowerCase()));
+              if (matchedPt) {
+                userLat = matchedPt.lat;
+                userLng = matchedPt.lng;
+                userLocationColonia = matchedPt.neighborhood;
+              }
+              userSession.lastLocation = {
+                latitude: userLat || 19.3496,
+                longitude: userLng || -99.1915,
+                neighborhood: userLocationColonia,
+                municipality: "Álvaro Obregón",
+                timestamp: Date.now()
+              };
+            }
+          } else {
+            // Verificar si el mensaje es directamente el nombre de una colonia de SERVER_CDMX_POINTS
+            const directColPt = SERVER_CDMX_POINTS.find(p => {
+              const pNorm = p.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const mNorm = messageText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+              return mNorm === pNorm || (mNorm.length <= 30 && mNorm.includes(pNorm));
+            });
+            if (directColPt) {
+              userLat = directColPt.lat;
+              userLng = directColPt.lng;
+              userLocationColonia = directColPt.neighborhood;
+              userSession.lastLocation = {
+                latitude: userLat,
+                longitude: userLng,
+                neighborhood: userLocationColonia,
+                municipality: directColPt.municipality || "Álvaro Obregón",
+                timestamp: Date.now()
+              };
+            }
           }
         }
 
@@ -4971,28 +5406,41 @@ ${visualFormatRule}`;
         ];
 
         // ==============================================================
-        // MÁQUINA DE ESTADOS CONVERSACIONAL DE 4 FASES (BUSCAYA V3)
+        // CLASIFICADOR DE INTENCIÓN ANTES DE BUSCAR Y MÁQUINA DE ESTADOS (V4)
         // ==============================================================
         const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
         const AFFIRMATIVE_REGEX = /^(s[ií]|claro|por\s+favor|m[aá]ndalos|m[aá]ndamelas|m[aá]ndalas|m[aá]ndame\s+otro|m[aá]ndame\s+otra|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|otro|otra|algun\s+otro|alguna\s+otra|mu[eé]strame\s+otro|mu[eé]strame\s+m[aá]s)[!.\s]*$/i;
         const MORE_OPTIONS_REGEX = /(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida)/i;
+        const FEEDBACK_REGEX = /^(?:est[aá]\s+(?:muy\s+)?lejos|me\s+queda\s+(?:muy\s+)?lejos|algo\s+m[aá]s\s+cerca|est[aá]\s+(?:muy\s+)?caro|no\s+me\s+(?:gusta|convence|late)|ya\s+cerr[oó]|est[aá]\s+cerrado|no\s+contestan|muy\s+retirado|otro\s+m[aá]s\s+cerquita)[!.\s]*$/i;
+        const CORRECTION_REGEX = /(?:no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ\s]+[,;.]?\s*(?:quiero|busco|necesito|sino)\s+|quiero\s+(?:un|una)?\s*[a-záéíóúñ\s]+,\s*no\s+[a-záéíóúñ\s]+|te\s+ped[ií]\s+|dije\s+)/i;
 
-        const isGreetingOnly = GREETING_REGEX.test(messageText.trim());
-        const isAffirmative = AFFIRMATIVE_REGEX.test(messageText.trim()) || MORE_OPTIONS_REGEX.test(messageText.trim());
+        // Si el usuario corrigió explícitamente la categoría (ej. "quiero una herrería, no comida" o "no quiero comida, busco herrería"), limpiar la parte negada para detectar solo el giro deseado
+        let textForCategoryDetection = messageText || "";
+        const isCategoryCorrection = CORRECTION_REGEX.test(textForCategoryDetection);
+        if (isCategoryCorrection) {
+          textForCategoryDetection = textForCategoryDetection
+            .replace(/,\s*no\s+[a-záéíóúñ\s]+$/i, "")
+            .replace(/no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ]+[,;.\s]*/i, "")
+            .trim();
+        }
+
+        const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
+        const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
+        const isAffirmative = !isLocationMessage && !isCategoryCorrection && (AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
 
         // 4. Sincronización con BD: Negocios activos o en demo vigente
         const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
         // Búsqueda Difusa Flexible en Base de Datos en Tiempo Real
-        const directFuzzyMatches = (!isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
-          ? searchBusinessesFuzzy(messageText, activeBusinesses)
+        const directFuzzyMatches = (!isLocationMessage && !isGreetingOnly && !isAffirmative && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
+          ? searchBusinessesFuzzy(textForCategoryDetection, activeBusinesses)
           : [];
 
         // Detección de Modismos Mexicanos
         let matchedIdiom = null;
         let deducedCategoryFromIdiom = null;
         for (const item of MEXICAN_IDIOMS_MAP) {
-          if (item.regex.test(messageText)) {
+          if (item.regex.test(textForCategoryDetection)) {
             deducedCategoryFromIdiom = item.category;
             matchedIdiom = item.tag;
             break;
@@ -5007,13 +5455,13 @@ ${visualFormatRule}`;
         for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
           const kwHit = fData.keywords.some(kw => {
             const regex = new RegExp(`\\b${kw}\\b`, 'i');
-            return regex.test(messageText);
+            return regex.test(textForCategoryDetection);
           });
           if (kwHit) {
             detectedFamilyKey = fKey;
             detectedFamilyName = fData.name;
             for (const kw of fData.keywords) {
-              if (new RegExp(`\\b${kw}\\b`, 'i').test(messageText)) {
+              if (new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection)) {
                 detectedSpecificGiro = kw.charAt(0).toUpperCase() + kw.slice(1);
                 break;
               }
@@ -5066,28 +5514,69 @@ ${visualFormatRule}`;
           detectedSpecificGiro = topMatch.businessName || topMatch.category;
         }
 
-        // Determinar Fase Conversacional Actual
+        // Si es una corrección de categoría, reemplazar la categoría activa, reiniciar mostrados y conservar la ubicación activa
+        if (isCategoryCorrection && (detectedFamilyName || directFuzzyMatches.length > 0)) {
+          userSession.familia_giro = detectedFamilyName || "Servicios Locales";
+          userSession.giro_especifico = detectedSpecificGiro || textForCategoryDetection;
+          userSession.negocios_ya_mostrados = [];
+          userSession.esperando_confirmacion_expansion_2km = false;
+        }
+
+        // Determinar Fase Conversacional Actual (Procesando UBICACIÓN antes que clasificador genérico)
         let currentPhase = 1;
+        const hasValidActiveLocation = Boolean(isLocationMessage || userLocationColonia || locationIsFromMemory || (userSession.lastLocation && userSession.lastLocation.latitude));
+
         if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
           currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
+        } else if (isLocationMessage && (!messageText || !messageText.trim())) {
+          // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR: El usuario acaba de mandar un pin de ubicación puro
+          if (userSession.familia_giro || userSession.giro_especifico) {
+            currentPhase = 3; // Ejecutar inmediatamente la búsqueda de la categoría pendiente
+            detectedFamilyName = userSession.familia_giro;
+            detectedSpecificGiro = userSession.giro_especifico;
+            userSession.intencion_actual = "buscar_negocio";
+          } else {
+            currentPhase = 1; // Guardar ubicación y preguntar qué desea buscar cerca de ahí
+            userSession.intencion_actual = "ubicacion_guardada_esperando_giro";
+          }
+        } else if (isCategoryCorrection && (userSession.familia_giro || detectedFamilyKey)) {
+          if (hasValidActiveLocation) {
+            currentPhase = 3;
+            userSession.intencion_actual = "correccion_categoria";
+          } else {
+            currentPhase = 2;
+            userSession.intencion_actual = "esperando_ubicacion";
+          }
         } else if (isAffirmative && (userSession.esperando_confirmacion_expansion_2km || userSession.familia_giro)) {
-          currentPhase = 4; // FASE 4: Confirmación de expansión o más opciones
+          currentPhase = 4; // FASE 4: Confirmación de expansión, feedback ("está lejos") o más opciones
           detectedFamilyName = userSession.familia_giro || "Alimentos y Bebidas";
           detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
           userSession.esperando_confirmacion_expansion_2km = false;
+          userSession.intencion_actual = isFeedbackOnPrevious ? "feedback_resultado_anterior" : "ver_mas_opciones";
         } else if (isGreetingOnly && !detectedFamilyKey && directFuzzyMatches.length === 0) {
           currentPhase = 1; // FASE 1: Saludo inicial puro (Prohibido escupir negocios)
           userSession.intencion_actual = "saludo";
         } else if (directFuzzyMatches.length > 0) {
           // Búsqueda directa con nombre de negocio o servicio encontrado
-          currentPhase = 3;
+          if (userSession.familia_giro !== detectedFamilyName) {
+            userSession.negocios_ya_mostrados = [];
+          }
           userSession.familia_giro = detectedFamilyName || "Servicios Locales";
           userSession.giro_especifico = detectedSpecificGiro || directFuzzyMatches[0].businessName;
-          userSession.intencion_actual = "buscar_negocio";
+          if (!hasValidActiveLocation) {
+            currentPhase = 2;
+            userSession.intencion_actual = "esperando_ubicacion";
+          } else {
+            currentPhase = 3;
+            userSession.intencion_actual = "buscar_negocio";
+          }
         } else if (detectedFamilyKey) {
+          if (userSession.familia_giro !== detectedFamilyName) {
+            userSession.negocios_ya_mostrados = [];
+          }
           userSession.familia_giro = detectedFamilyName;
           userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
-          if (!userLat || (userLat === 19.3496 && !userLocationColonia && !isLocationMessage)) {
+          if (!hasValidActiveLocation) {
             currentPhase = 2; // FASE 2: Necesidad detectada pero falta ubicación
             userSession.intencion_actual = "esperando_ubicacion";
           } else {
@@ -5095,7 +5584,7 @@ ${visualFormatRule}`;
             userSession.intencion_actual = "buscar_negocio";
           }
         } else if ((isLocationMessage || userLocationColonia) && userSession.familia_giro) {
-          currentPhase = 3; // FASE 3: Ubicación recibida tras haber guardado la necesidad
+          currentPhase = 3; // FASE 3: Ubicación o colonia recibida tras haber guardado la necesidad
           userSession.intencion_actual = "buscar_negocio";
           detectedFamilyName = userSession.familia_giro;
           detectedSpecificGiro = userSession.giro_especifico;
@@ -5104,12 +5593,17 @@ ${visualFormatRule}`;
           userSession.intencion_actual = "buscar_negocio";
           detectedFamilyName = userSession.familia_giro;
           detectedSpecificGiro = userSession.giro_especifico;
-        } else if (!isGreetingOnly) {
-          // Si no fue saludo ni afirmativo, tratar como búsqueda directa en Fase 3 para no bloquear al usuario
-          currentPhase = 3;
+        } else if (!isGreetingOnly && messageText && messageText.trim()) {
+          // Búsqueda nueva de giro específico
           userSession.familia_giro = userSession.familia_giro || "Servicios Locales";
           userSession.giro_especifico = messageText.trim();
-          userSession.intencion_actual = "buscar_negocio";
+          if (!hasValidActiveLocation) {
+            currentPhase = 2;
+            userSession.intencion_actual = "esperando_ubicacion";
+          } else {
+            currentPhase = 3;
+            userSession.intencion_actual = "buscar_negocio";
+          }
         }
 
         let cercanos_2km = [];
@@ -5260,13 +5754,18 @@ ${visualFormatRule}`;
           }
         }
 
-        // Guardar IDs mostrados para no repetir jamás en la misma conversación
+        // Guardar IDs mostrados para no repetir jamás en la misma conversación y actualizar los 3 pilares de memoria
         selectedBusinesses.forEach(b => {
           if (!userSession.negocios_ya_mostrados.includes(b.id)) {
             userSession.negocios_ya_mostrados.push(b.id);
           }
         });
         userSession.lastBusinesses = selectedBusinesses;
+        userSession.categoria_activa = userSession.giro_especifico || userSession.familia_giro || null;
+        userSession.ubicacion_activa = userSession.lastLocation || (userLocationColonia ? { neighborhood: userLocationColonia, latitude: userLat, longitude: userLng } : null);
+        userSession.ultimo_negocio_ofrecido = selectedBusinesses.length > 0
+          ? { id: selectedBusinesses[0].id, businessName: selectedBusinesses[0].businessName, category: selectedBusinesses[0].category, neighborhood: selectedBusinesses[0].neighborhood || selectedBusinesses[0].colonia }
+          : (userSession.ultimo_negocio_ofrecido || null);
 
         // Construir Ficha Canónica Completa y Pregunta de Control
         let canonicalCard = "";
@@ -5309,8 +5808,13 @@ MENSAJE RECIBIDO DEL USUARIO: "${messageText}"`;
         }
 
         if (currentPhase === 1) {
-          contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - SALUDO INICIAL]
+          if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - UBICACIÓN RECIBIDA]
+El usuario acaba de enviar su ubicación en ${userLocationColonia || 'su colonia'} 📍. Confírmale que ya guardaste su ubicación y pregúntale con calidez qué comida, oficio o servicio desea buscar cerca de él. TIENES ESTRICTAMENTE PROHIBIDO decir que "no tenemos ese giro registrado".`;
+          } else {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - SALUDO INICIAL]
 El usuario solo ha enviado un saludo. TIENES ESTRICTAMENTE PROHIBIDO mostrar o recomendar negocios en este mensaje. Saluda con muchísima calidez acorde a la hora actual (${mexTime.greeting} ${mexTime.icon}), da la bienvenida a BuscaYa con frescura y pregúntale cómo está y qué servicio, comida o negocio le gustaría buscar hoy.`;
+          }
         } else if (currentPhase === 2) {
           contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
 El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.familia_giro}). Aún NO tenemos su ubicación exacta o colonia.
@@ -5354,8 +5858,11 @@ Dile con amabilidad que en 2 km no hay opciones de ese platillo por ahora pero q
           }
         } else if (currentPhase === 4) {
           if (selectedBusinesses.length > 0) {
+            const feedbackIntroNote = isFeedbackOnPrevious
+              ? `\nNOTA DE FEEDBACK: El usuario comentó "${messageText}" sobre la opción anterior. Comprende su comentario con amabilidad y preséntale esta otra alternativa de ${userSession.giro_especifico}:`
+              : "";
             contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - SIGUIENTE OPCIÓN (1 SOLA OPCIÓN)]
-El usuario solicitó ver otra opción de ${userSession.giro_especifico}.
+El usuario solicitó ver otra opción de ${userSession.giro_especifico}.${feedbackIntroNote}
 REGLA INQUEBRANTABLE DE FAMILIA: ÚNICAMENTE puedes recomendar un negocio de la familia ${userSession.familia_giro}.
 CERO HERRERÍAS NI OFICIOS SI EL USUARIO PIDIÓ COMIDA.
 Presenta ÚNICAMENTE este negocio con su ficha completa y haz la pregunta de control:
@@ -5364,9 +5871,15 @@ ${canonicalCard}
 |||SEPARAR|||
 "${controlQuestion}"`;
           } else {
-            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - TODAS LAS OPCIONES MOSTRADAS]
+            if (isFeedbackOnPrevious) {
+              contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - FEEDBACK DE USUARIO ("${messageText}")]
+El usuario comentó "${messageText}" sobre el resultado anterior de ${userSession.giro_especifico}, pero por el momento ya no hay más opciones registradas de ${userSession.giro_especifico} más cercanas en la base de datos.
+NUNCA digas que "${messageText}" es un giro no registrado. Responde con empatía explicando que por ahora son todas las opciones registradas de ${userSession.giro_especifico} en la zona y pregúntale si desea buscar algún otro servicio o categoría.`;
+            } else {
+              contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - TODAS LAS OPCIONES MOSTRADAS]
 Ya se mostraron todas las opciones registradas en la base de datos para ${userSession.giro_especifico} (${userSession.familia_giro}).
 Informa con cariño que por el momento son todas las opciones que tenemos registradas y pregúntale si le gustaría buscar alguna otra cosa diferente.`;
+            }
           }
         }
 
@@ -5418,17 +5931,30 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
         // Fallbacks inteligentes por fase con enlace de atribución directa
         if (!finalBotReplyText) {
           if (currentPhase === 1) {
-            finalBotReplyText = isSessionAlreadyActive
-              ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
-              : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
+            if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
+              finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
+            } else {
+              finalBotReplyText = isSessionAlreadyActive
+                ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
+                : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
+            }
           } else if (currentPhase === 2) {
             finalBotReplyText = `¡Claro que sí! Con gusto te ayudo a buscar las mejores opciones de ${userSession.giro_especifico || 'lo que necesitas'} 😊🙌 Para recomendarte los lugares abiertos a menos de 2 km de ti, ¿me compartes tu ubicación actual o en qué colonia estás? 📍✨`;
           } else if (selectedBusinesses.length > 0) {
-            finalBotReplyText = `¡Aquí tienes una excelente opción cerquita de ti! 😊👇\n|||SEPARAR|||\n` +
+            const introPrefix = isCategoryCorrection
+              ? `¡Entendido! Cambiamos de inmediato a ${userSession.giro_especifico || userSession.familia_giro} cerca de tu ubicación 📍✨ Aquí tienes esta opción:`
+              : (isLocationMessage && !messageText)
+                ? `¡Gracias por tu ubicación! 📍 Buscando ${userSession.giro_especifico || userSession.familia_giro} cerca de ti:`
+                : (isFeedbackOnPrevious)
+                  ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.giro_especifico || userSession.familia_giro}:`
+                  : `¡Aquí tienes una excelente opción cerquita de ti! 😊👇`;
+            finalBotReplyText = `${introPrefix}\n|||SEPARAR|||\n` +
               `${canonicalCard}\n|||SEPARAR|||\n` +
               `${controlQuestion}`;
           } else {
-            if (isOficioFamily) {
+            if (isFeedbackOnPrevious) {
+              finalBotReplyText = `Te entiendo perfectamente 🙌 Por el momento son todas las opciones de ${userSession.giro_especifico || userSession.familia_giro || 'ese servicio'} que tenemos registradas cerca de tu zona, pero muy pronto sumaremos más establecimientos 📍✨ ¿Te gustaría que busquemos algún otro giro o servicio? 😊`;
+            } else if (isOficioFamily) {
               finalBotReplyText = `Acabo de revisar en todo nuestro sistema y por el momento no tenemos ese giro o establecimiento registrado 😔✨ ¡Pero muy pronto lo agregaremos! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente que sí tengamos disponible?`;
             } else {
               finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de comida aunque estén un poquito más retiradas? 🚗💨`;
@@ -5448,7 +5974,7 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
         userSession.lastBotReplyText = finalBotReplyText;
         userSession.lastBotReplyTimestamp = Date.now();
 
-        // Registrar respuesta del asistente en el historial de sesión
+        // Registrar respuesta del asistente en el historial de sesión y persistir memoria en base de datos
         userSession.history.push({
           role: "assistant",
           text: finalBotReplyText,
@@ -5457,6 +5983,7 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
         if (userSession.history.length > 15) {
           userSession.history = userSession.history.slice(-15);
         }
+        saveServerDatabase();
 
         // ==============================================================
         // DESPACHO MULTI-BURBUJA Y BOTONES NATIVOS DE WHATSAPP (META CLOUD API)
