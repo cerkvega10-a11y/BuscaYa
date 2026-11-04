@@ -2,28 +2,68 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/whatsapp/webhook",
-      "destination": "/api/whatsapp/webhook"
+      "source": "/api/mercadopago/(.*)",
+      "destination": "/api/serverless-backend?path=/api/mercadopago/$1"
     },
     {
-      "source": "/api/webhook",
-      "destination": "/api/webhook"
+      "source": "/api/mercadopago",
+      "destination": "/api/serverless-backend?path=/api/mercadopago"
     },
     {
-      "source": "/api/auditor",
-      "destination": "/api/auditor"
+      "source": "/api/businesses/(.*)",
+      "destination": "/api/serverless-backend?path=/api/businesses/$1"
     },
     {
-      "source": "/api/colonias/(.*)",
-      "destination": "/api/colonias"
+      "source": "/api/businesses",
+      "destination": "/api/serverless-backend?path=/api/businesses"
     },
     {
-      "source": "/api/colonias",
-      "destination": "/api/colonias"
+      "source": "/api/business/(.*)",
+      "destination": "/api/serverless-backend?path=/api/business/$1"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api"
+      "source": "/api/admin/(.*)",
+      "destination": "/api/serverless-backend?path=/api/admin/$1"
+    },
+    {
+      "source": "/api/ai/(.*)",
+      "destination": "/api/serverless-backend?path=/api/ai/$1"
+    },
+    {
+      "source": "/api/crm/(.*)",
+      "destination": "/api/serverless-backend?path=/api/crm/$1"
+    },
+    {
+      "source": "/api/marketing/(.*)",
+      "destination": "/api/serverless-backend?path=/api/marketing/$1"
+    },
+    {
+      "source": "/api/handoff/(.*)",
+      "destination": "/api/serverless-backend?path=/api/handoff/$1"
+    },
+    {
+      "source": "/api/system/(.*)",
+      "destination": "/api/serverless-backend?path=/api/system/$1"
+    },
+    {
+      "source": "/api/whatsapp/status",
+      "destination": "/api/serverless-backend?path=/api/whatsapp/status"
+    },
+    {
+      "source": "/api/whatsapp/messages-log",
+      "destination": "/api/serverless-backend?path=/api/whatsapp/messages-log"
+    },
+    {
+      "source": "/api/whatsapp/restart(.*)",
+      "destination": "/api/serverless-backend?path=/api/whatsapp/restart$1"
+    },
+    {
+      "source": "/api/whatsapp/request-pair-code",
+      "destination": "/api/serverless-backend?path=/api/whatsapp/request-pair-code"
+    },
+    {
+      "source": "/api/whatsapp/disconnect",
+      "destination": "/api/serverless-backend?path=/api/whatsapp/disconnect"
     }
   ]
 }
