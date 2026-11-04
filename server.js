@@ -976,6 +976,10 @@ const GIRO_FAMILIES = {
   }
 };
 
+// Alias de compatibilidad semántica (v6.0)
+GIRO_FAMILIES["OFICIOS_HOGAR"] = GIRO_FAMILIES["OFICIOS_DEL_HOGAR"];
+GIRO_FAMILIES["SALUD_Y_BIENESTAR"] = GIRO_FAMILIES["SALUD"];
+
 /**
  * Motor de Búsqueda Flexible y Difusa (Fuzzy Search) para Negocios de BuscaYa
  * Busca coincidencias parciales por nombre de negocio, categoría, servicios y etiquetas
@@ -2301,10 +2305,335 @@ scheduleMidnightCron();
 
 
 // ==============================================================
-// MOTOR UNIFICADO DE PROCESAMIENTO BUSCAYA (WHATSAPP & SANDBOX)
-// Atribuido a: Neural Media House
-// Bloqueo inquebrantable de categoría/familia (lockedCategory/lockedFamily)
+// ARQUITECTURA DE IA CONVERSACIONAL (NIVEL PRODUCCIÓN) - BUSCAYA V6.0
+// Desarrollado por: Neural Media House
+// Motor NLU Estructurado + FSM Determinista + Ficha Ultra-Limpia
 // ==============================================================
+
+function normalizeFamilyKey(key) {
+  if (!key) return null;
+  const k = String(key).toUpperCase().trim();
+  if (k === "OFICIOS_HOGAR" || k === "OFICIOS_DEL_HOGAR") return "OFICIOS_DEL_HOGAR";
+  if (k === "SALUD" || k === "SALUD_Y_BIENESTAR") return "SALUD";
+  return k;
+}
+
+/**
+ * Renderizador Canónico de Ficha de Negocio por Código (100% Determinista)
+ * Atribuido a: Neural Media House
+ * CERO alucinación, CERO enlaces wa.me/, número limpio a 10 dígitos y URL directa a Google Maps
+ */
+function renderBuscaYaBusinessCard(b, distanceKm = null) {
+  if (!b) return "";
+  const cleanPhone10 = String(b.phone || '').replace(/\D/g, '').slice(-10);
+  const mapsLink = b.mapsUrl || b.googleMapsUrl || (b.latitude && b.longitude
+    ? `https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((b.businessName || '') + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`);
+
+  const distVal = (distanceKm !== null && distanceKm !== undefined) ? distanceKm : b.distanceKm;
+  const distLabel = distVal !== undefined ? ` • a ${Number(distVal).toFixed(1)} km de ti` : "";
+  const sponsorTag = (b.isSponsored || b.plan === "plus" || b.featured) ? `👑 Opción VIP Patrocinada${distLabel}\n` : "";
+
+  const mexTime = getMexicoCityTime();
+  const openInfo = typeof isBusinessOpenNow === 'function' ? isBusinessOpenNow(b, mexTime) : { isOpen: true, hoursDisplay: "09:00 a 18:00" };
+  const openStatus = openInfo.isOpen ? '🟢 Estado: Abierto ahora' : '🔴 Estado: Cerrado';
+  const hoursStr = openInfo.hoursDisplay || (b.is24Hours ? '24 Horas' : ((b.openTime || '09:00') + ' a ' + (b.closeTime || '18:00')));
+  const daysStr = (b.daysOpen && Array.isArray(b.daysOpen) && b.daysOpen.length ? b.daysOpen : ["Lunes a Sábado"]).join(", ");
+  const zonaStr = b.neighborhood || b.colonia || "Álvaro Obregón, CDMX";
+
+  return `${sponsorTag}🏢 ${b.businessName}\n` +
+    `✨ Especialidad: ${b.services || b.category}\n` +
+    `${openStatus} • ⏰ ${hoursStr}\n` +
+    `📅 Días: ${daysStr}\n` +
+    `📍 Zona: Col. ${zonaStr}\n` +
+    `📞 Número de contacto: ${cleanPhone10}\n` +
+    `🗺️ Ubicación en Google Maps: ${mapsLink}`;
+}
+
+/**
+ * Consulta Estricta a la Base de Datos con Bloqueo Inviolable de Familia / Giro
+ * WHERE family = lockedFamily AND id NOT IN shownBusinessIds
+ * Búsqueda multicampo: businessName, category, subcategory, services, tags
+ */
+function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBusinessIds = [], activeBusinesses = [], mexTime = null }) {
+  const normFamily = normalizeFamilyKey(lockedFamily);
+  const familyDef = normFamily ? GIRO_FAMILIES[normFamily] : null;
+  const allowedCategories = familyDef ? familyDef.categories : [];
+  const isFoodFamily = (normFamily === "ALIMENTOS_Y_BEBIDAS");
+
+  const unshown = activeBusinesses.filter(b => !shownBusinessIds.includes(b.id));
+
+  const familyFiltered = unshown.filter(b => {
+    const bCat = (b.category || '').toLowerCase();
+    const bName = (b.businessName || '').toLowerCase();
+    const bServ = (b.services || '').toLowerCase();
+    const bTags = (Array.isArray(b.tags) ? b.tags.join(" ") : (b.tags || "")).toLowerCase();
+
+    // Búsqueda directa por nombre o término exacto (multicampo)
+    if (lockedTerm) {
+      const cleanTerm = lockedTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const cleanName = bName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      if (cleanTerm.length >= 3 && (cleanName.includes(cleanTerm) || cleanTerm.includes(cleanName))) {
+        return true;
+      }
+    }
+
+    if (isFoodFamily) {
+      const nonFoodTokens = [
+        "herrer", "plomer", "electric", "cerrajer", "carpinter", "mecanic", "taller", "grua",
+        "veterinar", "abogad", "contador", "medico", "dentist", "farmacia", "limpieza", "fumiga", "notar", "inmobiliaria", "artista", "musica"
+      ];
+      if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
+      const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+      const isFoodKw = familyDef ? familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ) || new RegExp(`\\b${kw}\\b`, 'i').test(bTags)) : false;
+      return isFoodCat || isFoodKw;
+    }
+
+    if (familyDef) {
+      const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+      const kwMatches = familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ) || new RegExp(`\\b${kw}\\b`, 'i').test(bTags));
+      return catMatches || kwMatches;
+    }
+
+    return false;
+  });
+
+  if (familyFiltered.length === 0) {
+    return { status: "EMPTY", business: null };
+  }
+
+  // Coordenadas del usuario según colonia de referencia
+  let userLat = 19.3496;
+  let userLng = -99.1915;
+  if (coloniaActual) {
+    const cLow = coloniaActual.toLowerCase();
+    if (cLow.includes("jalalpa")) {
+      userLat = 19.3738; userLng = -99.2275;
+    } else if (cLow.includes("santa fe") || cLow.includes("mexicana")) {
+      userLat = 19.3585; userLng = -99.2675;
+    } else if (cLow.includes("san angel") || cLow.includes("san ángel")) {
+      userLat = 19.3480; userLng = -99.1900;
+    } else if (cLow.includes("las aguilas") || cLow.includes("las águilas")) {
+      userLat = 19.3550; userLng = -99.2150;
+    } else if (cLow.includes("olivar")) {
+      userLat = 19.3370; userLng = -99.2260;
+    }
+  }
+
+  const directNameMatch = (b) => {
+    if (!lockedTerm) return false;
+    const tClean = lockedTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    return bName.includes(tClean) || (tClean.length >= 4 && bName.includes(tClean));
+  };
+
+  const isSameColonia = (b) => {
+    if (!coloniaActual || !b.neighborhood) return false;
+    const uNorm = coloniaActual.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const bNorm = b.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    return uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm);
+  };
+
+  const scored = familyFiltered.map(b => {
+    let bLat = b.latitude ? Number(b.latitude) : 19.3496;
+    let bLng = b.longitude ? Number(b.longitude) : -99.1915;
+    const distKm = haversineDistanceKm(userLat, userLng, bLat, bLng);
+    let score = 0;
+    if (directNameMatch(b)) score += 400;
+    if (b.isSponsored || b.plan === "plus" || b.featured) score += 60;
+    if (isSameColonia(b)) score += 50;
+    return { ...b, distanceKm: distKm, matchScore: score };
+  });
+
+  const cercanos_2km = scored
+    .filter(b => b.distanceKm <= 2.0 || isSameColonia(b) || directNameMatch(b))
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  const lejanos_mas_2km = scored
+    .filter(b => b.distanceKm > 2.0 && !isSameColonia(b) && !directNameMatch(b))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+
+  if (cercanos_2km.length > 0) {
+    return { status: "FOUND_NEARBY", business: cercanos_2km[0] };
+  } else if (lejanos_mas_2km.length > 0) {
+    return { status: "FOUND_FAR", business: lejanos_mas_2km[0] };
+  } else {
+    return { status: "EMPTY", business: null };
+  }
+}
+
+/**
+ * Extractor NLU Estructurado (Comprensión Semántica vs Base de Datos)
+ * Devuelve: { intencion, familia_giro, termino_especifico, colonia_o_referencia, emoji_reaccion }
+ */
+async function extractStructuredNLU(text, userSession = {}) {
+  const t = (text || '').trim();
+  const lower = t.toLowerCase();
+
+  // 1. Agradecimiento / Despedida
+  if (/(?:^|\b)(?:muchas\s+gracias|mil\s+gracias|gracias|te\s+lo\s+agradezco|perfecto\s+gracias|ok\s+gracias|muy\s+amable|adi[oó]s|adios|bye|chao|hasta\s+luego|nos\s+vemos|much[ií]simas\s+gracias|vale\s+gracias|sale\s+bye|va\s+gracias|sale\s+gracias)(?:$|[!.\s])/i.test(lower)) {
+    return {
+      intencion: 'AGRADECIMIENTO_DESPEDIDA',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '❤️'
+    };
+  }
+
+  // 2. Soporte Humano
+  if (/(?:hablar\s+con\s+(?:un\s+)?(?:humano|persona|asesor)|ayuda\s+humana|atenci[oó]n\s+humana|soporte\s+humano|operador)/i.test(lower)) {
+    return {
+      intencion: 'SOPORTE_HUMANO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  // 3. Duda Registro / B2B
+  if (/(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i.test(lower)) {
+    return {
+      intencion: 'DUDA_REGISTRO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  // 4. Confirmación afirmativa para opción lejana
+  const isAffirmative = /^(?:s[ií]|claro|por\s+favor|m[aá]ndal[oa]|p[aá]sal[oa]|adelante|va|ok|dale|sale|a\s+ver|me\s+late|de\s+acuerdo)(?:[,\s]+.*)?$/i.test(lower);
+  if (userSession.esperando_confirmacion_expansion_2km && isAffirmative) {
+    return {
+      intencion: 'PEDIR_MAS_OPCIONES',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  // 5. Pedir más opciones / Expansión de distancia
+  if (/(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa)/i.test(lower) && (userSession.lockedFamily || userSession.giro_buscado || userSession.esperando_confirmacion_expansion_2km)) {
+    return {
+      intencion: 'PEDIR_MAS_OPCIONES',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  // 6. Saludo puro (sin términos de búsqueda)
+  if (/^(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)(?:\s+(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|amig[oa]|a\s+todos))?[!.\s]*$/i.test(lower)) {
+    return {
+      intencion: 'SALUDO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  // 7. Detección de colonias y direcciones
+  let detectedColonia = null;
+  const addressInfo = typeof resolveAddressOrColonia === 'function' ? resolveAddressOrColonia(t, userSession.intencion_actual === 'esperando_ubicacion') : null;
+  if (addressInfo && addressInfo.neighborhood) {
+    detectedColonia = addressInfo.neighborhood;
+  }
+  if (!detectedColonia) {
+    const KNOWN_COLS = [
+      'jalalpa', 'santa fe', 'las aguilas', 'las águilas', 'san angel', 'san ángel',
+      'olivar de los padres', 'tetelpan', 'progreso tizapan', 'san jeronimo', 'san jerónimo',
+      'florida', 'guadalupe inn', 'mixcoac', 'desierto de los leones', 'lomas de becerra',
+      'alfonso xiii', 'plateros', 'merced gomez', 'la mexicana'
+    ];
+    for (const c of KNOWN_COLS) {
+      if (lower.includes(c)) {
+        detectedColonia = c.charAt(0).toUpperCase() + c.slice(1);
+        break;
+      }
+    }
+  }
+
+  const isColoniaPrefix = /^(?:estoy\s+en|en|por|cerca\s+de|vivo\s+en|ubicado\s+en|desde)\s+/i.test(lower);
+  const isWaitingColonia = userSession.intencion_actual === 'esperando_ubicacion' || userSession.intencion_actual === 'esperando_colonia' || (!userSession.coloniaActual && userSession.lockedFamily);
+
+  // 8. Detección de Familia y Término
+  let matchedFamily = null;
+  let matchedTerm = null;
+  let reactionEmoji = '👍';
+
+  if (/caramelo/i.test(lower)) {
+    matchedFamily = 'ENTRETENIMIENTO_Y_ARTE';
+    matchedTerm = 'Caramelo Media Music';
+    reactionEmoji = '😮';
+  } else {
+    for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+      if (fData && Array.isArray(fData.keywords)) {
+        for (const kw of fData.keywords) {
+          const regex = new RegExp('\\b' + kw + '\\b', 'i');
+          if (regex.test(lower)) {
+            matchedFamily = fKey;
+            matchedTerm = kw.charAt(0).toUpperCase() + kw.slice(1);
+            if (fKey === 'ALIMENTOS_Y_BEBIDAS') reactionEmoji = '🤤';
+            else if (fKey === 'SALUD' || fKey === 'SALUD_Y_BIENESTAR' || /(fuga|tubo|dolor|emergencia)/i.test(lower)) reactionEmoji = '😢';
+            else if (fKey === 'ENTRETENIMIENTO_Y_ARTE') reactionEmoji = '😮';
+            else if (fKey === 'MASCOTAS') reactionEmoji = '❤️';
+            else reactionEmoji = '👍';
+            break;
+          }
+        }
+      }
+      if (matchedFamily) break;
+    }
+  }
+
+  if ((isWaitingColonia && detectedColonia) || (isColoniaPrefix && detectedColonia && !matchedFamily)) {
+    return {
+      intencion: 'DAR_COLONIA',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: detectedColonia,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  if (matchedFamily) {
+    return {
+      intencion: 'BUSQUEDA',
+      familia_giro: matchedFamily,
+      termino_especifico: matchedTerm || t,
+      colonia_o_referencia: detectedColonia,
+      emoji_reaccion: reactionEmoji
+    };
+  }
+
+  if (detectedColonia) {
+    return {
+      intencion: 'DAR_COLONIA',
+      familia_giro: userSession.lockedFamily || null,
+      termino_especifico: userSession.lockedTerm || null,
+      colonia_o_referencia: detectedColonia,
+      emoji_reaccion: '👍'
+    };
+  }
+
+  return {
+    intencion: 'BUSQUEDA',
+    familia_giro: userSession.lockedFamily || 'ALIMENTOS_Y_BEBIDAS',
+    termino_especifico: t,
+    colonia_o_referencia: null,
+    emoji_reaccion: '👍'
+  };
+}
+
+/**
+ * Motor Unificado de Procesamiento BuscaYa v6.0 (WhatsApp & Admin Sandbox)
+ * Atribuido a: Neural Media House
+ */
 async function processBuscaYaMessage({
   phone = "+52 55 1234 5678",
   name = "Usuario WhatsApp",
@@ -2325,13 +2654,12 @@ async function processBuscaYaMessage({
   let senderPhone = phone || "+52 55 1234 5678";
   let senderName = name || "Usuario WhatsApp";
   let messageText = text ? String(text).trim() : "";
-  let isLocationMessage = false;
-  let isLocationWithoutCoords = false;
   let isAudioMessage = isAudio;
   let currentPhase = 1;
   let finalBotReplyText = "";
+  const controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o prefieres que busque otra alternativa por la zona? 🙌";
 
-  // 1. DEDUPLICACIÓN DE MENSAJES (solo para WhatsApp real)
+  // 1. DEDUPLICACIÓN DE MENSAJES (WhatsApp real)
   const incomingMsgId = (rawMsg && rawMsg.id) || (rawPayload && (rawPayload.id || rawPayload.messageId)) || null;
   if (!isSandbox && incomingMsgId) {
     if (PROCESSED_WEBHOOK_MESSAGE_IDS.has(incomingMsgId)) {
@@ -2346,35 +2674,28 @@ async function processBuscaYaMessage({
     PROCESSED_WEBHOOK_MESSAGE_IDS.set(incomingMsgId, Date.now());
   }
 
-  // 2. RECUPERAR / CREAR SESIÓN DE MEMORIA
+  // 2. RECUPERAR / CREAR SESIÓN DE MEMORIA PERSISTENTE
   let userSession = USER_SESSION_MEMORY.get(senderPhone);
   if (!userSession) {
     userSession = {
       name: null,
-      intencion_actual: null,
-      giro_buscado: null,
-      familia_giro: null,
-      giro_especifico: null,
-      lockedFamily: null,
-      lockedCategory: null,
-      ubicacion: null,
-      lastLocation: null,
       saludo_enviado: false,
+      lockedFamily: null,
+      lockedTerm: null,
+      coloniaActual: null,
+      shownBusinessIds: [],
       esperando_confirmacion_expansion_2km: false,
       negocio_lejano_pendiente: null,
-      negocios_ya_mostrados: [],
       opciones_ofrecidas: [],
-      esperando_mas_opciones: false,
-      lastBusinesses: [],
       history: [],
+      lastLocation: null,
       lastInteractionTime: Date.now(),
       lastSeen: Date.now()
     };
     USER_SESSION_MEMORY.set(senderPhone, userSession);
   }
   userSession.lastSeen = Date.now();
-  if (!Array.isArray(userSession.negocios_ya_mostrados)) userSession.negocios_ya_mostrados = [];
-  if (!Array.isArray(userSession.opciones_ofrecidas)) userSession.opciones_ofrecidas = [];
+  if (!Array.isArray(userSession.shownBusinessIds)) userSession.shownBusinessIds = [];
   if (!Array.isArray(userSession.history)) userSession.history = [];
 
   // 3. CLASIFICACIÓN DE TIPO DE MENSAJE
@@ -2389,13 +2710,14 @@ async function processBuscaYaMessage({
     else if (rawPayload.type === 'location' || rawPayload.type === 'live_location' || rawPayload.location || (typeof rawPayload.latitude === 'number' && typeof rawPayload.longitude === 'number')) incomingType = "location";
   }
 
-  // A. Medios (imágenes, video)
+  // A. Medios (imágenes, stickers, etc.)
   if (incomingType === "media") {
     const mediaReplyText = "¡Muchas gracias por enviarme tu imagen! 📸😊 Por el momento todavía no tengo activada la lectura de imágenes en el sistema, ¡pero muy pronto podré verlas para ayudarte aún mejor! 🚀✨ Mientras tanto, ¿me podrías escribir por aquí o mandarme en una nota de voz qué negocio, producto o servicio estás buscando? 🙌";
     return {
       replyText: mediaReplyText,
       bubbles: [mediaReplyText],
-      debugState: { mediaAcknowledged: true, currentPhase: 1 },
+      emoji_reaccion: "📸",
+      debugState: { mediaAcknowledged: true },
       botReply: { recipient: senderPhone, responseMessage: mediaReplyText, timestamp }
     };
   }
@@ -2419,13 +2741,14 @@ async function processBuscaYaMessage({
       return {
         replyText: audioFailText,
         bubbles: [audioFailText],
-        debugState: { audioTranscriptionFailed: true, currentPhase: 1 },
+        emoji_reaccion: "🎧",
+        debugState: { audioTranscriptionFailed: true },
         botReply: { recipient: senderPhone, isAudio: true, responseMessage: audioFailText, timestamp }
       };
     }
   }
 
-  // C. Ubicación GPS o Location
+  // C. Ubicación GPS nativa
   let rawLat = latitude;
   let rawLng = longitude;
   if (location && typeof location.latitude === 'number' && typeof location.longitude === 'number') {
@@ -2440,724 +2763,256 @@ async function processBuscaYaMessage({
   }
 
   if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
-    latitude = rawLat;
-    longitude = rawLng;
-    isLocationMessage = true;
-    const geo = reverseGeocodeServer(latitude, longitude);
-    userSession.ubicacion = { lat: latitude, lng: longitude, tipo: "gps", timestamp: Date.now() };
+    const geo = reverseGeocodeServer(rawLat, rawLng);
+    userSession.coloniaActual = geo?.neighborhood || "Álvaro Obregón";
     userSession.lastLocation = {
-      latitude: latitude,
-      longitude: longitude,
-      neighborhood: geo?.neighborhood || "Álvaro Obregón",
+      latitude: rawLat,
+      longitude: rawLng,
+      neighborhood: userSession.coloniaActual,
       municipality: geo?.municipality || "Álvaro Obregón",
       timestamp: Date.now()
     };
     userSession.saludo_enviado = true;
-
-    if (!userSession.lockedFamily && !userSession.familia_giro && !userSession.giro_especifico) {
-      const locOnlyReplyText = "¡Súper, ya recibí tu ubicación exacta! 📍😊 Ahora cuéntame, ¿qué comida, oficio, médico o negocio te gustaría buscar hoy cerquita de ti? ✨";
-      return {
-        replyText: locOnlyReplyText,
-        bubbles: [locOnlyReplyText],
-        debugState: { locationReceived: true, detectedNeighborhood: geo?.neighborhood, currentPhase: 1 },
-        botReply: { recipient: senderPhone, responseMessage: locOnlyReplyText, timestamp }
-      };
-    }
-
-    currentPhase = 3;
-    userSession.intencion_actual = "buscar_negocio";
   }
 
-  // D. Coordenadas en texto
-  if (!latitude && messageText) {
-    const coordMatch = messageText.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
-    if (coordMatch) {
-      latitude = parseFloat(coordMatch[1]);
-      longitude = parseFloat(coordMatch[2]);
-      isLocationMessage = true;
-      userSession.saludo_enviado = true;
-    }
-  }
-
-  // 4. INTERCEPTOR DE DESPEDIDAS / GRACIAS
-  const CLOSING_FAREWELL_REGEX = /^(?:gracias|muchas\s+gracias|mil\s+gracias|te\s+lo\s+agradezco|perfecto\s+gracias|ok\s+gracias|muy\s+amable|adi[oó]s|adios|bye|chao|hasta\s+luego|nos\s+vemos|excelente(?:\s+gracias)?|much[ií]simas\s+gracias|muchisimas\s+gracias|vale\s+gracias|sale\s+bye|va\s+gracias|de\s+acuerdo(?:\s+gracias)?|sale\s+gracias|ok\s+perfecto|perfecto)[!.\s]*$/i;
-  if (messageText && CLOSING_FAREWELL_REGEX.test(messageText.trim())) {
-    userSession.esperando_mas_opciones = false;
-    userSession.esperando_confirmacion_expansion_2km = false;
-    userSession.negocio_lejano_pendiente = null;
-    userSession.intencion_actual = "despedida";
-    const farewellText = "¡No hay de qué, fue un verdadero placer ayudarte! 😊🙌 Espero que te atiendan increíble ✨ Recuerda que aquí en BuscaYa estoy disponible para ti las 24 horas cuando necesites encontrar otro negocio o servicio cerca de ti 📍 ¡Que pases un excelente día! 🌟";
-    return {
-      replyText: farewellText,
-      bubbles: [farewellText],
-      debugState: { isFarewell: true, currentPhase: 1 },
-      botReply: { recipient: senderPhone, responseMessage: farewellText, timestamp }
-    };
-  }
-
-  // 5. BAJA / OPT-OUT
-  if (/^(baja|darme\s+de\s+baja|no\s+quiero\s+promociones|cancelar\s+promociones|cancelar\s+suscripci[oó]n|stop|desuscribir)[!.\s]*$/i.test(messageText.trim())) {
+  // D. Opt-out / Baja
+  if (/^(baja|darme\s+de\s+baja|no\s+quiero\s+promociones|cancelar\s+promociones|cancelar\s+suscripci[oó]n|stop|desuscribir)[!.\s]*$/i.test(messageText)) {
     const cleanSender = String(senderPhone).replace(/\D/g, '');
     let crmUser = AUDIENCIA_WHATSAPP.find(a => (a.phone || '').replace(/\D/g, '') === cleanSender);
     if (crmUser) {
       crmUser.optOut = true;
       crmUser.receiveMassCampaigns = false;
-    } else {
-      AUDIENCIA_WHATSAPP.unshift({
-        phone: senderPhone,
-        name: senderName || "Usuario WhatsApp",
-        alias: "",
-        classification: "Baja Voluntaria",
-        tags_giros: [],
-        manualTags: ["Opt-Out"],
-        ubicacion_frecuente: "CDMX",
-        notes: "Solicitó baja de mensajes promocionales.",
-        first_interaction: timestamp,
-        last_interaction: timestamp,
-        optOut: true,
-        receiveMassCampaigns: false
-      });
     }
     saveServerDatabase();
     const optOutReplyText = "Has sido dado de baja de nuestras promociones y mensajes masivos ✅. Recuerda que puedes seguir usando BuscaYa para encontrar cualquier negocio o servicio cuando lo necesites. ¡Que tengas un excelente día! 🙌✨";
     return {
       replyText: optOutReplyText,
       bubbles: [optOutReplyText],
-      debugState: { optOut: true, currentPhase: 1 },
+      emoji_reaccion: "✅",
+      debugState: { optOut: true },
       botReply: { recipient: senderPhone, responseMessage: optOutReplyText, timestamp }
     };
   }
 
-  // 6. EMERGENCIAS MÉDICAS
+  // E. Emergencias médicas
   const MEDICAL_EMERGENCY_REGEX = /(?:emergencia\s+m[eé]dica|infarto|ataque\s+card[ií]aco|no\s+(?:puedo|puede)\s+respirar|se\s+desmay[oó]|inconsciente|ambulancia\s+urgente|accidente\s+grave|hemorragia|convulsi[oó]n|me\s+duele\s+el\s+pecho\s+fuerte|peligro\s+de\s+muerte)/i;
   if (messageText && MEDICAL_EMERGENCY_REGEX.test(messageText)) {
     const emergencyText = "⚠️ Si te encuentras ante una emergencia médica o de seguridad que pone en riesgo la vida, por favor comunícate de inmediato al 911 (Emergencias Ciudad de México) o a la Cruz Roja al 55 5395 1111 para recibir auxilio urgente.\n\nSi además necesitas localizar una farmacia, clínica o médico de guardia en tu colonia, confírmame tu ubicación y te paso los datos enseguida.";
     return {
       replyText: emergencyText,
       bubbles: [emergencyText],
-      debugState: { emergencyDetected: true, currentPhase: 1 },
+      emoji_reaccion: "⚠️",
+      debugState: { emergencyDetected: true },
       botReply: { recipient: senderPhone, responseMessage: emergencyText, timestamp }
     };
   }
 
-  // 7. PRE-PROCESAMIENTO Y GEOLOCALIZACIÓN
   const mexTime = getMexicoCityTime();
-  let geoResult = null;
-  if (latitude && longitude) {
-    geoResult = reverseGeocodeServer(latitude, longitude);
-  } else {
-    geoResult = reverseGeocodeServer(19.3496, -99.1915);
-  }
-
-  if (!isSandbox) {
-    recordAudienceInteraction(senderPhone, senderName, messageText, geoResult);
-  }
-
-  // PushName
-  if (senderName && senderName !== "Usuario WhatsApp" && !senderName.includes("Sandbox")) {
-    const cleanPush = senderName.replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/)[0];
-    if (cleanPush && cleanPush.length >= 2 && !userSession.name) {
-      userSession.name = cleanPush.charAt(0).toUpperCase() + cleanPush.slice(1).toLowerCase();
-    }
-  }
-  const nameMatch = messageText.match(/(?:soy|me llamo|mi nombre es)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
-  if (nameMatch && nameMatch[1]) {
-    userSession.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
-  }
-
-  userSession.history.push({ role: "user", text: messageText, timestamp: Date.now() });
-  if (userSession.history.length > 15) userSession.history = userSession.history.slice(-15);
-
-  let userLat = latitude;
-  let userLng = longitude;
-  let userLocationColonia = (isLocationMessage && geoResult?.neighborhood) ? geoResult.neighborhood : null;
-  let locationIsFromMemory = false;
-
-  if (isLocationMessage && latitude && longitude) {
-    userSession.lastLocation = {
-      latitude: latitude,
-      longitude: longitude,
-      neighborhood: geoResult?.neighborhood,
-      municipality: geoResult?.municipality,
-      timestamp: Date.now()
-    };
-  } else if ((!userLat || userLat === 19.3496) && userSession.lastLocation && (Date.now() - userSession.lastLocation.timestamp < 24 * 3600 * 1000)) {
-    userLat = userSession.lastLocation.latitude;
-    userLng = userSession.lastLocation.longitude;
-    userLocationColonia = userSession.lastLocation.neighborhood;
-    locationIsFromMemory = true;
-  }
-
-  // Detección de Dirección / Colonia en Texto
-  const isWaitingForLocation = (userSession.intencion_actual === "esperando_ubicacion");
-  let detectedAddressInfo = null;
-  if (!isLocationMessage && messageText) {
-    detectedAddressInfo = resolveAddressOrColonia(messageText, isWaitingForLocation);
-    if (detectedAddressInfo) {
-      userLocationColonia = detectedAddressInfo.neighborhood;
-      userLat = detectedAddressInfo.lat || userLat || 19.3496;
-      userLng = detectedAddressInfo.lng || userLng || -99.1915;
-      userSession.lastLocation = {
-        latitude: userLat,
-        longitude: userLng,
-        neighborhood: userLocationColonia,
-        municipality: detectedAddressInfo.municipality || "Álvaro Obregón",
-        timestamp: Date.now()
-      };
-    }
-  }
-
-  // FAQ, Registro B2B y Soporte Humano
-  const REGISTRATION_INTENT_REGEX = /(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i;
-  const HUMAN_SUPPORT_REGEX = /(?:necesito\s+(?:hablar\s+con\s+una\s+persona|ayuda\s+humana|un\s+humano)|quiero\s+que\s+me\s+atienda\s+alguien\s+real|oye[,.]?\s+necesito\s+ayuda\s+humana|hablar\s+con\s+(?:un\s+)?(?:asesor|humano|persona)|soporte\s+humano|asistencia\s+personalizada|atenci[oó]n\s+humana|atencion\s+humana)/i;
-  const SYSTEM_FAQ_REGEX = /(?:tengo\s+(?:una\s+)?duda[s]?|qu[eé]\s+es\s+buscaya|c[oó]mo\s+funciona|c[oó]mo\s+opera|c[oó]mo\s+se\s+usa|de\s+qu[eé]\s+trata|para\s+qu[eé]\s+sirve|c[oó]mo\s+me\s+(?:pueden?\s+)?ayudar|no\s+entiendo\s+(?:bien\s+)?c[oó]mo\s+(?:opera|funciona)|qu[eé]\s+(?:hace|hacen)|qu[eé]\s+puedes\s+hacer|qu[eé]\s+pueden\s+hacer\s+por\s+m[ií])/i;
-
-  const isRegistrationIntent = REGISTRATION_INTENT_REGEX.test(messageText);
-  const isHumanSupportIntent = HUMAN_SUPPORT_REGEX.test(messageText);
-  const isSystemFaqIntent = SYSTEM_FAQ_REGEX.test(messageText);
-
-  // Expresiones conversacionales
-  const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
-  const AFFIRMATIVE_REGEX = /^(?:s[ií]|claro(?:\s+que\s+s[ií])?|por\s+favor|m[aá]ndal[oa](?:me)?|m[aá]ndamel[oa]s?|m[aá]ndame\s+otr[oa]|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|otr[oa]|algun\s+otr[oa]|mu[eé]strame\s+otr[oa]|mu[eé]strame\s+m[aá]s|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|qu[eé]\s+m[aá]s\s+tienes|s[ií][,.\s]+.*)[!.\s]*$/i;
-  const MORE_OPTIONS_REGEX = /(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas)/i;
-  const FEEDBACK_REGEX = /^(?:est[aá]\s+(?:muy\s+)?lejos|me\s+queda\s+(?:muy\s+)?lejos|algo\s+m[aá]s\s+cerca|est[aá]\s+(?:muy\s+)?caro|no\s+me\s+(?:gusta|convence|late)|ya\s+cerr[oó]|est[aá]\s+cerrado|no\s+contestan|muy\s+retirado|otro\s+m[aá]s\s+cerquita)[!.\s]*$/i;
-  const CORRECTION_REGEX = /(?:no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ\s]+[,;.]?\s*(?:quiero|busco|necesito|sino)\s+|quiero\s+(?:un|una)?\s*[a-záéíóúñ\s]+,\s*no\s+[a-záéíóúñ\s]+|te\s+ped[ií]\s+|dije\s+)/i;
-
-  let textForCategoryDetection = messageText || "";
-  const isCategoryCorrection = CORRECTION_REGEX.test(textForCategoryDetection);
-  if (isCategoryCorrection) {
-    textForCategoryDetection = textForCategoryDetection
-      .replace(/,\s*no\s+[a-záéíóúñ\s]+$/i, "")
-      .replace(/no\s+(?:quiero|busco|ped[ií])\s+[a-záéíóúñ]+[,;.\s]*/i, "")
-      .trim();
-  }
-
-  const isAffirmativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && /(?:s[ií]|claro|por\s+favor|m[aá]ndal|p[aá]sal|adelante|va|ok|dale|sale|a\s+ver|^1$)/i.test((messageText || '').trim()));
-  const NEGATIVE_CONFIRMATION_REGEX = /^(?:no|nel|no\s+gracias|no\s+por\s+favor|para\s+nada|tampoco|ninguno|ninguna|no\s+quiero|est[aá]\s+muy\s+lejos|me\s+queda\s+muy\s+lejos|demasiado\s+lejos|no\s+me\s+sirve|no\s+me\s+late)[!.\s]*$/i;
-  const isNegativeExpansion = Boolean(userSession.esperando_confirmacion_expansion_2km && NEGATIVE_CONFIRMATION_REGEX.test((messageText || "").trim()));
-  const isGreetingOnly = !isLocationMessage && GREETING_REGEX.test((messageText || "").trim());
-  const isFeedbackOnPrevious = !isLocationMessage && !isCategoryCorrection && FEEDBACK_REGEX.test((messageText || "").trim());
-  const isAffirmative = !isLocationMessage && !isCategoryCorrection && !isNegativeExpansion && (isAffirmativeExpansion || AFFIRMATIVE_REGEX.test((messageText || "").trim()) || MORE_OPTIONS_REGEX.test((messageText || "").trim()) || isFeedbackOnPrevious);
-
   const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
-  const isAddressMessage = Boolean(detectedAddressInfo);
 
-  // Búsqueda comercial directa
-  const directFuzzyMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
-    ? searchBusinessesFuzzy(textForCategoryDetection, activeBusinesses)
-    : [];
+  // 4. ANÁLISIS ESTRUCTURADO NLU
+  const nluResult = await extractStructuredNLU(messageText, userSession);
+  console.log(`[BuscaYa NLU Extractor] Phone: ${senderPhone} | Intent: ${nluResult.intencion} | Family: ${nluResult.familia_giro} | Term: ${nluResult.termino_especifico} | Colonia: ${nluResult.colonia_o_referencia} | Emoji: ${nluResult.emoji_reaccion}`);
 
-  const qCleanForName = (textForCategoryDetection || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const directBusinessNameMatches = (!isLocationMessage && !isAddressMessage && !isGreetingOnly && !isAffirmative && !isNegativeExpansion && !isRegistrationIntent && !isHumanSupportIntent && !isSystemFaqIntent)
-    ? activeBusinesses.filter(b => {
-        const bName = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        if (!bName || qCleanForName.length < 3) return false;
-        const bCore = bName.replace(/^(?:restaurante|pizzer[ií]a|consultor[ií]a|despacho\s+jur[ií]dico|cl[ií]nica\s+veterinaria)\s+(?:&|y)?\s*/i, '').trim();
-        if (bCore.length >= 4 && qCleanForName.includes(bCore)) return true;
-        return qCleanForName.includes(bName) || bName.includes(qCleanForName);
-      })
-    : [];
-
-  // Modismos mexicanos
-  let matchedIdiom = null;
-  let deducedCategoryFromIdiom = null;
-  for (const item of MEXICAN_IDIOMS_MAP) {
-    if (item.regex.test(textForCategoryDetection)) {
-      deducedCategoryFromIdiom = item.category;
-      matchedIdiom = item.tag;
-      break;
+  // Reacción Nativa Inmediata (Meta Cloud API)
+  if (rawMsg && rawMsg.id && META_CLOUD_ACCESS_TOKEN && nluResult.emoji_reaccion) {
+    try {
+      const cleanTo = String(senderPhone || '').replace(/\D/g, '');
+      const inboundPhoneId = (rawPayload && rawPayload.entry && rawPayload.entry[0]?.changes && rawPayload.entry[0].changes[0]?.value?.metadata?.phone_number_id) || META_CLOUD_PHONE_NUMBER_ID;
+      fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: cleanTo,
+          type: "reaction",
+          reaction: {
+            message_id: rawMsg.id,
+            emoji: nluResult.emoji_reaccion
+          }
+        })
+      }).catch(err => console.warn("[Meta Cloud API Reaction Warning]:", err.message));
+    } catch (reactErr) {
+      console.warn("[Meta Reaction Catch]:", reactErr.message);
     }
   }
 
-  // Detección de Categoría y Familia Semántica
-  let detectedFamilyKey = null;
-  let detectedFamilyName = null;
-  let detectedSpecificGiro = null;
+  // 5. MÁQUINA DE ESTADOS FINITA (FSM) DETERMINISTA
+  let selectedBiz = null;
 
-  for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
-    const kwHit = fData.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection));
-    if (kwHit) {
-      detectedFamilyKey = fKey;
-      detectedFamilyName = fData.name;
-      for (const kw of fData.keywords) {
-        if (new RegExp(`\\b${kw}\\b`, 'i').test(textForCategoryDetection)) {
-          detectedSpecificGiro = kw.charAt(0).toUpperCase() + kw.slice(1);
-          break;
-        }
-      }
-      break;
-    }
-  }
-
-  if (!detectedFamilyKey && matchedIdiom) {
-    if (deducedCategoryFromIdiom.includes("Mecánicos") || deducedCategoryFromIdiom.includes("Automotriz")) {
-      detectedFamilyKey = "AUTOMOTRIZ";
-      detectedFamilyName = "Automotriz y Movilidad";
-      detectedSpecificGiro = matchedIdiom;
-    } else if (deducedCategoryFromIdiom.includes("Restaurantes") || deducedCategoryFromIdiom.includes("Alimentos")) {
-      detectedFamilyKey = "ALIMENTOS_Y_BEBIDAS";
-      detectedFamilyName = "Alimentos y Bebidas";
-      detectedSpecificGiro = matchedIdiom;
-    } else if (deducedCategoryFromIdiom.includes("Salud")) {
-      detectedFamilyKey = "SALUD";
-      detectedFamilyName = "Salud y Bienestar";
-      detectedSpecificGiro = matchedIdiom;
-    } else if (deducedCategoryFromIdiom.includes("Plomeros") || deducedCategoryFromIdiom.includes("Electricistas") || deducedCategoryFromIdiom.includes("Cerrajerías")) {
-      detectedFamilyKey = "OFICIOS_DEL_HOGAR";
-      detectedFamilyName = "Oficios del Hogar y Mantenimiento";
-      detectedSpecificGiro = matchedIdiom;
-    } else if (deducedCategoryFromIdiom.includes("Veterinarios") || deducedCategoryFromIdiom.includes("Mascotas")) {
-      detectedFamilyKey = "MASCOTAS";
-      detectedFamilyName = "Mascotas y Cuidado Animal";
-      detectedSpecificGiro = matchedIdiom;
-    }
-  }
-
-  if (!detectedFamilyKey && (directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
-    const topMatch = directBusinessNameMatches.length > 0 ? directBusinessNameMatches[0] : directFuzzyMatches[0];
-    for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
-      const catHit = fData.categories.some(c => 
-        (topMatch.category || '').toLowerCase().includes(c.toLowerCase()) || 
-        c.toLowerCase().includes((topMatch.category || '').toLowerCase())
-      );
-      if (catHit) {
-        detectedFamilyKey = fKey;
-        detectedFamilyName = fData.name;
-        break;
-      }
-    }
-    if (!detectedFamilyName) {
-      detectedFamilyName = topMatch.category || "Servicios Locales";
-    }
-    detectedSpecificGiro = topMatch.businessName || topMatch.category;
-  }
-
-  // ==========================================================
-  // BLOQUEO INQUEBRANTABLE DE GIRO / CATEGORÍA (LOCKED CATEGORY & FAMILY)
-  // ==========================================================
-  if (isCategoryCorrection && (detectedFamilyName || directBusinessNameMatches.length > 0 || directFuzzyMatches.length > 0)) {
-    userSession.lockedFamily = detectedFamilyKey || "ALIMENTOS_Y_BEBIDAS";
-    userSession.lockedCategory = detectedSpecificGiro || textForCategoryDetection;
-    userSession.familia_giro = detectedFamilyName || "Servicios Locales";
-    userSession.giro_especifico = detectedSpecificGiro || textForCategoryDetection;
-    userSession.negocios_ya_mostrados = [];
-    userSession.esperando_confirmacion_expansion_2km = false;
-  } else if (detectedFamilyKey) {
-    if (userSession.lockedFamily && userSession.lockedFamily !== detectedFamilyKey) {
-      userSession.negocios_ya_mostrados = [];
-    }
-    userSession.lockedFamily = detectedFamilyKey;
-    userSession.lockedCategory = detectedSpecificGiro || detectedFamilyName;
-    userSession.familia_giro = detectedFamilyName;
-    userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
-  }
-
-  // Comprobar selecciones de opciones ofrecidas
-  let selectedFromOffered = null;
-  if (Array.isArray(userSession.opciones_ofrecidas) && userSession.opciones_ofrecidas.length > 0) {
-    const normText = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    if (/^(?:1|el\s+1|la\s+1|opci[oó]n\s+1|el\s+primer[oa]|la\s+primer[oa]|primero|primera)[.,!]*$/i.test(normText)) {
-      selectedFromOffered = userSession.opciones_ofrecidas[0];
-    } else if (/^(?:2|el\s+2|la\s+2|opci[oó]n\s+2|el\s+segund[oa]|la\s+segund[oa]|segundo|segunda)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[1]) {
-      selectedFromOffered = userSession.opciones_ofrecidas[1];
-    } else if (/^(?:3|el\s+3|la\s+3|opci[oó]n\s+3|el\s+tercer[oa]|la\s+tercer[oa]|tercero|tercera)[.,!]*$/i.test(normText) && userSession.opciones_ofrecidas[2]) {
-      selectedFromOffered = userSession.opciones_ofrecidas[2];
-    } else if ((isAffirmative || isAffirmativeExpansion) && userSession.opciones_ofrecidas.length === 1) {
-      selectedFromOffered = userSession.opciones_ofrecidas[0];
-    } else {
-      for (const b of userSession.opciones_ofrecidas) {
-        const bNameNorm = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const bWords = bNameNorm.split(/\s+/).filter(w => w.length > 3 && !["restaurante", "pizzeria", "herreria", "plomeria", "taller", "trattoria"].includes(w));
-        if (bNameNorm.includes(normText) || normText.includes(bNameNorm) || (bWords.length > 0 && bWords.some(w => normText.includes(w)))) {
-          selectedFromOffered = b;
-          break;
-        }
-      }
-    }
-  }
-
-  const hasValidActiveLocation = Boolean(isLocationMessage || userLocationColonia || locationIsFromMemory || (userSession.lastLocation && userSession.lastLocation.latitude));
-
-  // Determinar fase actual
-  if (selectedFromOffered) {
-    currentPhase = 4;
-    userSession.intencion_actual = "entrega_ficha_completa";
-    detectedFamilyName = userSession.familia_giro || selectedFromOffered.category || "Servicios Locales";
-    detectedSpecificGiro = selectedFromOffered.businessName;
-  } else if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
-    currentPhase = 5;
-  } else if (isLocationWithoutCoords) {
-    currentPhase = 2;
-    userSession.intencion_actual = "esperando_ubicacion";
-  } else if (userSession.esperando_confirmacion_expansion_2km && isNegativeExpansion) {
-    currentPhase = 4;
+  // A. AGRADECIMIENTO / DESPEDIDA
+  if (nluResult.intencion === 'AGRADECIMIENTO_DESPEDIDA') {
+    userSession.lockedFamily = null;
+    userSession.lockedTerm = null;
+    userSession.shownBusinessIds = [];
+    userSession.opciones_ofrecidas = [];
     userSession.esperando_confirmacion_expansion_2km = false;
     userSession.negocio_lejano_pendiente = null;
-    userSession.intencion_actual = "rechazo_expansion";
-  } else if (userSession.esperando_confirmacion_expansion_2km && (isAffirmative || isAffirmativeExpansion)) {
-    currentPhase = 4;
-    detectedFamilyName = userSession.familia_giro || "Servicios Locales";
-    detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
-    userSession.intencion_actual = "confirmacion_expansion";
-  } else if (isCategoryCorrection && (userSession.familia_giro || detectedFamilyKey)) {
-    if (hasValidActiveLocation) {
-      currentPhase = 3;
-      userSession.intencion_actual = "correccion_categoria";
-    } else {
-      currentPhase = 2;
-      userSession.intencion_actual = "esperando_ubicacion";
-    }
-  } else if (isAffirmative && (userSession.familia_giro || userSession.lockedFamily)) {
-    currentPhase = 4;
-    detectedFamilyName = userSession.familia_giro;
-    detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
-    userSession.intencion_actual = isFeedbackOnPrevious ? "feedback_resultado_anterior" : "ver_mas_opciones";
-  } else if (isLocationMessage || (!locationIsFromMemory && (userLocationColonia || detectedAddressInfo))) {
-    const activeFamily = detectedFamilyName || userSession.familia_giro || userSession.lockedFamily;
-    const activeSpecific = detectedSpecificGiro || userSession.giro_especifico || activeFamily;
-    if (activeFamily || activeSpecific) {
-      currentPhase = 3;
-      userSession.familia_giro = activeFamily;
-      userSession.giro_especifico = activeSpecific;
-      detectedFamilyName = activeFamily;
-      detectedSpecificGiro = activeSpecific;
-      userSession.intencion_actual = "buscar_negocio";
-    } else {
-      currentPhase = 1;
-      userSession.intencion_actual = "ubicacion_guardada_esperando_giro";
-    }
-  } else if (isGreetingOnly && !detectedFamilyKey && directBusinessNameMatches.length === 0) {
+    userSession.intencion_actual = "despedida";
+    currentPhase = 1;
+    finalBotReplyText = "¡No hay de qué, fue un verdadero placer ayudarte! 😊🙌 Espero que te atiendan increíble ✨ Recuerda que aquí en BuscaYa estoy disponible para ti las 24 horas cuando necesites encontrar otro negocio o servicio cerca de ti 📍 ¡Que pases un excelente día! 🌟";
+  }
+
+  // B. SOPORTE HUMANO
+  else if (nluResult.intencion === 'SOPORTE_HUMANO') {
+    currentPhase = 5;
+    userSession.intencion_actual = "soporte_humano";
+    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
+  }
+
+  // C. DUDA DE REGISTRO / B2B
+  else if (nluResult.intencion === 'DUDA_REGISTRO') {
+    currentPhase = 5;
+    userSession.intencion_actual = "duda_registro";
+    finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
+  }
+
+  // D. SALUDO
+  else if (nluResult.intencion === 'SALUDO') {
     currentPhase = 1;
     userSession.intencion_actual = "saludo";
-  } else if (directBusinessNameMatches.length > 0) {
-    if (userSession.familia_giro !== detectedFamilyName) {
-      userSession.negocios_ya_mostrados = [];
-    }
-    userSession.familia_giro = detectedFamilyName || directBusinessNameMatches[0].category || "Servicios Locales";
-    userSession.giro_especifico = directBusinessNameMatches[0].businessName;
-    userSession.lockedCategory = directBusinessNameMatches[0].businessName;
-    currentPhase = 3;
-    userSession.intencion_actual = "buscar_negocio";
-  } else if (detectedFamilyKey) {
-    if (userSession.familia_giro !== detectedFamilyName) {
-      userSession.negocios_ya_mostrados = [];
-    }
-    userSession.familia_giro = detectedFamilyName;
-    userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
-    if (!hasValidActiveLocation) {
-      currentPhase = 2;
-      userSession.intencion_actual = "esperando_ubicacion";
+    if (!userSession.saludo_enviado) {
+      userSession.saludo_enviado = true;
+      finalBotReplyText = `${mexTime.greeting} ${mexTime.icon} ¡Bienvenido a BuscaYa! 😊✨ Me da mucho gusto saludarte. Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 📍`;
     } else {
-      currentPhase = 3;
-      userSession.intencion_actual = "buscar_negocio";
-    }
-  } else if ((isLocationMessage || userLocationColonia || detectedAddressInfo) && (userSession.familia_giro || userSession.lockedFamily)) {
-    currentPhase = 3;
-    userSession.intencion_actual = "buscar_negocio";
-    detectedFamilyName = userSession.familia_giro;
-    detectedSpecificGiro = userSession.giro_especifico;
-  } else if (!isGreetingOnly && userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || isLocationMessage || detectedAddressInfo)) {
-    currentPhase = 3;
-    userSession.intencion_actual = "buscar_negocio";
-    detectedFamilyName = userSession.familia_giro;
-    detectedSpecificGiro = userSession.giro_especifico;
-  } else if (!isGreetingOnly && messageText && messageText.trim()) {
-    if (userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || detectedAddressInfo)) {
-      currentPhase = 3;
-      userSession.intencion_actual = "buscar_negocio";
-      detectedFamilyName = userSession.familia_giro;
-      detectedSpecificGiro = userSession.giro_especifico;
-    } else {
-      userSession.familia_giro = userSession.familia_giro || "Servicios Locales";
-      userSession.giro_especifico = messageText.trim();
-      if (!hasValidActiveLocation) {
-        currentPhase = 2;
-        userSession.intencion_actual = "esperando_ubicacion";
-      } else {
-        currentPhase = 3;
-        userSession.intencion_actual = "buscar_negocio";
-      }
+      finalBotReplyText = "¿Qué comida, oficio o servicio te gustaría buscar hoy cerquita de ti? 📍✨";
     }
   }
 
-  // ==============================================================
-  // MOTOR DE BÚSQUEDA Y FILTRADO CON BLOQUEO ESTRICTO DE FAMILIA
-  // ==============================================================
-  let cercanos_2km = [];
-  let lejanos_mas_2km = [];
-  let candidatePool = [];
+  // E. DAR COLONIA O REFERENCIA
+  else if (nluResult.intencion === 'DAR_COLONIA') {
+    userSession.coloniaActual = nluResult.colonia_o_referencia || userSession.coloniaActual;
+    userSession.saludo_enviado = true;
 
-  const effectiveFamilyKey = userSession.lockedFamily || detectedFamilyKey;
-  const effectiveFamilyName = userSession.familia_giro || detectedFamilyName;
-  const familyDef = effectiveFamilyKey ? GIRO_FAMILIES[effectiveFamilyKey] : Object.values(GIRO_FAMILIES).find(f => f.name === effectiveFamilyName);
-  const allowedCategories = familyDef ? familyDef.categories : [];
-  const isOficioFamily = familyDef?.isOficio || false;
-  const isFoodFamily = (effectiveFamilyKey === "ALIMENTOS_Y_BEBIDAS" || effectiveFamilyName === "Alimentos y Bebidas");
-
-  if (currentPhase === 3 || currentPhase === 4) {
-    const directMatchIds = new Set(
-      (directBusinessNameMatches.length > 0 ? directBusinessNameMatches : []).map(m => m.id)
-    );
-
-    candidatePool = activeBusinesses.filter(b => {
-      const bCat = (b.category || '').toLowerCase();
-      const bName = (b.businessName || '').toLowerCase();
-      const bServ = (b.services || '').toLowerCase();
-
-      // REGLA CRÍTICA #1: BLINDAJE SEMÁNTICO DE COMIDA
-      if (isFoodFamily) {
-        const nonFoodTokens = [
-          "herrer", "plomer", "electric", "cerrajer", "carpinter", "mecanic", "taller", "grua",
-          "veterinar", "abogad", "contador", "medico", "dentist", "farmacia", "limpieza", "fumiga", "notar", "inmobiliaria"
-        ];
-        if (nonFoodTokens.some(nft => bCat.includes(nft))) return false;
-        const isFoodCat = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
-        const isFoodKw = familyDef ? familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ)) : false;
-        if (!isFoodCat && !isFoodKw) return false;
-      } else if (familyDef) {
-        const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
-        const kwMatches = familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ));
-        if (!catMatches && !kwMatches) return false;
-
-        if (isOficioFamily && userSession.giro_especifico) {
-          const specClean = userSession.giro_especifico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-          const rootWord = specClean.length > 5 ? specClean.substring(0, specClean.length - 2) : specClean;
-          const matchesThisOficio = bName.includes(rootWord) || bCat.includes(rootWord) || bServ.includes(rootWord) ||
-                                    bName.includes(specClean) || bCat.includes(specClean) || bServ.includes(specClean);
-          if (!matchesThisOficio) return false;
-        }
-      } else {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Deduplicación estricta
-    const uniquePool = [];
-    const seenIds = new Set();
-    for (const b of candidatePool) {
-      if (!seenIds.has(b.id)) {
-        seenIds.add(b.id);
-        uniquePool.push(b);
-      }
-    }
-    candidatePool = uniquePool;
-
-    const scored = candidatePool.map(b => {
-      let bLat = b.latitude ? Number(b.latitude) : 19.3496;
-      let bLng = b.longitude ? Number(b.longitude) : -99.1915;
-      const distKm = (userLat && userLng) ? haversineDistanceKm(userLat, userLng, bLat, bLng) : 1.2;
-      const openInfo = isBusinessOpenNow(b, mexTime);
-
-      let score = 0;
-      if (directMatchIds.has(b.id)) score += 200;
-      if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
-      if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 80;
-      if (openInfo.isOpen) score += 30;
-      if (b.isSponsored || b.plan === "plus" || b.featured) score += 35;
-
-      return {
-        ...b,
-        distanceKm: distKm,
-        openInfo: openInfo,
-        matchScore: score
-      };
-    });
-
-    const isSameColonia = (b) => {
-      if (!userLocationColonia || !b.neighborhood) return false;
-      const uNorm = userLocationColonia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      const bNorm = b.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      return uNorm === bNorm || uNorm.includes(bNorm) || bNorm.includes(uNorm);
-    };
-
-    cercanos_2km = scored
-      .filter(b => b.distanceKm <= 2.0 || isSameColonia(b) || directMatchIds.has(b.id))
-      .sort((a, b) => {
-        const aSponsored = a.isSponsored || a.plan === "plus";
-        const bSponsored = b.isSponsored || b.plan === "plus";
-        if (directMatchIds.has(a.id) && !directMatchIds.has(b.id)) return -1;
-        if (!directMatchIds.has(a.id) && directMatchIds.has(b.id)) return 1;
-        if (aSponsored && !bSponsored) return -1;
-        if (!aSponsored && bSponsored) return 1;
-        return b.matchScore - a.matchScore;
+    if (userSession.lockedFamily) {
+      currentPhase = 3;
+      userSession.intencion_actual = "buscar_negocio";
+      const q = queryBuscaYaDatabase({
+        lockedFamily: userSession.lockedFamily,
+        lockedTerm: userSession.lockedTerm,
+        coloniaActual: userSession.coloniaActual,
+        shownBusinessIds: userSession.shownBusinessIds,
+        activeBusinesses,
+        mexTime
       });
 
-    lejanos_mas_2km = scored
-      .filter(b => b.distanceKm > 2.0 && !isSameColonia(b) && !directMatchIds.has(b.id))
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-
-    if (currentPhase === 3) {
-      if (cercanos_2km.length === 0 && lejanos_mas_2km.length > 0) {
-        const farBiz = lejanos_mas_2km.find(b => !userSession.negocios_ya_mostrados.includes(b.id)) || lejanos_mas_2km[0];
-        userSession.negocio_lejano_pendiente = farBiz;
+      if (q.status === 'FOUND_NEARBY') {
+        selectedBiz = q.business;
+        userSession.shownBusinessIds.push(selectedBiz.id);
+        const card = renderBuscaYaBusinessCard(selectedBiz, selectedBiz.distanceKm);
+        finalBotReplyText = `¡Perfecto! Encontré esta excelente opción cerquita de ti en ${userSession.coloniaActual} 📍✨\n|||SEPARAR|||\n${card}\n|||SEPARAR|||\n${controlQuestion}`;
+      } else if (q.status === 'FOUND_FAR') {
+        selectedBiz = q.business;
+        userSession.negocio_lejano_pendiente = selectedBiz;
         userSession.esperando_confirmacion_expansion_2km = true;
-        userSession.intencion_actual = "esperando_expansion";
-      }
-    }
-  }
-
-  // ==============================================================
-  // ELECCIÓN DE CANDIDATO Y BLOQUEO DE DISTANCIA
-  // ==============================================================
-  let sourcePool = [];
-  if (userSession.intencion_actual === "rechazo_expansion") {
-    sourcePool = [];
-  } else if (currentPhase === 3) {
-    sourcePool = cercanos_2km;
-  } else if (currentPhase === 4) {
-    if (userSession.negocio_lejano_pendiente) {
-      sourcePool = [userSession.negocio_lejano_pendiente];
-      userSession.esperando_confirmacion_expansion_2km = false;
-      userSession.negocio_lejano_pendiente = null;
-    } else {
-      sourcePool = lejanos_mas_2km.concat(cercanos_2km);
-    }
-  }
-
-  const unshownCandidates = sourcePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
-  const selectedBusinesses = unshownCandidates.slice(0, 1);
-
-  if (selectedBusinesses.length > 0) {
-    userSession.negocios_ya_mostrados.push(selectedBusinesses[0].id);
-  }
-
-  userSession.lastBusinesses = selectedBusinesses;
-  userSession.categoria_activa = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || null;
-  userSession.ubicacion_activa = userSession.lastLocation || (userLocationColonia ? { neighborhood: userLocationColonia, latitude: userLat, longitude: userLng } : null);
-
-  // Ficha canónica
-  let canonicalCard = "";
-  let controlQuestion = "";
-  if (selectedBusinesses.length > 0) {
-    const b = selectedBusinesses[0];
-    const cleanP = String(b.phone || '').replace(/\D/g, '');
-    const waLink = `https://wa.me/52${cleanP}?text=${encodeURIComponent("¡Hola! Vi tu negocio en *BuscaYa* 🔍 y me interesa tu servicio...")}`;
-    const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
-    const sponsorTag = (b.isSponsored || b.plan === "plus") ? `👑 [Opción VIP Patrocinada${distLabel}]\n` : "";
-    const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-
-    canonicalCard = `${sponsorTag}🏢 *${b.businessName}*\n` +
-      `✨ Especialidad: ${b.services || b.category}\n` +
-      `${b.openInfo?.isOpen ? '🟢 Estado: Abierto ahora' : '🔴 Estado: Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar horario'}\n` +
-      `📅 Días: ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
-      `📍 Zona: Col. ${b.neighborhood || b.colonia || "CDMX"}\n` +
-      `🗺️ Ver en Google Maps: ${mapsLink}\n` +
-      `📞 Teléfono: ${b.phone}\n` +
-      `💬 WhatsApp: ${waLink}`;
-
-    controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o quieres que te busque otra alternativa por la zona? 🙌";
-  }
-
-  // Generación del texto de respuesta
-  const isSessionAlreadyActive = !!userSession.saludo_enviado;
-  userSession.saludo_enviado = true;
-
-  if (currentPhase === 1) {
-    if (userSession.intencion_actual === "ubicacion_guardada_esperando_giro") {
-      finalBotReplyText = `¡Perfecto! Ya recibí tu ubicación en ${userLocationColonia || 'tu zona'} 📍✨ ¿Qué comida, negocio, oficio o servicio te gustaría que te busque cerquita de ti? 😊🙌`;
-    } else {
-      finalBotReplyText = isSessionAlreadyActive
-        ? `¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`
-        : `${mexTime.greeting} ${mexTime.icon} ¡Bienvenido a BuscaYa! 😊✨ Me da mucho gusto saludarte. Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 📍`;
-    }
-  } else if (currentPhase === 2) {
-    if (isLocationWithoutCoords) {
-      finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación 📍🤔 ¿Podrías escribirme en qué colonia o zona estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
-    } else {
-      const giroTxt = userSession.giro_especifico ? ` de ${userSession.giro_especifico}` : "";
-      finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
-    }
-  } else if (currentPhase === 3) {
-    if (!isSandbox) {
-      recordMarketDemand(
-        userSession.giro_especifico || detectedSpecificGiro,
-        userLocationColonia,
-        senderPhone,
-        selectedBusinesses
-      );
-    }
-
-    if (directBusinessNameMatches.length > 0 && selectedBusinesses.length > 0) {
-      finalBotReplyText = `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-    } else if (cercanos_2km.length > 0) {
-      userSession.opciones_ofrecidas = cercanos_2km.slice(0, 3);
-      if (userSession.opciones_ofrecidas.length === 1) {
-        const b = userSession.opciones_ofrecidas[0];
-        const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
-        const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km de ti` : "";
-        const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-        finalBotReplyText = `¡Perfecto! Encontré esta excelente opción abierta cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
-          `🏢 *${b.businessName}*${sponsorTag}\n` +
-          `✨ ${b.services || b.category}\n` +
-          `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-          `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-          `🗺️ Ver en Google Maps: ${mapsLink}\n\n` +
-          `¿Te gustaría que te mande su teléfono, WhatsApp directo y ubicación completa? 😊🙌`;
+        const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
+        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
       } else {
-        const listItems = userSession.opciones_ofrecidas.map((b, idx) => {
-          const numEmoji = ["1️⃣", "2️⃣", "3️⃣"][idx] || `•`;
-          const sponsorTag = (b.isSponsored || b.plan === "plus") ? " 👑 [VIP]" : "";
-          const distLabel = b.distanceKm !== undefined ? ` • a ${b.distanceKm.toFixed(1)} km` : "";
-          const mapsLink = b.mapsUrl || b.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.businessName + ', ' + (b.neighborhood || b.colonia || '') + ', Álvaro Obregón, CDMX')}`;
-          return `${numEmoji} *${b.businessName}*${sponsorTag}\n` +
-            `✨ ${b.services || b.category}\n` +
-            `${b.openInfo?.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo?.hoursDisplay || 'Consultar'}${distLabel}\n` +
-            `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
-            `🗺️ Ver en Google Maps: ${mapsLink}`;
-        }).join("\n\n");
-
-        finalBotReplyText = `¡Perfecto! Encontré estas opciones cerquita de ti en ${userLocationColonia || 'tu zona'} 📍✨\n\n` +
-          `${listItems}\n\n` +
-          `¿Cuál de estas opciones te interesa más? 😊 Escríbeme el nombre o número y te paso de inmediato su ficha completa con teléfono, WhatsApp directo y mapa 🙌✨`;
-      }
-    } else {
-      if (lejanos_mas_2km.length > 0) {
-        const farBiz = userSession.negocio_lejano_pendiente || lejanos_mas_2km[0];
-        const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese servicio";
-        const colLabel = farBiz.neighborhood || farBiz.colonia || "la zona poniente";
-        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${farBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${colLabel}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
-      } else {
-        const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese servicio";
+        const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
         finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
       }
-    }
-  } else if (currentPhase === 4) {
-    if (userSession.intencion_actual === "rechazo_expansion") {
-      const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese giro";
-      finalBotReplyText = `¡Entendido perfectamente! 😊 Sin problema. Por el momento son todos los negocios de ${giroLabel} que tenemos registrados cerquita de tu ubicación 📍✨ ¡Muy pronto sumaremos nuevos establecimientos en tu calle! ¿Te gustaría que te ayude a buscar en alguna otra colonia o algún otro servicio? 🙌`;
-    } else if (selectedFromOffered && canonicalCard) {
-      finalBotReplyText = `¡Excelente elección! Aquí tienes toda la información de contacto de *${selectedFromOffered.businessName}* 👇\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
-    } else if (selectedBusinesses.length > 0 && canonicalCard) {
-      const intro = isFeedbackOnPrevious
-        ? `¡Te entiendo perfectamente! 🙌 Mira, te comparto esta otra alternativa de ${userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro}:`
-        : `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇`;
-      finalBotReplyText = `${intro}\n|||SEPARAR|||\n${canonicalCard}\n|||SEPARAR|||\n${controlQuestion}`;
     } else {
-      // RESPUESTA CERRADA OBLIGATORIA
-      const giroLabel = userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || "ese giro";
-      finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
+      currentPhase = 2;
+      userSession.intencion_actual = "esperando_giro";
+      finalBotReplyText = `¡Perfecto! Ya registré que estás por ${userSession.coloniaActual} 📍✨ Cuéntame, ¿qué comida, oficio o servicio te gustaría buscar hoy? 😊🙌`;
     }
   }
 
-  // Interceptores rápidos prioritarios
-  if (isHumanSupportIntent) {
-    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
-  } else if (isRegistrationIntent) {
-    finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
-  } else if (isSystemFaqIntent) {
-    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 😊🙌 BuscaYa es tu directorio inteligente directo aquí en WhatsApp. Solo nos dices qué necesitas (comida, un médico, un plomero o servicio) junto con tu ubicación, y nuestra Inteligencia Artificial te encuentra al instante los mejores negocios verificados que están abiertos cerquita de ti 📍✨ Si quieres conocer a fondo cómo está diseñado o registrar tu propio establecimiento, puedes entrar aquí: https://buscaya.neuralmediahouse.com/ 🚀";
+  // F. BÚSQUEDA DE GIRO O NEGOCIO
+  else if (nluResult.intencion === 'BUSQUEDA') {
+    if (userSession.lockedFamily && nluResult.familia_giro && userSession.lockedFamily !== nluResult.familia_giro) {
+      userSession.shownBusinessIds = [];
+    }
+    userSession.lockedFamily = nluResult.familia_giro || userSession.lockedFamily;
+    userSession.lockedTerm = nluResult.termino_especifico || userSession.lockedTerm;
+    if (nluResult.colonia_o_referencia) userSession.coloniaActual = nluResult.colonia_o_referencia;
+    userSession.saludo_enviado = true;
+
+    if (userSession.coloniaActual) {
+      currentPhase = 3;
+      userSession.intencion_actual = "buscar_negocio";
+      const q = queryBuscaYaDatabase({
+        lockedFamily: userSession.lockedFamily,
+        lockedTerm: userSession.lockedTerm,
+        coloniaActual: userSession.coloniaActual,
+        shownBusinessIds: userSession.shownBusinessIds,
+        activeBusinesses,
+        mexTime
+      });
+
+      if (q.status === 'FOUND_NEARBY') {
+        selectedBiz = q.business;
+        userSession.shownBusinessIds.push(selectedBiz.id);
+        const card = renderBuscaYaBusinessCard(selectedBiz, selectedBiz.distanceKm);
+        finalBotReplyText = `¡Claro que sí! Aquí tienes una excelente opción cerquita de ti 😊👇\n|||SEPARAR|||\n${card}\n|||SEPARAR|||\n${controlQuestion}`;
+      } else if (q.status === 'FOUND_FAR') {
+        selectedBiz = q.business;
+        userSession.negocio_lejano_pendiente = selectedBiz;
+        userSession.esperando_confirmacion_expansion_2km = true;
+        const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
+        finalBotReplyText = `Fíjate que revisé a 2 kilómetros a la redonda de tu ubicación y ahorita no tenemos un negocio de ${giroLabel} tan cerquita 😔📍 ¡Pero pronto sumaremos más en tu calle! Sin embargo, tenemos registrado uno excelente de ese mismo giro un poquito más retirado (a ${selectedBiz.distanceKm.toFixed(1)} km de ti, en la colonia ${selectedBiz.neighborhood || selectedBiz.colonia || 'la zona poniente'}) 🚗💨 ¿Te gustaría que te mande su información y ubicación?`;
+      } else {
+        const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
+        finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento no tenemos otro negocio de ${giroLabel} registrado en el sistema 😔📍 ¡Muy pronto sumaremos más opciones! Si deseas buscar algún otro giro o servicio diferente, escríbeme cuál necesitas y con gusto lo revisamos 😊🙌`;
+      }
+    } else {
+      currentPhase = 2;
+      userSession.intencion_actual = "esperando_ubicacion";
+      const giroTxt = userSession.lockedTerm ? ` de ${userSession.lockedTerm}` : "";
+      finalBotReplyText = `¡Claro que sí! 😊🙌 Para buscarte las mejores opciones${giroTxt} abiertas ahorita, escríbeme por favor: ¿en qué colonia te ubicas o cerca de qué avenida o lugar estás? 📍✨`;
+    }
   }
 
-  // Desdoblar burbujas
-  const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbols(b.trim())).filter(Boolean);
-  const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbols(finalBotReplyText)];
+  // G. PEDIR MÁS OPCIONES / CONFIRMACIÓN DE EXPANSIÓN
+  else if (nluResult.intencion === 'PEDIR_MAS_OPCIONES') {
+    currentPhase = 4;
+    userSession.intencion_actual = "pedir_mas_opciones";
+    userSession.saludo_enviado = true;
+
+    if (userSession.esperando_confirmacion_expansion_2km && userSession.negocio_lejano_pendiente) {
+      selectedBiz = userSession.negocio_lejano_pendiente;
+      userSession.shownBusinessIds.push(selectedBiz.id);
+      userSession.negocio_lejano_pendiente = null;
+      userSession.esperando_confirmacion_expansion_2km = false;
+      const card = renderBuscaYaBusinessCard(selectedBiz, selectedBiz.distanceKm);
+      finalBotReplyText = `¡Excelente! Aquí tienes toda la información de esta opción 👇\n|||SEPARAR|||\n${card}\n|||SEPARAR|||\n${controlQuestion}`;
+    } else if (userSession.lockedFamily) {
+      const q = queryBuscaYaDatabase({
+        lockedFamily: userSession.lockedFamily,
+        lockedTerm: userSession.lockedTerm,
+        coloniaActual: userSession.coloniaActual,
+        shownBusinessIds: userSession.shownBusinessIds,
+        activeBusinesses,
+        mexTime
+      });
+
+      if (q.business) {
+        selectedBiz = q.business;
+        userSession.shownBusinessIds.push(selectedBiz.id);
+        const card = renderBuscaYaBusinessCard(selectedBiz, selectedBiz.distanceKm);
+        finalBotReplyText = `¡Claro que sí! Aquí tienes otra excelente alternativa de ${userSession.lockedTerm || userSession.lockedFamily} 😊👇\n|||SEPARAR|||\n${card}\n|||SEPARAR|||\n${controlQuestion}`;
+      } else {
+        const giroLabel = userSession.lockedTerm || userSession.lockedFamily;
+        finalBotReplyText = `Fíjate que revisé en todas las zonas cercanas y también más retiradas, pero por el momento ya son todas las opciones de ${giroLabel} que tenemos registradas en el sistema 😔📍 ¡Muy pronto sumaremos más negocios en tu colonia! Si deseas buscar algún otro giro diferente, dime cuál necesitas y con gusto te ayudo 😊🙌`;
+      }
+    } else {
+      finalBotReplyText = "¿Qué negocio o servicio te gustaría buscar cerquita de ti? 📍✨";
+    }
+  }
+
+  // Burbujas independientes
+  const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => b.trim()).filter(Boolean);
+  const bubbles = rawBubbles.length ? rawBubbles : [finalBotReplyText];
 
   userSession.lastBotReplyText = finalBotReplyText;
   userSession.lastBotReplyTimestamp = Date.now();
+  userSession.history.push({ role: "user", text: messageText, timestamp: Date.now() });
   userSession.history.push({ role: "assistant", text: finalBotReplyText, timestamp: Date.now() });
-  if (userSession.history.length > 15) userSession.history = userSession.history.slice(-15);
+  if (userSession.history.length > 20) userSession.history = userSession.history.slice(-20);
   saveServerDatabase();
 
   const botReply = {
@@ -3168,10 +3023,8 @@ async function processBuscaYaMessage({
     locationDetected: {
       latitude: latitude,
       longitude: longitude,
-      neighborhood: geoResult?.neighborhood,
-      municipality: geoResult?.municipality,
-      state: geoResult?.state,
-      formattedAddress: geoResult?.formattedAddress
+      neighborhood: userSession.coloniaActual,
+      municipality: "Álvaro Obregón"
     },
     responseMessage: finalBotReplyText,
     timestamp: timestamp
@@ -3180,13 +3033,18 @@ async function processBuscaYaMessage({
   return {
     replyText: finalBotReplyText,
     bubbles: bubbles,
+    emoji_reaccion: nluResult.emoji_reaccion,
     debugState: {
-      lockedFamily: userSession.lockedFamily || effectiveFamilyKey || null,
-      lockedCategory: userSession.lockedCategory || userSession.giro_especifico || userSession.familia_giro || null,
-      detectedNeighborhood: userLocationColonia || userSession.lastLocation?.neighborhood || null,
-      matchingBusinessesCount: candidatePool ? candidatePool.length : 0,
-      unshownCandidatesCount: unshownCandidates ? unshownCandidates.length : 0,
-      selectedBusiness: selectedBusinesses[0] ? selectedBusinesses[0].businessName : null,
+      intencion: nluResult.intencion,
+      familia_giro: nluResult.familia_giro,
+      termino_especifico: nluResult.termino_especifico,
+      colonia_o_referencia: nluResult.colonia_o_referencia,
+      emoji_reaccion: nluResult.emoji_reaccion,
+      lockedFamily: userSession.lockedFamily,
+      lockedCategory: userSession.lockedTerm || userSession.lockedFamily,
+      detectedNeighborhood: userSession.coloniaActual,
+      matchingBusinessesCount: userSession.shownBusinessIds.length,
+      selectedBusiness: selectedBiz ? selectedBiz.businessName : null,
       currentPhase: currentPhase,
       activeIntention: userSession.intencion_actual
     },
@@ -3194,6 +3052,7 @@ async function processBuscaYaMessage({
     session: userSession
   };
 }
+
 
 const server = http.createServer(async (req, res) => {
   // Configuración de CORS estricta y segura
@@ -5972,7 +5831,8 @@ ${visualFormatRule}`;
           processed: true,
           botReply: result.botReply,
           debugState: result.debugState,
-          bubbles: result.bubbles
+          bubbles: result.bubbles,
+          emoji_reaccion: result.emoji_reaccion
         }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

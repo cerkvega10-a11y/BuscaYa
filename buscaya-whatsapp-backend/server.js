@@ -512,20 +512,34 @@ async function handleIncomingMessage(sock, msg) {
 
     if (masterRes.ok) {
       const data = await masterRes.json();
+
+      // 1. Reacción Nativa Inmediata con Emoji NLU
+      if (data && data.emoji_reaccion && msg?.key) {
+        try {
+          await sock.sendMessage(remoteJid, {
+            react: {
+              text: data.emoji_reaccion,
+              key: msg.key
+            }
+          });
+        } catch (reactErr) {
+          console.warn("[Baileys Reaction Warning]:", reactErr.message);
+        }
+      }
+
       if (data && data.botReply && data.botReply.responseMessage) {
         const fullReply = data.botReply.responseMessage;
         const cleanAiSymbolsLocal = (txt) => (txt || '')
           .replace(/```[\s\S]*?```/g, '')
           .replace(/`([^`]+)`/g, '$1')
           .replace(/#{1,6}\s?/g, '')
-          .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
           .replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
           .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2')
-          .replace(/[\[\]]/g, '')
-          .replace(/^[ \t]*[-•]\s*/gm, '')
           .trim();
 
-        const rawBubbles = fullReply.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbolsLocal(b.trim())).filter(Boolean);
+        const rawBubbles = (Array.isArray(data.bubbles) && data.bubbles.length > 0)
+          ? data.bubbles
+          : fullReply.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbolsLocal(b.trim())).filter(Boolean);
         const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbolsLocal(fullReply)];
 
         for (let i = 0; i < bubbles.length; i++) {
