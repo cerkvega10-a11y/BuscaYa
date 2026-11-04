@@ -2,8 +2,20 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/api/auditor",
+      "destination": "/api/auditor"
+    },
+    {
+      "source": "/api/colonias/(.*)",
+      "destination": "/api/colonias"
+    },
+    {
+      "source": "/api/colonias",
+      "destination": "/api/colonias"
+    },
+    {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/[...all]"
     }
   ]
 }

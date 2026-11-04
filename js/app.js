@@ -1552,7 +1552,17 @@ async function runVercelApiAudit(showNotification = true) {
 
   try {
     const res = await fetch("/api/auditor", { method: "GET" });
-    const data = await res.json();
+    const rawText = await res.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      throw new Error(`Respuesta no válida del servidor (HTTP ${res.status}): ${rawText.slice(0, 80)}`);
+    }
+
+    if (!res.ok || !data) {
+      throw new Error(data?.error || `HTTP ${res.status}: ${res.statusText || 'Error en auditoría'}`);
+    }
 
     // 1. Semáforo Mercado Pago
     if (data.mercadopago && data.mercadopago.healthy) {

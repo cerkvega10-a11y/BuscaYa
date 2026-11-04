@@ -46,8 +46,12 @@ const META_TOKEN_PARTS = [
 const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || META_TOKEN_PARTS.join("");
 let vercelAuditorModule = null;
 try {
-  vercelAuditorModule = require('./pages/api/auditor.js');
-} catch (_) {}
+  vercelAuditorModule = require('./api/auditor.js');
+} catch (_) {
+  try {
+    vercelAuditorModule = require('./pages/api/auditor.js');
+  } catch (__) {}
+}
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -623,6 +627,110 @@ const SERVER_CDMX_POINTS = [
   { neighborhood: "Polanco", municipality: "Miguel Hidalgo", lat: 19.4334, lng: -99.1956 }
 ];
 
+// ==============================================================
+// BASE GEOGRÁFICA OFICIAL DE COLONIAS DE ÁLVARO OBREGÓN (CDMX)
+// Total 224 Colonias Oficiales, Pueblos y Barrios Originarios
+// Integrado por Neural Media House para Cotejo GPS de Alta Precisión
+// ==============================================================
+let ALVARO_OBREGON_COLONIAS = [];
+const AO_COLONIAS_MAP = new Map();
+
+try {
+  const aoFilePath = path.join(__dirname, 'data', 'colonias-alvaro-obregon.json');
+  if (fs.existsSync(aoFilePath)) {
+    const rawAO = JSON.parse(fs.readFileSync(aoFilePath, 'utf8'));
+    ALVARO_OBREGON_COLONIAS = Array.isArray(rawAO.colonias) ? rawAO.colonias : [];
+    for (const col of ALVARO_OBREGON_COLONIAS) {
+      if (!col || !col.name) continue;
+      const norm = (col.normalized || col.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      AO_COLONIAS_MAP.set(norm, col);
+      if (Array.isArray(col.aliases)) {
+        for (const al of col.aliases) {
+          const normAl = al.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          if (normAl) AO_COLONIAS_MAP.set(normAl, col);
+        }
+      }
+    }
+    console.log(`[Geo Álvaro Obregón] Indexadas ${ALVARO_OBREGON_COLONIAS.length} colonias en memoria para cotejo GPS y cálculo de cercanía.`);
+  }
+} catch (err) {
+  console.warn('[Geo Álvaro Obregón] Advertencia cargando colonias:', err.message);
+}
+
+// Enriquecer SERVER_CDMX_POINTS con las 224 colonias oficiales de Álvaro Obregón
+if (Array.isArray(ALVARO_OBREGON_COLONIAS)) {
+  for (const c of ALVARO_OBREGON_COLONIAS) {
+    const norm = c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const existing = SERVER_CDMX_POINTS.find(p => p.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === norm);
+    if (!existing) {
+      SERVER_CDMX_POINTS.push({
+        neighborhood: c.name,
+        municipality: "Álvaro Obregón",
+        lat: c.lat,
+        lng: c.lng,
+        cp: c.cp,
+        googleMapsUrl: c.googleMapsUrl
+      });
+    } else {
+      existing.lat = c.lat;
+      existing.lng = c.lng;
+      existing.cp = c.cp;
+      existing.googleMapsUrl = c.googleMapsUrl;
+    }
+  }
+}
+
+/**
+ * Busca de forma estricta y difusa en el catálogo oficial de 224 colonias de Álvaro Obregón
+ */
+function findAlvaroObregonColonia(query) {
+  if (!query || typeof query !== 'string') return null;
+  const clean = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  if (!clean || clean.length < 2) return null;
+
+  // 1. Coincidencia directa en el mapa (nombre o alias exacto)
+  if (AO_COLONIAS_MAP.has(clean)) {
+    return AO_COLONIAS_MAP.get(clean);
+  }
+
+  // Quitar prefijos comunes
+  const stripped = clean.replace(/^(?:en\s+la\s+colonia|en\s+colonia|en\s+col\.?|estoy\s+en|vivo\s+en|por\s+la|colonia|col\.?|barrio|pueblo)\s+/i, "").trim();
+  if (stripped && AO_COLONIAS_MAP.has(stripped)) {
+    return AO_COLONIAS_MAP.get(stripped);
+  }
+
+  // 2. Coincidencia parcial con las 224 colonias (ordenadas de mayor a menor longitud para máxima especificidad)
+  const sorted = [...ALVARO_OBREGON_COLONIAS].sort((a, b) => b.name.length - a.name.length);
+  for (const col of sorted) {
+    const colNorm = (col.normalized || col.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (clean === colNorm || clean.includes(colNorm) || (stripped && (stripped === colNorm || stripped.includes(colNorm)))) {
+      return col;
+    }
+    if (colNorm.length >= 5 && colNorm.includes(clean)) {
+      return col;
+    }
+  }
+  return null;
+}
+
+/**
+ * Obtiene las coordenadas centroidales exactas y Google Maps URL de cualquier colonia de Álvaro Obregón
+ */
+function getColoniaCoordinates(coloniaName) {
+  if (!coloniaName) return null;
+  const found = findAlvaroObregonColonia(coloniaName);
+  if (found) {
+    return {
+      name: found.name,
+      lat: found.lat,
+      lng: found.lng,
+      cp: found.cp,
+      googleMapsUrl: found.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(found.name + ', Álvaro Obregón, CDMX')}`
+    };
+  }
+  return null;
+}
+
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -685,6 +793,20 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
       municipality: "Álvaro Obregón / Cuajimalpa",
       lat: 19.3600,
       lng: -99.2600,
+      matched: true
+    };
+  }
+
+  // 1.2 Búsqueda prioritaria en catálogo oficial de las 224 colonias de Álvaro Obregón (Neural Media House)
+  const aoColonia = findAlvaroObregonColonia(candidate) || findAlvaroObregonColonia(t);
+  if (aoColonia) {
+    return {
+      neighborhood: aoColonia.name,
+      municipality: "Álvaro Obregón",
+      lat: aoColonia.lat,
+      lng: aoColonia.lng,
+      cp: aoColonia.cp,
+      googleMapsUrl: aoColonia.googleMapsUrl,
       matched: true
     };
   }
@@ -2526,21 +2648,29 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     return { status: "EMPTY", business: null };
   }
 
-  // Coordenadas del usuario según colonia de referencia
+  // Coordenadas del usuario según colonia de referencia (cotejo exhaustivo de 224 colonias de Álvaro Obregón)
   let userLat = 19.3496;
   let userLng = -99.1915;
+  let userGoogleMapsUrl = null;
   if (coloniaActual) {
-    const cLow = coloniaActual.toLowerCase();
-    if (cLow.includes("jalalpa")) {
-      userLat = 19.3738; userLng = -99.2275;
-    } else if (cLow.includes("santa fe") || cLow.includes("mexicana")) {
-      userLat = 19.3585; userLng = -99.2675;
-    } else if (cLow.includes("san angel") || cLow.includes("san ángel")) {
-      userLat = 19.3480; userLng = -99.1900;
-    } else if (cLow.includes("las aguilas") || cLow.includes("las águilas")) {
-      userLat = 19.3550; userLng = -99.2150;
-    } else if (cLow.includes("olivar")) {
-      userLat = 19.3370; userLng = -99.2260;
+    const aoGeo = getColoniaCoordinates(coloniaActual);
+    if (aoGeo) {
+      userLat = aoGeo.lat;
+      userLng = aoGeo.lng;
+      userGoogleMapsUrl = aoGeo.googleMapsUrl;
+    } else {
+      const cLow = coloniaActual.toLowerCase();
+      if (cLow.includes("jalalpa")) {
+        userLat = 19.3738; userLng = -99.2275;
+      } else if (cLow.includes("santa fe") || cLow.includes("mexicana")) {
+        userLat = 19.3585; userLng = -99.2675;
+      } else if (cLow.includes("san angel") || cLow.includes("san ángel")) {
+        userLat = 19.3480; userLng = -99.1900;
+      } else if (cLow.includes("las aguilas") || cLow.includes("las águilas")) {
+        userLat = 19.3550; userLng = -99.2150;
+      } else if (cLow.includes("olivar")) {
+        userLat = 19.3370; userLng = -99.2260;
+      }
     }
   }
 
@@ -2559,14 +2689,25 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
   };
 
   const scored = familyFiltered.map(b => {
-    let bLat = b.latitude ? Number(b.latitude) : 19.3496;
-    let bLng = b.longitude ? Number(b.longitude) : -99.1915;
+    let bLat = b.latitude ? Number(b.latitude) : null;
+    let bLng = b.longitude ? Number(b.longitude) : null;
+    // Si el negocio no tiene lat/lng explícita o tiene la genérica, cotejar con su colonia registrada en Álvaro Obregón
+    if ((!bLat || !bLng || (bLat === 19.3496 && bLng === -99.1915 && b.neighborhood && !b.neighborhood.toLowerCase().includes("san angel"))) && (b.neighborhood || b.colonia)) {
+      const bColGeo = getColoniaCoordinates(b.neighborhood || b.colonia);
+      if (bColGeo) {
+        bLat = bColGeo.lat;
+        bLng = bColGeo.lng;
+      }
+    }
+    if (!bLat) bLat = 19.3496;
+    if (!bLng) bLng = -99.1915;
+
     const distKm = haversineDistanceKm(userLat, userLng, bLat, bLng);
     let score = 0;
     if (directNameMatch(b)) score += 400;
     if (b.isSponsored || b.plan === "plus" || b.featured) score += 60;
     if (isSameColonia(b)) score += 50;
-    return { ...b, distanceKm: distKm, matchScore: score };
+    return { ...b, latitude: bLat, longitude: bLng, distanceKm: distKm, matchScore: score };
   });
 
   const cercanos_2km = scored
@@ -3099,6 +3240,12 @@ async function extractStructuredNLU(text, userSession = {}) {
   const addressInfo = typeof resolveAddressOrColonia === 'function' ? resolveAddressOrColonia(t, userSession.intencion_actual === 'esperando_ubicacion') : null;
   if (addressInfo && addressInfo.neighborhood) {
     detectedColonia = addressInfo.neighborhood;
+  }
+  if (!detectedColonia) {
+    const aoMatch = findAlvaroObregonColonia(t);
+    if (aoMatch) {
+      detectedColonia = aoMatch.name;
+    }
   }
   if (!detectedColonia) {
     const KNOWN_COLS = [
@@ -4985,16 +5132,22 @@ const server = http.createServer(async (req, res) => {
         let lat = typeof data.latitude === 'number' ? data.latitude : null;
         let lng = typeof data.longitude === 'number' ? data.longitude : null;
         if (!lat || !lng) {
-          const colKey = (data.neighborhood || data.colonia || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-          const matchedPt = SERVER_CDMX_POINTS.find(pt => 
-            pt.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === colKey
-          );
-          if (matchedPt) {
-            lat = matchedPt.lat;
-            lng = matchedPt.lng;
+          const aoGeo = getColoniaCoordinates(data.neighborhood || data.colonia);
+          if (aoGeo) {
+            lat = aoGeo.lat;
+            lng = aoGeo.lng;
           } else {
-            lat = 19.3496;
-            lng = -99.1915;
+            const colKey = (data.neighborhood || data.colonia || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            const matchedPt = SERVER_CDMX_POINTS.find(pt => 
+              pt.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === colKey
+            );
+            if (matchedPt) {
+              lat = matchedPt.lat;
+              lng = matchedPt.lng;
+            } else {
+              lat = 19.3496;
+              lng = -99.1915;
+            }
           }
         }
 
@@ -6465,6 +6618,32 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 5.5. CATÁLOGO OFICIAL DE 224 COLONIAS DE ÁLVARO OBREGÓN (GET /api/colonias/alvaro-obregon)
+  if (req.method === 'GET' && (pathname === '/api/colonias/alvaro-obregon' || pathname === '/api/colonias' || pathname === '/api/colonias/alvaro-obregon/')) {
+    const qParam = parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('query') || '';
+    let results = ALVARO_OBREGON_COLONIAS;
+    if (qParam.trim()) {
+      const cleanQ = qParam.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      results = ALVARO_OBREGON_COLONIAS.filter(c => {
+        const norm = (c.normalized || c.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const matchName = norm.includes(cleanQ);
+        const matchAlias = Array.isArray(c.aliases) && c.aliases.some(a => a.toLowerCase().includes(cleanQ));
+        const matchCp = c.cp && c.cp.includes(cleanQ);
+        return matchName || matchAlias || matchCp;
+      });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      municipality: "Álvaro Obregón",
+      state: "Ciudad de México",
+      total: results.length,
+      colonias: results,
+      attribution: "Neural Media House"
+    }));
+    return;
+  }
+
   // 5.4. AGENTE AUDITOR DE APIS EN VERCEL (GET/POST /api/auditor)
   // Ejecuta en paralelo la auditoría de Mercado Pago (/users/me) y Groq API (/openai/v1/chat/completions)
   if ((req.method === 'GET' || req.method === 'POST') && (pathname === '/api/auditor' || pathname === '/api/auditor/')) {
@@ -7773,6 +7952,14 @@ if (require.main === module && !process.env.VERCEL) {
     }
   });
 }
+
+server.findAlvaroObregonColonia = findAlvaroObregonColonia;
+server.getColoniaCoordinates = getColoniaCoordinates;
+server.resolveAddressOrColonia = resolveAddressOrColonia;
+server.queryBuscaYaDatabase = queryBuscaYaDatabase;
+server.processBuscaYaMessage = processBuscaYaMessage;
+server.ALVARO_OBREGON_COLONIAS = ALVARO_OBREGON_COLONIAS;
+server.SERVER_ADMIN_USERS = SERVER_ADMIN_USERS;
 
 // Exportar listener para Vercel Serverless Functions
 module.exports = server;

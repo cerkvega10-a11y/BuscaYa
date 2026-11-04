@@ -1,0 +1,3862 @@
+{
+  "municipality": "Álvaro Obregón",
+  "state": "Ciudad de México",
+  "totalColonias": 224,
+  "updatedAt": "2026-11-04T10:06:54.995Z",
+  "colonias": [
+    {
+      "name": "San Ángel",
+      "normalized": "san angel",
+      "aliases": [
+        "san angel",
+        "colonia san angel",
+        "col san angel",
+        "col. san angel"
+      ],
+      "cp": "01000",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3496,
+      "lng": -99.1915,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20%C3%81ngel%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Ángel Inn",
+      "normalized": "san angel inn",
+      "aliases": [
+        "san angel inn",
+        "colonia san angel inn",
+        "col san angel inn",
+        "col. san angel inn"
+      ],
+      "cp": "01060",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3524,
+      "lng": -99.1963,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20%C3%81ngel%20Inn%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Chimalistac",
+      "normalized": "chimalistac",
+      "aliases": [
+        "chimalistac",
+        "colonia chimalistac",
+        "col chimalistac",
+        "col. chimalistac"
+      ],
+      "cp": "01070",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.351,
+      "lng": -99.182,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Chimalistac%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Guadalupe Inn",
+      "normalized": "guadalupe inn",
+      "aliases": [
+        "guadalupe inn",
+        "colonia guadalupe inn",
+        "col guadalupe inn",
+        "col. guadalupe inn"
+      ],
+      "cp": "01020",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3621,
+      "lng": -99.1865,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Guadalupe%20Inn%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Florida",
+      "normalized": "florida",
+      "aliases": [
+        "florida",
+        "colonia florida",
+        "col florida",
+        "col. florida"
+      ],
+      "cp": "01030",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3582,
+      "lng": -99.1793,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Florida%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tlacopac",
+      "normalized": "tlacopac",
+      "aliases": [
+        "tlacopac",
+        "colonia tlacopac",
+        "col tlacopac",
+        "col. tlacopac"
+      ],
+      "cp": "01049",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.358,
+      "lng": -99.192,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tlacopac%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Campestre",
+      "normalized": "campestre",
+      "aliases": [
+        "campestre",
+        "colonia campestre",
+        "col campestre",
+        "col. campestre"
+      ],
+      "cp": "01040",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.354,
+      "lng": -99.19,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Campestre%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Axotla",
+      "normalized": "axotla",
+      "aliases": [
+        "axotla",
+        "colonia axotla",
+        "col axotla",
+        "col. axotla"
+      ],
+      "cp": "01030",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3535,
+      "lng": -99.177,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Axotla%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Altavista",
+      "normalized": "altavista",
+      "aliases": [
+        "altavista",
+        "colonia altavista",
+        "col altavista",
+        "col. altavista"
+      ],
+      "cp": "01060",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3515,
+      "lng": -99.195,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Altavista%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Agrícola",
+      "normalized": "agricola",
+      "aliases": [
+        "agricola",
+        "colonia agricola",
+        "col agricola",
+        "col. agricola"
+      ],
+      "cp": "01050",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.356,
+      "lng": -99.188,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Agr%C3%ADcola%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ex-Hacienda de Guadalupe Chimalistac",
+      "normalized": "ex-hacienda de guadalupe chimalistac",
+      "aliases": [
+        "ex-hacienda de guadalupe chimalistac",
+        "colonia ex-hacienda de guadalupe chimalistac",
+        "col ex-hacienda de guadalupe chimalistac",
+        "col. ex-hacienda de guadalupe chimalistac"
+      ],
+      "cp": "01050",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3545,
+      "lng": -99.184,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ex-Hacienda%20de%20Guadalupe%20Chimalistac%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Otra Banda",
+      "normalized": "la otra banda",
+      "aliases": [
+        "la otra banda",
+        "colonia la otra banda",
+        "col la otra banda",
+        "col. la otra banda"
+      ],
+      "cp": "01090",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.345,
+      "lng": -99.195,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Otra%20Banda%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Progreso Tizapán",
+      "normalized": "progreso tizapan",
+      "aliases": [
+        "progreso tizapan",
+        "colonia progreso tizapan",
+        "col progreso tizapan",
+        "col. progreso tizapan"
+      ],
+      "cp": "01080",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.341,
+      "lng": -99.198,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Progreso%20Tizap%C3%A1n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ermita Tizapán",
+      "normalized": "ermita tizapan",
+      "aliases": [
+        "ermita tizapan",
+        "colonia ermita tizapan",
+        "col ermita tizapan",
+        "col. ermita tizapan"
+      ],
+      "cp": "01089",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3395,
+      "lng": -99.1955,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ermita%20Tizap%C3%A1n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tizapán San Ángel",
+      "normalized": "tizapan san angel",
+      "aliases": [
+        "tizapan san angel",
+        "colonia tizapan san angel",
+        "col tizapan san angel",
+        "col. tizapan san angel"
+      ],
+      "cp": "01090",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.343,
+      "lng": -99.1965,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tizap%C3%A1n%20San%20%C3%81ngel%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Loreto",
+      "normalized": "loreto",
+      "aliases": [
+        "loreto",
+        "colonia loreto",
+        "col loreto",
+        "col. loreto"
+      ],
+      "cp": "01090",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.344,
+      "lng": -99.193,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Loreto%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Jerónimo Aculco",
+      "normalized": "san jeronimo aculco",
+      "aliases": [
+        "san jeronimo aculco",
+        "colonia san jeronimo aculco",
+        "col san jeronimo aculco",
+        "col. san jeronimo aculco"
+      ],
+      "cp": "01040",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.332,
+      "lng": -99.205,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Jer%C3%B3nimo%20Aculco%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Águilas",
+      "normalized": "las aguilas",
+      "aliases": [
+        "las aguilas",
+        "colonia las aguilas",
+        "col las aguilas",
+        "col. las aguilas"
+      ],
+      "cp": "01710",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3564,
+      "lng": -99.2155,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20%C3%81guilas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Águilas 1ra Sección",
+      "normalized": "las aguilas 1ra seccion",
+      "aliases": [
+        "las aguilas 1ra seccion",
+        "colonia las aguilas 1ra seccion",
+        "col las aguilas 1ra seccion",
+        "col. las aguilas 1ra seccion",
+        "las aguilas primera seccion",
+        "las aguilas 1ra secc",
+        "las aguilas seccion 1"
+      ],
+      "cp": "01710",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.357,
+      "lng": -99.213,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20%C3%81guilas%201ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Águilas 2da Sección",
+      "normalized": "las aguilas 2da seccion",
+      "aliases": [
+        "las aguilas 2da seccion",
+        "colonia las aguilas 2da seccion",
+        "col las aguilas 2da seccion",
+        "col. las aguilas 2da seccion",
+        "las aguilas segunda seccion",
+        "las aguilas 2da secc",
+        "las aguilas seccion 2"
+      ],
+      "cp": "01710",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.356,
+      "lng": -99.217,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20%C3%81guilas%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Águilas 3ra Sección",
+      "normalized": "las aguilas 3ra seccion",
+      "aliases": [
+        "las aguilas 3ra seccion",
+        "colonia las aguilas 3ra seccion",
+        "col las aguilas 3ra seccion",
+        "col. las aguilas 3ra seccion",
+        "las aguilas tercera seccion",
+        "las aguilas 3ra secc",
+        "las aguilas seccion 3"
+      ],
+      "cp": "01710",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.355,
+      "lng": -99.221,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20%C3%81guilas%203ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Las Águilas",
+      "normalized": "ampliacion las aguilas",
+      "aliases": [
+        "ampliacion las aguilas",
+        "las aguilas",
+        "colonia ampliacion las aguilas",
+        "col ampliacion las aguilas",
+        "col. ampliacion las aguilas"
+      ],
+      "cp": "01759",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.353,
+      "lng": -99.224,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Las%20%C3%81guilas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de las Águilas",
+      "normalized": "lomas de las aguilas",
+      "aliases": [
+        "lomas de las aguilas",
+        "colonia lomas de las aguilas",
+        "col lomas de las aguilas",
+        "col. lomas de las aguilas"
+      ],
+      "cp": "01730",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.352,
+      "lng": -99.228,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20las%20%C3%81guilas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Puente Colorado",
+      "normalized": "puente colorado",
+      "aliases": [
+        "puente colorado",
+        "colonia puente colorado",
+        "col puente colorado",
+        "col. puente colorado"
+      ],
+      "cp": "01730",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3505,
+      "lng": -99.231,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Puente%20Colorado%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Clemente Norte",
+      "normalized": "san clemente norte",
+      "aliases": [
+        "san clemente norte",
+        "colonia san clemente norte",
+        "col san clemente norte",
+        "col. san clemente norte"
+      ],
+      "cp": "01740",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.354,
+      "lng": -99.21,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Clemente%20Norte%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Clemente Sur",
+      "normalized": "san clemente sur",
+      "aliases": [
+        "san clemente sur",
+        "colonia san clemente sur",
+        "col san clemente sur",
+        "col. san clemente sur"
+      ],
+      "cp": "01740",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.351,
+      "lng": -99.212,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Clemente%20Sur%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Atlamaya",
+      "normalized": "atlamaya",
+      "aliases": [
+        "atlamaya",
+        "colonia atlamaya",
+        "col atlamaya",
+        "col. atlamaya"
+      ],
+      "cp": "01760",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.35,
+      "lng": -99.202,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Atlamaya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Colina del Sur",
+      "normalized": "colina del sur",
+      "aliases": [
+        "colina del sur",
+        "colonia colina del sur",
+        "col colina del sur",
+        "col. colina del sur"
+      ],
+      "cp": "01740",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3512,
+      "lng": -99.2212,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Colina%20del%20Sur%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Flor de María",
+      "normalized": "flor de maria",
+      "aliases": [
+        "flor de maria",
+        "colonia flor de maria",
+        "col flor de maria",
+        "col. flor de maria"
+      ],
+      "cp": "01760",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.348,
+      "lng": -99.205,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Flor%20de%20Mar%C3%ADa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Los Alpes",
+      "normalized": "los alpes",
+      "aliases": [
+        "los alpes",
+        "colonia los alpes",
+        "col los alpes",
+        "col. los alpes"
+      ],
+      "cp": "01010",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.193,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Los%20Alpes%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Alpes",
+      "normalized": "ampliacion alpes",
+      "aliases": [
+        "ampliacion alpes",
+        "alpes",
+        "colonia ampliacion alpes",
+        "col ampliacion alpes",
+        "col. ampliacion alpes"
+      ],
+      "cp": "01010",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.195,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Alpes%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Olivar de los Padres",
+      "normalized": "olivar de los padres",
+      "aliases": [
+        "olivar de los padres",
+        "colonia olivar de los padres",
+        "col olivar de los padres",
+        "col. olivar de los padres"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3361,
+      "lng": -99.2238,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Olivar%20de%20los%20Padres%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tetelpan",
+      "normalized": "tetelpan",
+      "aliases": [
+        "tetelpan",
+        "colonia tetelpan",
+        "col tetelpan",
+        "col. tetelpan"
+      ],
+      "cp": "01700",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3444,
+      "lng": -99.2198,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tetelpan%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Tetelpan",
+      "normalized": "ampliacion tetelpan",
+      "aliases": [
+        "ampliacion tetelpan",
+        "tetelpan",
+        "colonia ampliacion tetelpan",
+        "col ampliacion tetelpan",
+        "col. ampliacion tetelpan"
+      ],
+      "cp": "01700",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.342,
+      "lng": -99.223,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Tetelpan%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Bartolo Ameyalco",
+      "normalized": "san bartolo ameyalco",
+      "aliases": [
+        "san bartolo ameyalco",
+        "colonia san bartolo ameyalco",
+        "col san bartolo ameyalco",
+        "col. san bartolo ameyalco"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3412,
+      "lng": -99.2598,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Bartolo%20Ameyalco%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Pueblo San Bartolo Ameyalco",
+      "normalized": "pueblo san bartolo ameyalco",
+      "aliases": [
+        "pueblo san bartolo ameyalco",
+        "san bartolo ameyalco",
+        "colonia pueblo san bartolo ameyalco",
+        "col pueblo san bartolo ameyalco",
+        "col. pueblo san bartolo ameyalco"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3412,
+      "lng": -99.2598,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Pueblo%20San%20Bartolo%20Ameyalco%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Rancho San Francisco",
+      "normalized": "rancho san francisco",
+      "aliases": [
+        "rancho san francisco",
+        "colonia rancho san francisco",
+        "col rancho san francisco",
+        "col. rancho san francisco"
+      ],
+      "cp": "01820",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.335,
+      "lng": -99.265,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Rancho%20San%20Francisco%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Rosa Xochiac",
+      "normalized": "santa rosa xochiac",
+      "aliases": [
+        "santa rosa xochiac",
+        "colonia santa rosa xochiac",
+        "col santa rosa xochiac",
+        "col. santa rosa xochiac"
+      ],
+      "cp": "01830",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.328,
+      "lng": -99.278,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Rosa%20Xochiac%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Pueblo Santa Rosa Xochiac",
+      "normalized": "pueblo santa rosa xochiac",
+      "aliases": [
+        "pueblo santa rosa xochiac",
+        "santa rosa xochiac",
+        "colonia pueblo santa rosa xochiac",
+        "col pueblo santa rosa xochiac",
+        "col. pueblo santa rosa xochiac"
+      ],
+      "cp": "01830",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.328,
+      "lng": -99.278,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Pueblo%20Santa%20Rosa%20Xochiac%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Villa Verdún",
+      "normalized": "villa verdun",
+      "aliases": [
+        "villa verdun",
+        "colonia villa verdun",
+        "col villa verdun",
+        "col. villa verdun"
+      ],
+      "cp": "01810",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.339,
+      "lng": -99.248,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Villa%20Verd%C3%BAn%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de San Ángel Inn",
+      "normalized": "lomas de san angel inn",
+      "aliases": [
+        "lomas de san angel inn",
+        "colonia lomas de san angel inn",
+        "col lomas de san angel inn",
+        "col. lomas de san angel inn"
+      ],
+      "cp": "01790",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.345,
+      "lng": -99.208,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20San%20%C3%81ngel%20Inn%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Calzada de los Corceles",
+      "normalized": "calzada de los corceles",
+      "aliases": [
+        "calzada de los corceles",
+        "colonia calzada de los corceles",
+        "col calzada de los corceles",
+        "col. calzada de los corceles"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.338,
+      "lng": -99.229,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Calzada%20de%20los%20Corceles%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Miguel Hidalgo",
+      "normalized": "miguel hidalgo",
+      "aliases": [
+        "miguel hidalgo",
+        "colonia miguel hidalgo",
+        "col miguel hidalgo",
+        "col. miguel hidalgo"
+      ],
+      "cp": "01789",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.334,
+      "lng": -99.232,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Miguel%20Hidalgo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Desierto de los Leones",
+      "normalized": "desierto de los leones",
+      "aliases": [
+        "desierto de los leones",
+        "colonia desierto de los leones",
+        "col desierto de los leones",
+        "col. desierto de los leones"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.34,
+      "lng": -99.235,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Desierto%20de%20los%20Leones%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Fe",
+      "normalized": "santa fe",
+      "aliases": [
+        "santa fe",
+        "colonia santa fe",
+        "col santa fe",
+        "col. santa fe"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.36,
+      "lng": -99.26,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Fe La Loma",
+      "normalized": "santa fe la loma",
+      "aliases": [
+        "santa fe la loma",
+        "colonia santa fe la loma",
+        "col santa fe la loma",
+        "col. santa fe la loma"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.359,
+      "lng": -99.255,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Fe%20La%20Loma%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Fe Peña Blanca",
+      "normalized": "santa fe pena blanca",
+      "aliases": [
+        "santa fe pena blanca",
+        "colonia santa fe pena blanca",
+        "col santa fe pena blanca",
+        "col. santa fe pena blanca"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.362,
+      "lng": -99.262,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Fe%20Pe%C3%B1a%20Blanca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Santa Fe",
+      "normalized": "lomas de santa fe",
+      "aliases": [
+        "lomas de santa fe",
+        "colonia lomas de santa fe",
+        "col lomas de santa fe",
+        "col. lomas de santa fe"
+      ],
+      "cp": "01219",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.258,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Paseo de las Lomas",
+      "normalized": "paseo de las lomas",
+      "aliases": [
+        "paseo de las lomas",
+        "colonia paseo de las lomas",
+        "col paseo de las lomas",
+        "col. paseo de las lomas"
+      ],
+      "cp": "01330",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.259,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Paseo%20de%20las%20Lomas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Zedec Santa Fe",
+      "normalized": "zedec santa fe",
+      "aliases": [
+        "zedec santa fe",
+        "colonia zedec santa fe",
+        "col zedec santa fe",
+        "col. zedec santa fe"
+      ],
+      "cp": "01219",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.261,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Zedec%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Mexicana",
+      "normalized": "la mexicana",
+      "aliases": [
+        "la mexicana",
+        "colonia la mexicana",
+        "col la mexicana",
+        "col. la mexicana"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3585,
+      "lng": -99.2675,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Mexicana%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Parque La Mexicana",
+      "normalized": "parque la mexicana",
+      "aliases": [
+        "parque la mexicana",
+        "colonia parque la mexicana",
+        "col parque la mexicana",
+        "col. parque la mexicana"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3585,
+      "lng": -99.2675,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Parque%20La%20Mexicana%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cruz Manca",
+      "normalized": "cruz manca",
+      "aliases": [
+        "cruz manca",
+        "colonia cruz manca",
+        "col cruz manca",
+        "col. cruz manca"
+      ],
+      "cp": "01219",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.355,
+      "lng": -99.269,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cruz%20Manca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Zavaleta",
+      "normalized": "zavaleta",
+      "aliases": [
+        "zavaleta",
+        "colonia zavaleta",
+        "col zavaleta",
+        "col. zavaleta"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.245,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Zavaleta%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cooperativa Cehuayo",
+      "normalized": "cooperativa cehuayo",
+      "aliases": [
+        "cooperativa cehuayo",
+        "colonia cooperativa cehuayo",
+        "col cooperativa cehuayo",
+        "col. cooperativa cehuayo"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.366,
+      "lng": -99.238,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cooperativa%20Cehuayo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Belem de las Flores",
+      "normalized": "belem de las flores",
+      "aliases": [
+        "belem de las flores",
+        "colonia belem de las flores",
+        "col belem de las flores",
+        "col. belem de las flores"
+      ],
+      "cp": "01110",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.392,
+      "lng": -99.208,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Belem%20de%20las%20Flores%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Fe Tlacuitlapa",
+      "normalized": "santa fe tlacuitlapa",
+      "aliases": [
+        "santa fe tlacuitlapa",
+        "colonia santa fe tlacuitlapa",
+        "col santa fe tlacuitlapa",
+        "col. santa fe tlacuitlapa"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.239,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Fe%20Tlacuitlapa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Vasco de Quiroga",
+      "normalized": "vasco de quiroga",
+      "aliases": [
+        "vasco de quiroga",
+        "colonia vasco de quiroga",
+        "col vasco de quiroga",
+        "col. vasco de quiroga"
+      ],
+      "cp": "01230",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.365,
+      "lng": -99.255,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Vasco%20de%20Quiroga%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Pueblo Nuevo",
+      "normalized": "pueblo nuevo",
+      "aliases": [
+        "pueblo nuevo",
+        "nuevo",
+        "colonia pueblo nuevo",
+        "col pueblo nuevo",
+        "col. pueblo nuevo"
+      ],
+      "cp": "01240",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3615,
+      "lng": -99.248,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Pueblo%20Nuevo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tlacuitlapa",
+      "normalized": "tlacuitlapa",
+      "aliases": [
+        "tlacuitlapa",
+        "colonia tlacuitlapa",
+        "col tlacuitlapa",
+        "col. tlacuitlapa"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.237,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tlacuitlapa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cuevitas",
+      "normalized": "cuevitas",
+      "aliases": [
+        "cuevitas",
+        "colonia cuevitas",
+        "col cuevitas",
+        "col. cuevitas"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.371,
+      "lng": -99.232,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cuevitas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Joya",
+      "normalized": "la joya",
+      "aliases": [
+        "la joya",
+        "colonia la joya",
+        "col la joya",
+        "col. la joya"
+      ],
+      "cp": "01230",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.249,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Joya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Jalalpa el Grande",
+      "normalized": "jalalpa el grande",
+      "aliases": [
+        "jalalpa el grande",
+        "colonia jalalpa el grande",
+        "col jalalpa el grande",
+        "col. jalalpa el grande"
+      ],
+      "cp": "01377",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3635,
+      "lng": -99.2312,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jalalpa%20el%20Grande%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Jalalpa",
+      "normalized": "jalalpa",
+      "aliases": [
+        "jalalpa",
+        "colonia jalalpa",
+        "col jalalpa",
+        "col. jalalpa"
+      ],
+      "cp": "01377",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3635,
+      "lng": -99.2312,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jalalpa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Jalalpa Tepito",
+      "normalized": "jalalpa tepito",
+      "aliases": [
+        "jalalpa tepito",
+        "colonia jalalpa tepito",
+        "col jalalpa tepito",
+        "col. jalalpa tepito"
+      ],
+      "cp": "01377",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3645,
+      "lng": -99.234,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jalalpa%20Tepito%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Jalalpa",
+      "normalized": "ampliacion jalalpa",
+      "aliases": [
+        "ampliacion jalalpa",
+        "jalalpa",
+        "colonia ampliacion jalalpa",
+        "col ampliacion jalalpa",
+        "col. ampliacion jalalpa"
+      ],
+      "cp": "01379",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.233,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Jalalpa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cañada del Olivar",
+      "normalized": "canada del olivar",
+      "aliases": [
+        "canada del olivar",
+        "colonia canada del olivar",
+        "col canada del olivar",
+        "col. canada del olivar"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.341,
+      "lng": -99.231,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ca%C3%B1ada%20del%20Olivar%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "2da Cañada",
+      "normalized": "2da canada",
+      "aliases": [
+        "2da canada",
+        "colonia 2da canada",
+        "col 2da canada",
+        "col. 2da canada"
+      ],
+      "cp": "01376",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.362,
+      "lng": -99.236,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=2da%20Ca%C3%B1ada%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Mirador",
+      "normalized": "el mirador",
+      "aliases": [
+        "el mirador",
+        "colonia el mirador",
+        "col el mirador",
+        "col. el mirador"
+      ],
+      "cp": "01370",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.366,
+      "lng": -99.228,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Mirador%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Presa",
+      "normalized": "la presa",
+      "aliases": [
+        "la presa",
+        "colonia la presa",
+        "col la presa",
+        "col. la presa"
+      ],
+      "cp": "01370",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.225,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Presa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "1ra Victoria",
+      "normalized": "1ra victoria",
+      "aliases": [
+        "1ra victoria",
+        "colonia 1ra victoria",
+        "col 1ra victoria",
+        "col. 1ra victoria"
+      ],
+      "cp": "01160",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.382,
+      "lng": -99.201,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=1ra%20Victoria%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "2da Victoria",
+      "normalized": "2da victoria",
+      "aliases": [
+        "2da victoria",
+        "colonia 2da victoria",
+        "col 2da victoria",
+        "col. 2da victoria"
+      ],
+      "cp": "01160",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.384,
+      "lng": -99.203,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=2da%20Victoria%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Victoria",
+      "normalized": "ampliacion victoria",
+      "aliases": [
+        "ampliacion victoria",
+        "victoria",
+        "colonia ampliacion victoria",
+        "col ampliacion victoria",
+        "col. ampliacion victoria"
+      ],
+      "cp": "01160",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.385,
+      "lng": -99.205,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Victoria%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Capulín",
+      "normalized": "el capulin",
+      "aliases": [
+        "el capulin",
+        "colonia el capulin",
+        "col el capulin",
+        "col. el capulin"
+      ],
+      "cp": "01110",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.389,
+      "lng": -99.206,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Capul%C3%ADn%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Paraíso",
+      "normalized": "paraiso",
+      "aliases": [
+        "paraiso",
+        "colonia paraiso",
+        "col paraiso",
+        "col. paraiso"
+      ],
+      "cp": "01130",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.386,
+      "lng": -99.212,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Para%C3%ADso%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Peñita",
+      "normalized": "la penita",
+      "aliases": [
+        "la penita",
+        "colonia la penita",
+        "col la penita",
+        "col. la penita"
+      ],
+      "cp": "01120",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.388,
+      "lng": -99.215,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Pe%C3%B1ita%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Olivar del Conde 1ra Sección",
+      "normalized": "olivar del conde 1ra seccion",
+      "aliases": [
+        "olivar del conde 1ra seccion",
+        "colonia olivar del conde 1ra seccion",
+        "col olivar del conde 1ra seccion",
+        "col. olivar del conde 1ra seccion",
+        "olivar del conde primera seccion",
+        "olivar del conde 1ra secc",
+        "olivar del conde seccion 1"
+      ],
+      "cp": "01400",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3712,
+      "lng": -99.2156,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Olivar%20del%20Conde%201ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Olivar del Conde 2da Sección",
+      "normalized": "olivar del conde 2da seccion",
+      "aliases": [
+        "olivar del conde 2da seccion",
+        "colonia olivar del conde 2da seccion",
+        "col olivar del conde 2da seccion",
+        "col. olivar del conde 2da seccion",
+        "olivar del conde segunda seccion",
+        "olivar del conde 2da secc",
+        "olivar del conde seccion 2"
+      ],
+      "cp": "01408",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.219,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Olivar%20del%20Conde%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Olivar del Conde",
+      "normalized": "olivar del conde",
+      "aliases": [
+        "olivar del conde",
+        "colonia olivar del conde",
+        "col olivar del conde",
+        "col. olivar del conde"
+      ],
+      "cp": "01400",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3712,
+      "lng": -99.2156,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Olivar%20del%20Conde%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Barrio Norte",
+      "normalized": "barrio norte",
+      "aliases": [
+        "barrio norte",
+        "norte",
+        "colonia barrio norte",
+        "col barrio norte",
+        "col. barrio norte"
+      ],
+      "cp": "01410",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3735,
+      "lng": -99.209,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Barrio%20Norte%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Golondrinas",
+      "normalized": "las golondrinas",
+      "aliases": [
+        "las golondrinas",
+        "colonia las golondrinas",
+        "col las golondrinas",
+        "col. las golondrinas"
+      ],
+      "cp": "01450",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.224,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20Golondrinas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Golondrinas 1ra Sección",
+      "normalized": "las golondrinas 1ra seccion",
+      "aliases": [
+        "las golondrinas 1ra seccion",
+        "colonia las golondrinas 1ra seccion",
+        "col las golondrinas 1ra seccion",
+        "col. las golondrinas 1ra seccion",
+        "las golondrinas primera seccion",
+        "las golondrinas 1ra secc",
+        "las golondrinas seccion 1"
+      ],
+      "cp": "01450",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.224,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20Golondrinas%201ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Golondrinas 2da Sección",
+      "normalized": "las golondrinas 2da seccion",
+      "aliases": [
+        "las golondrinas 2da seccion",
+        "colonia las golondrinas 2da seccion",
+        "col las golondrinas 2da seccion",
+        "col. las golondrinas 2da seccion",
+        "las golondrinas segunda seccion",
+        "las golondrinas 2da secc",
+        "las golondrinas seccion 2"
+      ],
+      "cp": "01450",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.227,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20Golondrinas%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Golondrinas",
+      "normalized": "ampliacion golondrinas",
+      "aliases": [
+        "ampliacion golondrinas",
+        "golondrinas",
+        "colonia ampliacion golondrinas",
+        "col ampliacion golondrinas",
+        "col. ampliacion golondrinas"
+      ],
+      "cp": "01450",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.229,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Golondrinas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Presidentes",
+      "normalized": "presidentes",
+      "aliases": [
+        "presidentes",
+        "colonia presidentes",
+        "col presidentes",
+        "col. presidentes"
+      ],
+      "cp": "01290",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.223,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Presidentes%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Presidentes 1ra Sección",
+      "normalized": "presidentes 1ra seccion",
+      "aliases": [
+        "presidentes 1ra seccion",
+        "colonia presidentes 1ra seccion",
+        "col presidentes 1ra seccion",
+        "col. presidentes 1ra seccion",
+        "presidentes primera seccion",
+        "presidentes 1ra secc",
+        "presidentes seccion 1"
+      ],
+      "cp": "01290",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.223,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Presidentes%201ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Presidentes 2da Sección",
+      "normalized": "presidentes 2da seccion",
+      "aliases": [
+        "presidentes 2da seccion",
+        "colonia presidentes 2da seccion",
+        "col presidentes 2da seccion",
+        "col. presidentes 2da seccion",
+        "presidentes segunda seccion",
+        "presidentes 2da secc",
+        "presidentes seccion 2"
+      ],
+      "cp": "01290",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.225,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Presidentes%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Piloto Adolfo López Mateos",
+      "normalized": "piloto adolfo lopez mateos",
+      "aliases": [
+        "piloto adolfo lopez mateos",
+        "colonia piloto adolfo lopez mateos",
+        "col piloto adolfo lopez mateos",
+        "col. piloto adolfo lopez mateos"
+      ],
+      "cp": "01298",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.227,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Piloto%20Adolfo%20L%C3%B3pez%20Mateos%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Piloto Adolfo López Mateos",
+      "normalized": "ampliacion piloto adolfo lopez mateos",
+      "aliases": [
+        "ampliacion piloto adolfo lopez mateos",
+        "piloto adolfo lopez mateos",
+        "colonia ampliacion piloto adolfo lopez mateos",
+        "col ampliacion piloto adolfo lopez mateos",
+        "col. ampliacion piloto adolfo lopez mateos"
+      ],
+      "cp": "01298",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.36,
+      "lng": -99.229,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Piloto%20Adolfo%20L%C3%B3pez%20Mateos%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Guanajuato",
+      "normalized": "guanajuato",
+      "aliases": [
+        "guanajuato",
+        "colonia guanajuato",
+        "col guanajuato",
+        "col. guanajuato"
+      ],
+      "cp": "01460",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.366,
+      "lng": -99.219,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Guanajuato%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Joyita",
+      "normalized": "la joyita",
+      "aliases": [
+        "la joyita",
+        "colonia la joyita",
+        "col la joyita",
+        "col. la joyita"
+      ],
+      "cp": "01470",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3645,
+      "lng": -99.221,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Joyita%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Zenón Delgado",
+      "normalized": "zenon delgado",
+      "aliases": [
+        "zenon delgado",
+        "colonia zenon delgado",
+        "col zenon delgado",
+        "col. zenon delgado"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.373,
+      "lng": -99.226,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Zen%C3%B3n%20Delgado%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Plateros",
+      "normalized": "plateros",
+      "aliases": [
+        "plateros",
+        "colonia plateros",
+        "col plateros",
+        "col. plateros"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3658,
+      "lng": -99.2023,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Plateros%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Unidad Habitacional Plateros",
+      "normalized": "unidad habitacional plateros",
+      "aliases": [
+        "unidad habitacional plateros",
+        "plateros",
+        "colonia unidad habitacional plateros",
+        "col unidad habitacional plateros",
+        "col. unidad habitacional plateros"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3658,
+      "lng": -99.2023,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Unidad%20Habitacional%20Plateros%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Becerra",
+      "normalized": "lomas de becerra",
+      "aliases": [
+        "lomas de becerra",
+        "colonia lomas de becerra",
+        "col lomas de becerra",
+        "col. lomas de becerra"
+      ],
+      "cp": "01279",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3789,
+      "lng": -99.2089,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Becerra%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Lomas de Becerra",
+      "normalized": "ampliacion lomas de becerra",
+      "aliases": [
+        "ampliacion lomas de becerra",
+        "lomas de becerra",
+        "colonia ampliacion lomas de becerra",
+        "col ampliacion lomas de becerra",
+        "col. ampliacion lomas de becerra"
+      ],
+      "cp": "01279",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.381,
+      "lng": -99.211,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Lomas%20de%20Becerra%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Francisco Villa",
+      "normalized": "francisco villa",
+      "aliases": [
+        "francisco villa",
+        "colonia francisco villa",
+        "col francisco villa",
+        "col. francisco villa"
+      ],
+      "cp": "01270",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.376,
+      "lng": -99.214,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Francisco%20Villa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Arvide",
+      "normalized": "arvide",
+      "aliases": [
+        "arvide",
+        "colonia arvide",
+        "col arvide",
+        "col. arvide"
+      ],
+      "cp": "01280",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.374,
+      "lng": -99.217,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Arvide%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Molino de Rosas",
+      "normalized": "molino de rosas",
+      "aliases": [
+        "molino de rosas",
+        "colonia molino de rosas",
+        "col molino de rosas",
+        "col. molino de rosas"
+      ],
+      "cp": "01470",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.203,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Molino%20de%20Rosas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Alfonso XIII",
+      "normalized": "alfonso xiii",
+      "aliases": [
+        "alfonso xiii",
+        "colonia alfonso xiii",
+        "col alfonso xiii",
+        "col. alfonso xiii"
+      ],
+      "cp": "01460",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.196,
+      "zone": "Centro-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Alfonso%20XIII%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Merced Gómez",
+      "normalized": "merced gomez",
+      "aliases": [
+        "merced gomez",
+        "colonia merced gomez",
+        "col merced gomez",
+        "col. merced gomez"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3621,
+      "lng": -99.2012,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Merced%20G%C3%B3mez%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Reacomodo Merced Gómez",
+      "normalized": "reacomodo merced gomez",
+      "aliases": [
+        "reacomodo merced gomez",
+        "colonia reacomodo merced gomez",
+        "col reacomodo merced gomez",
+        "col. reacomodo merced gomez"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.204,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Reacomodo%20Merced%20G%C3%B3mez%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Piedra Grande",
+      "normalized": "piedra grande",
+      "aliases": [
+        "piedra grande",
+        "colonia piedra grande",
+        "col piedra grande",
+        "col. piedra grande"
+      ],
+      "cp": "01480",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3685,
+      "lng": -99.208,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Piedra%20Grande%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tlacopac Tlacuitlapa",
+      "normalized": "tlacopac tlacuitlapa",
+      "aliases": [
+        "tlacopac tlacuitlapa",
+        "colonia tlacopac tlacuitlapa",
+        "col tlacopac tlacuitlapa",
+        "col. tlacopac tlacuitlapa"
+      ],
+      "cp": "01049",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.359,
+      "lng": -99.194,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tlacopac%20Tlacuitlapa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tolteca",
+      "normalized": "tolteca",
+      "aliases": [
+        "tolteca",
+        "colonia tolteca",
+        "col tolteca",
+        "col. tolteca"
+      ],
+      "cp": "01150",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.385,
+      "lng": -99.196,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tolteca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Bellavista",
+      "normalized": "bellavista",
+      "aliases": [
+        "bellavista",
+        "colonia bellavista",
+        "col bellavista",
+        "col. bellavista"
+      ],
+      "cp": "01140",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.388,
+      "lng": -99.199,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Bellavista%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cristo Rey",
+      "normalized": "cristo rey",
+      "aliases": [
+        "cristo rey",
+        "colonia cristo rey",
+        "col cristo rey",
+        "col. cristo rey"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.382,
+      "lng": -99.192,
+      "zone": "Norte-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cristo%20Rey%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Minas de Cristo",
+      "normalized": "minas de cristo",
+      "aliases": [
+        "minas de cristo",
+        "colonia minas de cristo",
+        "col minas de cristo",
+        "col. minas de cristo"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.38,
+      "lng": -99.194,
+      "zone": "Norte-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Minas%20de%20Cristo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Carola",
+      "normalized": "carola",
+      "aliases": [
+        "carola",
+        "colonia carola",
+        "col carola",
+        "col. carola"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.381,
+      "lng": -99.19,
+      "zone": "Norte-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Carola%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Pedro de los Pinos",
+      "normalized": "san pedro de los pinos",
+      "aliases": [
+        "san pedro de los pinos",
+        "colonia san pedro de los pinos",
+        "col san pedro de los pinos",
+        "col. san pedro de los pinos"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.387,
+      "lng": -99.186,
+      "zone": "Norte-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Pedro%20de%20los%20Pinos%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa María Nonoalco",
+      "normalized": "santa maria nonoalco",
+      "aliases": [
+        "santa maria nonoalco",
+        "colonia santa maria nonoalco",
+        "col santa maria nonoalco",
+        "col. santa maria nonoalco"
+      ],
+      "cp": "01420",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.379,
+      "lng": -99.188,
+      "zone": "Norte-Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Mar%C3%ADa%20Nonoalco%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "José María Pino Suárez",
+      "normalized": "jose maria pino suarez",
+      "aliases": [
+        "jose maria pino suarez",
+        "colonia jose maria pino suarez",
+        "col jose maria pino suarez",
+        "col. jose maria pino suarez"
+      ],
+      "cp": "01140",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.389,
+      "lng": -99.195,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jos%C3%A9%20Mar%C3%ADa%20Pino%20Su%C3%A1rez%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ponciano Arriaga",
+      "normalized": "ponciano arriaga",
+      "aliases": [
+        "ponciano arriaga",
+        "colonia ponciano arriaga",
+        "col ponciano arriaga",
+        "col. ponciano arriaga"
+      ],
+      "cp": "01150",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.384,
+      "lng": -99.198,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ponciano%20Arriaga%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Mártires de Tacubaya",
+      "normalized": "martires de tacubaya",
+      "aliases": [
+        "martires de tacubaya",
+        "colonia martires de tacubaya",
+        "col martires de tacubaya",
+        "col. martires de tacubaya"
+      ],
+      "cp": "01160",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.386,
+      "lng": -99.202,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=M%C3%A1rtires%20de%20Tacubaya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cove",
+      "normalized": "cove",
+      "aliases": [
+        "cove",
+        "colonia cove",
+        "col cove",
+        "col. cove"
+      ],
+      "cp": "01120",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.395,
+      "lng": -99.199,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cove%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Observatorio",
+      "normalized": "observatorio",
+      "aliases": [
+        "observatorio",
+        "colonia observatorio",
+        "col observatorio",
+        "col. observatorio"
+      ],
+      "cp": "01110",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.398,
+      "lng": -99.197,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Observatorio%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Reacomodo Cuauhtémoc",
+      "normalized": "reacomodo cuauhtemoc",
+      "aliases": [
+        "reacomodo cuauhtemoc",
+        "colonia reacomodo cuauhtemoc",
+        "col reacomodo cuauhtemoc",
+        "col. reacomodo cuauhtemoc"
+      ],
+      "cp": "01160",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.383,
+      "lng": -99.206,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Reacomodo%20Cuauht%C3%A9moc%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Capula",
+      "normalized": "lomas de capula",
+      "aliases": [
+        "lomas de capula",
+        "colonia lomas de capula",
+        "col lomas de capula",
+        "col. lomas de capula"
+      ],
+      "cp": "01270",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.374,
+      "lng": -99.222,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Capula%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Capula",
+      "normalized": "capula",
+      "aliases": [
+        "capula",
+        "colonia capula",
+        "col capula",
+        "col. capula"
+      ],
+      "cp": "01270",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.375,
+      "lng": -99.225,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Capula%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Pirul",
+      "normalized": "el pirul",
+      "aliases": [
+        "el pirul",
+        "colonia el pirul",
+        "col el pirul",
+        "col. el pirul"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.235,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Pirul%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Arturo Martínez",
+      "normalized": "arturo martinez",
+      "aliases": [
+        "arturo martinez",
+        "colonia arturo martinez",
+        "col arturo martinez",
+        "col. arturo martinez"
+      ],
+      "cp": "01110",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.393,
+      "lng": -99.202,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Arturo%20Mart%C3%ADnez%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Real del Monte",
+      "normalized": "real del monte",
+      "aliases": [
+        "real del monte",
+        "colonia real del monte",
+        "col real del monte",
+        "col. real del monte"
+      ],
+      "cp": "01130",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.387,
+      "lng": -99.209,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Real%20del%20Monte%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Conchita",
+      "normalized": "la conchita",
+      "aliases": [
+        "la conchita",
+        "colonia la conchita",
+        "col la conchita",
+        "col. la conchita"
+      ],
+      "cp": "01420",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.377,
+      "lng": -99.205,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Conchita%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "María G. de García Caraveo",
+      "normalized": "maria g. de garcia caraveo",
+      "aliases": [
+        "maria g. de garcia caraveo",
+        "colonia maria g. de garcia caraveo",
+        "col maria g. de garcia caraveo",
+        "col. maria g. de garcia caraveo"
+      ],
+      "cp": "01280",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.373,
+      "lng": -99.219,
+      "zone": "Centro-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Mar%C3%ADa%20G.%20de%20Garc%C3%ADa%20Caraveo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Martinica",
+      "normalized": "la martinica",
+      "aliases": [
+        "la martinica",
+        "colonia la martinica",
+        "col la martinica",
+        "col. la martinica"
+      ],
+      "cp": "01270",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.377,
+      "lng": -99.217,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Martinica%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Bosques de Tarango",
+      "normalized": "bosques de tarango",
+      "aliases": [
+        "bosques de tarango",
+        "colonia bosques de tarango",
+        "col bosques de tarango",
+        "col. bosques de tarango"
+      ],
+      "cp": "01580",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.362,
+      "lng": -99.211,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Bosques%20de%20Tarango%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tarango",
+      "normalized": "tarango",
+      "aliases": [
+        "tarango",
+        "colonia tarango",
+        "col tarango",
+        "col. tarango"
+      ],
+      "cp": "01580",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.214,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tarango%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Madero",
+      "normalized": "madero",
+      "aliases": [
+        "madero",
+        "colonia madero",
+        "col madero",
+        "col. madero"
+      ],
+      "cp": "01440",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.212,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Madero%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Angostura",
+      "normalized": "la angostura",
+      "aliases": [
+        "la angostura",
+        "colonia la angostura",
+        "col la angostura",
+        "col. la angostura"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.337,
+      "lng": -99.255,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Angostura%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Bartolo Atepehuacan",
+      "normalized": "san bartolo atepehuacan",
+      "aliases": [
+        "san bartolo atepehuacan",
+        "colonia san bartolo atepehuacan",
+        "col san bartolo atepehuacan",
+        "col. san bartolo atepehuacan"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.34,
+      "lng": -99.262,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Bartolo%20Atepehuacan%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tepaca",
+      "normalized": "tepaca",
+      "aliases": [
+        "tepaca",
+        "colonia tepaca",
+        "col tepaca",
+        "col. tepaca"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.338,
+      "lng": -99.266,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tepaca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Chamontoya",
+      "normalized": "chamontoya",
+      "aliases": [
+        "chamontoya",
+        "colonia chamontoya",
+        "col chamontoya",
+        "col. chamontoya"
+      ],
+      "cp": "01820",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.336,
+      "lng": -99.259,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Chamontoya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tlacoyaque",
+      "normalized": "tlacoyaque",
+      "aliases": [
+        "tlacoyaque",
+        "colonia tlacoyaque",
+        "col tlacoyaque",
+        "col. tlacoyaque"
+      ],
+      "cp": "01830",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.332,
+      "lng": -99.268,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tlacoyaque%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Carlos",
+      "normalized": "san carlos",
+      "aliases": [
+        "san carlos",
+        "colonia san carlos",
+        "col san carlos",
+        "col. san carlos"
+      ],
+      "cp": "01810",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.335,
+      "lng": -99.245,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Carlos%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Chamontoya",
+      "normalized": "lomas de chamontoya",
+      "aliases": [
+        "lomas de chamontoya",
+        "colonia lomas de chamontoya",
+        "col lomas de chamontoya",
+        "col. lomas de chamontoya"
+      ],
+      "cp": "01820",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.334,
+      "lng": -99.258,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Chamontoya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Encino",
+      "normalized": "el encino",
+      "aliases": [
+        "el encino",
+        "colonia el encino",
+        "col el encino",
+        "col. el encino"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.339,
+      "lng": -99.27,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Encino%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Torres de Potrero",
+      "normalized": "torres de potrero",
+      "aliases": [
+        "torres de potrero",
+        "colonia torres de potrero",
+        "col torres de potrero",
+        "col. torres de potrero"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.342,
+      "lng": -99.245,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Torres%20de%20Potrero%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Potrero del Llano",
+      "normalized": "potrero del llano",
+      "aliases": [
+        "potrero del llano",
+        "colonia potrero del llano",
+        "col potrero del llano",
+        "col. potrero del llano"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.343,
+      "lng": -99.248,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Potrero%20del%20Llano%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Rincón",
+      "normalized": "el rincon",
+      "aliases": [
+        "el rincon",
+        "colonia el rincon",
+        "col el rincon",
+        "col. el rincon"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.34,
+      "lng": -99.251,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Rinc%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Rincón de la Bolsa",
+      "normalized": "rincon de la bolsa",
+      "aliases": [
+        "rincon de la bolsa",
+        "colonia rincon de la bolsa",
+        "col rincon de la bolsa",
+        "col. rincon de la bolsa"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.338,
+      "lng": -99.227,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Rinc%C3%B3n%20de%20la%20Bolsa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Tarango",
+      "normalized": "lomas de tarango",
+      "aliases": [
+        "lomas de tarango",
+        "colonia lomas de tarango",
+        "col lomas de tarango",
+        "col. lomas de tarango"
+      ],
+      "cp": "01580",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.36,
+      "lng": -99.213,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Tarango%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Plateros",
+      "normalized": "lomas de plateros",
+      "aliases": [
+        "lomas de plateros",
+        "colonia lomas de plateros",
+        "col lomas de plateros",
+        "col. lomas de plateros"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.201,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Plateros%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Merced Gómez Sur",
+      "normalized": "merced gomez sur",
+      "aliases": [
+        "merced gomez sur",
+        "colonia merced gomez sur",
+        "col merced gomez sur",
+        "col. merced gomez sur"
+      ],
+      "cp": "01600",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.202,
+      "zone": "Centro",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Merced%20G%C3%B3mez%20Sur%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Lucía",
+      "normalized": "santa lucia",
+      "aliases": [
+        "santa lucia",
+        "colonia santa lucia",
+        "col santa lucia",
+        "col. santa lucia"
+      ],
+      "cp": "01500",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.231,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Luc%C3%ADa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Pueblo Santa Lucía",
+      "normalized": "pueblo santa lucia",
+      "aliases": [
+        "pueblo santa lucia",
+        "santa lucia",
+        "colonia pueblo santa lucia",
+        "col pueblo santa lucia",
+        "col. pueblo santa lucia"
+      ],
+      "cp": "01500",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.231,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Pueblo%20Santa%20Luc%C3%ADa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Corpus Christy",
+      "normalized": "corpus christy",
+      "aliases": [
+        "corpus christy",
+        "colonia corpus christy",
+        "col corpus christy",
+        "col. corpus christy"
+      ],
+      "cp": "01530",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.365,
+      "lng": -99.239,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Corpus%20Christy%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Corpus Christy",
+      "normalized": "ampliacion corpus christy",
+      "aliases": [
+        "ampliacion corpus christy",
+        "corpus christy",
+        "colonia ampliacion corpus christy",
+        "col ampliacion corpus christy",
+        "col. ampliacion corpus christy"
+      ],
+      "cp": "01530",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.241,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Corpus%20Christy%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tepetates",
+      "normalized": "tepetates",
+      "aliases": [
+        "tepetates",
+        "colonia tepetates",
+        "col tepetates",
+        "col. tepetates"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.243,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tepetates%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Rodeo",
+      "normalized": "el rodeo",
+      "aliases": [
+        "el rodeo",
+        "colonia el rodeo",
+        "col el rodeo",
+        "col. el rodeo"
+      ],
+      "cp": "01520",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.235,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Rodeo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Palmita",
+      "normalized": "la palmita",
+      "aliases": [
+        "la palmita",
+        "colonia la palmita",
+        "col la palmita",
+        "col. la palmita"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.234,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Palmita%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Cañada",
+      "normalized": "la canada",
+      "aliases": [
+        "la canada",
+        "colonia la canada",
+        "col la canada",
+        "col. la canada"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.369,
+      "lng": -99.236,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Ca%C3%B1ada%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Acuilotla",
+      "normalized": "acuilotla",
+      "aliases": [
+        "acuilotla",
+        "colonia acuilotla",
+        "col acuilotla",
+        "col. acuilotla"
+      ],
+      "cp": "01520",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.365,
+      "lng": -99.237,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Acuilotla%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Balcones de Cehuayo",
+      "normalized": "balcones de cehuayo",
+      "aliases": [
+        "balcones de cehuayo",
+        "colonia balcones de cehuayo",
+        "col balcones de cehuayo",
+        "col. balcones de cehuayo"
+      ],
+      "cp": "01520",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.364,
+      "lng": -99.239,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Balcones%20de%20Cehuayo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Cehuayo",
+      "normalized": "lomas de cehuayo",
+      "aliases": [
+        "lomas de cehuayo",
+        "colonia lomas de cehuayo",
+        "col lomas de cehuayo",
+        "col. lomas de cehuayo"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.366,
+      "lng": -99.237,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Cehuayo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Punta de Cehuayo",
+      "normalized": "punta de cehuayo",
+      "aliases": [
+        "punta de cehuayo",
+        "colonia punta de cehuayo",
+        "col punta de cehuayo",
+        "col. punta de cehuayo"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.24,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Punta%20de%20Cehuayo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Dos Ríos",
+      "normalized": "dos rios",
+      "aliases": [
+        "dos rios",
+        "colonia dos rios",
+        "col dos rios",
+        "col. dos rios"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.362,
+      "lng": -99.242,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Dos%20R%C3%ADos%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Pocito",
+      "normalized": "el pocito",
+      "aliases": [
+        "el pocito",
+        "colonia el pocito",
+        "col el pocito",
+        "col. el pocito"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.244,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Pocito%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tepeaca",
+      "normalized": "tepeaca",
+      "aliases": [
+        "tepeaca",
+        "colonia tepeaca",
+        "col tepeaca",
+        "col. tepeaca"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.36,
+      "lng": -99.246,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tepeaca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Ampliación Tepeaca",
+      "normalized": "ampliacion tepeaca",
+      "aliases": [
+        "ampliacion tepeaca",
+        "tepeaca",
+        "colonia ampliacion tepeaca",
+        "col ampliacion tepeaca",
+        "col. ampliacion tepeaca"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.359,
+      "lng": -99.247,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ampliaci%C3%B3n%20Tepeaca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Reacomodo Tepeaca",
+      "normalized": "reacomodo tepeaca",
+      "aliases": [
+        "reacomodo tepeaca",
+        "colonia reacomodo tepeaca",
+        "col reacomodo tepeaca",
+        "col. reacomodo tepeaca"
+      ],
+      "cp": "01540",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.358,
+      "lng": -99.248,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Reacomodo%20Tepeaca%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Galeana",
+      "normalized": "galeana",
+      "aliases": [
+        "galeana",
+        "colonia galeana",
+        "col galeana",
+        "col. galeana"
+      ],
+      "cp": "01530",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.238,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Galeana%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Barrio Melchor Ocampo",
+      "normalized": "barrio melchor ocampo",
+      "aliases": [
+        "barrio melchor ocampo",
+        "melchor ocampo",
+        "colonia barrio melchor ocampo",
+        "col barrio melchor ocampo",
+        "col. barrio melchor ocampo"
+      ],
+      "cp": "01500",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.23,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Barrio%20Melchor%20Ocampo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Barrio Norte San Pedro",
+      "normalized": "barrio norte san pedro",
+      "aliases": [
+        "barrio norte san pedro",
+        "norte san pedro",
+        "colonia barrio norte san pedro",
+        "col barrio norte san pedro",
+        "col. barrio norte san pedro"
+      ],
+      "cp": "01410",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.375,
+      "lng": -99.208,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Barrio%20Norte%20San%20Pedro%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Jardines del Pedregal",
+      "normalized": "jardines del pedregal",
+      "aliases": [
+        "jardines del pedregal",
+        "colonia jardines del pedregal",
+        "col jardines del pedregal",
+        "col. jardines del pedregal"
+      ],
+      "cp": "01900",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3245,
+      "lng": -99.2089,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jardines%20del%20Pedregal%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Jerónimo Lídice (Límite AO)",
+      "normalized": "san jeronimo lidice (limite ao)",
+      "aliases": [
+        "san jeronimo lidice (limite ao)",
+        "colonia san jeronimo lidice (limite ao)",
+        "col san jeronimo lidice (limite ao)",
+        "col. san jeronimo lidice (limite ao)"
+      ],
+      "cp": "01040",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.33,
+      "lng": -99.215,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Jer%C3%B3nimo%20L%C3%ADdice%20(L%C3%ADmite%20AO)%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Batallón de San Patricio",
+      "normalized": "batallon de san patricio",
+      "aliases": [
+        "batallon de san patricio",
+        "colonia batallon de san patricio",
+        "col batallon de san patricio",
+        "col. batallon de san patricio"
+      ],
+      "cp": "01150",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.383,
+      "lng": -99.197,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Batall%C3%B3n%20de%20San%20Patricio%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Bosque",
+      "normalized": "bosque",
+      "aliases": [
+        "bosque",
+        "colonia bosque",
+        "col bosque",
+        "col. bosque"
+      ],
+      "cp": "01170",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.385,
+      "lng": -99.205,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Bosque%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Bosques de Tetlameya",
+      "normalized": "bosques de tetlameya",
+      "aliases": [
+        "bosques de tetlameya",
+        "colonia bosques de tetlameya",
+        "col bosques de tetlameya",
+        "col. bosques de tetlameya"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.337,
+      "lng": -99.226,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Bosques%20de%20Tetlameya%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Campamento 2 de Octubre",
+      "normalized": "campamento 2 de octubre",
+      "aliases": [
+        "campamento 2 de octubre",
+        "colonia campamento 2 de octubre",
+        "col campamento 2 de octubre",
+        "col. campamento 2 de octubre"
+      ],
+      "cp": "01110",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.394,
+      "lng": -99.204,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Campamento%202%20de%20Octubre%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cañada de San Rafael",
+      "normalized": "canada de san rafael",
+      "aliases": [
+        "canada de san rafael",
+        "colonia canada de san rafael",
+        "col canada de san rafael",
+        "col. canada de san rafael"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.339,
+      "lng": -99.228,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Ca%C3%B1ada%20de%20San%20Rafael%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Casas Alemán",
+      "normalized": "casas aleman",
+      "aliases": [
+        "casas aleman",
+        "colonia casas aleman",
+        "col casas aleman",
+        "col. casas aleman"
+      ],
+      "cp": "01150",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.382,
+      "lng": -99.199,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Casas%20Alem%C3%A1n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Cerrada de San Jerónimo",
+      "normalized": "cerrada de san jeronimo",
+      "aliases": [
+        "cerrada de san jeronimo",
+        "colonia cerrada de san jeronimo",
+        "col cerrada de san jeronimo",
+        "col. cerrada de san jeronimo"
+      ],
+      "cp": "01040",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.333,
+      "lng": -99.206,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Cerrada%20de%20San%20Jer%C3%B3nimo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Colinas de Tarango",
+      "normalized": "colinas de tarango",
+      "aliases": [
+        "colinas de tarango",
+        "colonia colinas de tarango",
+        "col colinas de tarango",
+        "col. colinas de tarango"
+      ],
+      "cp": "01580",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.213,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Colinas%20de%20Tarango%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Concepción",
+      "normalized": "concepcion",
+      "aliases": [
+        "concepcion",
+        "colonia concepcion",
+        "col concepcion",
+        "col. concepcion"
+      ],
+      "cp": "01070",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.349,
+      "lng": -99.184,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Concepci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Árbol",
+      "normalized": "el arbol",
+      "aliases": [
+        "el arbol",
+        "colonia el arbol",
+        "col el arbol",
+        "col. el arbol"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.335,
+      "lng": -99.227,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20%C3%81rbol%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Batán",
+      "normalized": "el batan",
+      "aliases": [
+        "el batan",
+        "colonia el batan",
+        "col el batan",
+        "col. el batan"
+      ],
+      "cp": "01090",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.342,
+      "lng": -99.198,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Bat%C3%A1n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Cuernito",
+      "normalized": "el cuernito",
+      "aliases": [
+        "el cuernito",
+        "colonia el cuernito",
+        "col el cuernito",
+        "col. el cuernito"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.379,
+      "lng": -99.212,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Cuernito%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Manzanito",
+      "normalized": "el manzanito",
+      "aliases": [
+        "el manzanito",
+        "colonia el manzanito",
+        "col el manzanito",
+        "col. el manzanito"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.343,
+      "lng": -99.261,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Manzanito%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Mirador 2da Sección",
+      "normalized": "el mirador 2da seccion",
+      "aliases": [
+        "el mirador 2da seccion",
+        "colonia el mirador 2da seccion",
+        "col el mirador 2da seccion",
+        "col. el mirador 2da seccion"
+      ],
+      "cp": "01370",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.365,
+      "lng": -99.229,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Mirador%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Paraíso",
+      "normalized": "el paraiso",
+      "aliases": [
+        "el paraiso",
+        "colonia el paraiso",
+        "col el paraiso",
+        "col. el paraiso"
+      ],
+      "cp": "01130",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.386,
+      "lng": -99.21,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Para%C3%ADso%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Pirul 1ra Sección",
+      "normalized": "el pirul 1ra seccion",
+      "aliases": [
+        "el pirul 1ra seccion",
+        "colonia el pirul 1ra seccion",
+        "col el pirul 1ra seccion",
+        "col. el pirul 1ra seccion"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.234,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Pirul%201ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Pirul 2da Sección",
+      "normalized": "el pirul 2da seccion",
+      "aliases": [
+        "el pirul 2da seccion",
+        "colonia el pirul 2da seccion",
+        "col el pirul 2da seccion",
+        "col. el pirul 2da seccion"
+      ],
+      "cp": "01220",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.371,
+      "lng": -99.236,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Pirul%202da%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Queso",
+      "normalized": "el queso",
+      "aliases": [
+        "el queso",
+        "colonia el queso",
+        "col el queso",
+        "col. el queso"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.378,
+      "lng": -99.215,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Queso%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Rincón de la Huerta",
+      "normalized": "el rincon de la huerta",
+      "aliases": [
+        "el rincon de la huerta",
+        "colonia el rincon de la huerta",
+        "col el rincon de la huerta",
+        "col. el rincon de la huerta"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3375,
+      "lng": -99.2265,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Rinc%C3%B3n%20de%20la%20Huerta%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "El Tejocote",
+      "normalized": "el tejocote",
+      "aliases": [
+        "el tejocote",
+        "colonia el tejocote",
+        "col el tejocote",
+        "col. el tejocote"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.38,
+      "lng": -99.213,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=El%20Tejocote%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Hacienda del Ciervo",
+      "normalized": "hacienda del ciervo",
+      "aliases": [
+        "hacienda del ciervo",
+        "colonia hacienda del ciervo",
+        "col hacienda del ciervo",
+        "col. hacienda del ciervo"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3365,
+      "lng": -99.2255,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Hacienda%20del%20Ciervo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Hidalgo",
+      "normalized": "hidalgo",
+      "aliases": [
+        "hidalgo",
+        "colonia hidalgo",
+        "col hidalgo",
+        "col. hidalgo"
+      ],
+      "cp": "01120",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.39,
+      "lng": -99.21,
+      "zone": "Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Hidalgo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Huichapan",
+      "normalized": "huichapan",
+      "aliases": [
+        "huichapan",
+        "colonia huichapan",
+        "col huichapan",
+        "col. huichapan"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.382,
+      "lng": -99.211,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Huichapan%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Isidro Fabela",
+      "normalized": "isidro fabela",
+      "aliases": [
+        "isidro fabela",
+        "colonia isidro fabela",
+        "col isidro fabela",
+        "col. isidro fabela"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.381,
+      "lng": -99.214,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Isidro%20Fabela%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Jardines del Pedregal de San Ángel",
+      "normalized": "jardines del pedregal de san angel",
+      "aliases": [
+        "jardines del pedregal de san angel",
+        "colonia jardines del pedregal de san angel",
+        "col jardines del pedregal de san angel",
+        "col. jardines del pedregal de san angel"
+      ],
+      "cp": "01900",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3245,
+      "lng": -99.2089,
+      "zone": "Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Jardines%20del%20Pedregal%20de%20San%20%C3%81ngel%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Angostura El Encino",
+      "normalized": "la angostura el encino",
+      "aliases": [
+        "la angostura el encino",
+        "colonia la angostura el encino",
+        "col la angostura el encino",
+        "col. la angostura el encino"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.338,
+      "lng": -99.256,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Angostura%20El%20Encino%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Cabaña",
+      "normalized": "la cabana",
+      "aliases": [
+        "la cabana",
+        "colonia la cabana",
+        "col la cabana",
+        "col. la cabana"
+      ],
+      "cp": "01810",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.336,
+      "lng": -99.247,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Caba%C3%B1a%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Cascada",
+      "normalized": "la cascada",
+      "aliases": [
+        "la cascada",
+        "colonia la cascada",
+        "col la cascada",
+        "col. la cascada"
+      ],
+      "cp": "01810",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.337,
+      "lng": -99.246,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Cascada%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Herradura",
+      "normalized": "la herradura",
+      "aliases": [
+        "la herradura",
+        "colonia la herradura",
+        "col la herradura",
+        "col. la herradura"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3355,
+      "lng": -99.2245,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Herradura%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Huerta",
+      "normalized": "la huerta",
+      "aliases": [
+        "la huerta",
+        "colonia la huerta",
+        "col la huerta",
+        "col. la huerta"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.337,
+      "lng": -99.228,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Huerta%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Lagunilla",
+      "normalized": "la lagunilla",
+      "aliases": [
+        "la lagunilla",
+        "colonia la lagunilla",
+        "col la lagunilla",
+        "col. la lagunilla"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.342,
+      "lng": -99.263,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Lagunilla%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Loma",
+      "normalized": "la loma",
+      "aliases": [
+        "la loma",
+        "colonia la loma",
+        "col la loma",
+        "col. la loma"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.359,
+      "lng": -99.255,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Loma%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Loma de Santa Fe",
+      "normalized": "la loma de santa fe",
+      "aliases": [
+        "la loma de santa fe",
+        "colonia la loma de santa fe",
+        "col la loma de santa fe",
+        "col. la loma de santa fe"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.359,
+      "lng": -99.255,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Loma%20de%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Palmita Cehuayo",
+      "normalized": "la palmita cehuayo",
+      "aliases": [
+        "la palmita cehuayo",
+        "colonia la palmita cehuayo",
+        "col la palmita cehuayo",
+        "col. la palmita cehuayo"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3675,
+      "lng": -99.2345,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Palmita%20Cehuayo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Providencia",
+      "normalized": "la providencia",
+      "aliases": [
+        "la providencia",
+        "colonia la providencia",
+        "col la providencia",
+        "col. la providencia"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3405,
+      "lng": -99.2615,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Providencia%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "La Retama",
+      "normalized": "la retama",
+      "aliases": [
+        "la retama",
+        "colonia la retama",
+        "col la retama",
+        "col. la retama"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3385,
+      "lng": -99.226,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=La%20Retama%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Las Palmas",
+      "normalized": "las palmas",
+      "aliases": [
+        "las palmas",
+        "colonia las palmas",
+        "col las palmas",
+        "col. las palmas"
+      ],
+      "cp": "01810",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.338,
+      "lng": -99.249,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Las%20Palmas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas Altas",
+      "normalized": "lomas altas",
+      "aliases": [
+        "lomas altas",
+        "colonia lomas altas",
+        "col lomas altas",
+        "col. lomas altas"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.365,
+      "lng": -99.25,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20Altas%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Guadalupe",
+      "normalized": "lomas de guadalupe",
+      "aliases": [
+        "lomas de guadalupe",
+        "colonia lomas de guadalupe",
+        "col lomas de guadalupe",
+        "col. lomas de guadalupe"
+      ],
+      "cp": "01020",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.189,
+      "zone": "Oriente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Guadalupe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de la Era",
+      "normalized": "lomas de la era",
+      "aliases": [
+        "lomas de la era",
+        "colonia lomas de la era",
+        "col lomas de la era",
+        "col. lomas de la era"
+      ],
+      "cp": "01830",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.329,
+      "lng": -99.274,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20la%20Era%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Los Ángeles Tetelpan",
+      "normalized": "lomas de los angeles tetelpan",
+      "aliases": [
+        "lomas de los angeles tetelpan",
+        "colonia lomas de los angeles tetelpan",
+        "col lomas de los angeles tetelpan",
+        "col. lomas de los angeles tetelpan"
+      ],
+      "cp": "01700",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.346,
+      "lng": -99.221,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Los%20%C3%81ngeles%20Tetelpan%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Nuevo México",
+      "normalized": "lomas de nuevo mexico",
+      "aliases": [
+        "lomas de nuevo mexico",
+        "colonia lomas de nuevo mexico",
+        "col lomas de nuevo mexico",
+        "col. lomas de nuevo mexico"
+      ],
+      "cp": "01230",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.366,
+      "lng": -99.251,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Nuevo%20M%C3%A9xico%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Lomas de Santo Domingo",
+      "normalized": "lomas de santo domingo",
+      "aliases": [
+        "lomas de santo domingo",
+        "colonia lomas de santo domingo",
+        "col lomas de santo domingo",
+        "col. lomas de santo domingo"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.38,
+      "lng": -99.208,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Lomas%20de%20Santo%20Domingo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Los Cedros",
+      "normalized": "los cedros",
+      "aliases": [
+        "los cedros",
+        "colonia los cedros",
+        "col los cedros",
+        "col. los cedros"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.341,
+      "lng": -99.264,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Los%20Cedros%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Olivar del Conde 3ra Sección",
+      "normalized": "olivar del conde 3ra seccion",
+      "aliases": [
+        "olivar del conde 3ra seccion",
+        "colonia olivar del conde 3ra seccion",
+        "col olivar del conde 3ra seccion",
+        "col. olivar del conde 3ra seccion"
+      ],
+      "cp": "01408",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.368,
+      "lng": -99.221,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Olivar%20del%20Conde%203ra%20Secci%C3%B3n%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Paseo de las Lomas Santa Fe",
+      "normalized": "paseo de las lomas santa fe",
+      "aliases": [
+        "paseo de las lomas santa fe",
+        "colonia paseo de las lomas santa fe",
+        "col paseo de las lomas santa fe",
+        "col. paseo de las lomas santa fe"
+      ],
+      "cp": "01330",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.372,
+      "lng": -99.259,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Paseo%20de%20las%20Lomas%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Polvareda",
+      "normalized": "polvareda",
+      "aliases": [
+        "polvareda",
+        "colonia polvareda",
+        "col polvareda",
+        "col. polvareda"
+      ],
+      "cp": "01370",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.367,
+      "lng": -99.23,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Polvareda%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Prados de la Montaña",
+      "normalized": "prados de la montana",
+      "aliases": [
+        "prados de la montana",
+        "colonia prados de la montana",
+        "col prados de la montana",
+        "col. prados de la montana"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.361,
+      "lng": -99.264,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Prados%20de%20la%20Monta%C3%B1a%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Rancho del Carmen",
+      "normalized": "rancho del carmen",
+      "aliases": [
+        "rancho del carmen",
+        "colonia rancho del carmen",
+        "col rancho del carmen",
+        "col. rancho del carmen"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.336,
+      "lng": -99.227,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Rancho%20del%20Carmen%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Reacomodo El Cuernito",
+      "normalized": "reacomodo el cuernito",
+      "aliases": [
+        "reacomodo el cuernito",
+        "colonia reacomodo el cuernito",
+        "col reacomodo el cuernito",
+        "col. reacomodo el cuernito"
+      ],
+      "cp": "01180",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3795,
+      "lng": -99.2125,
+      "zone": "Centro-Norte",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Reacomodo%20El%20Cuernito%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Rincón de Centokani",
+      "normalized": "rincon de centokani",
+      "aliases": [
+        "rincon de centokani",
+        "colonia rincon de centokani",
+        "col rincon de centokani",
+        "col. rincon de centokani"
+      ],
+      "cp": "01780",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.337,
+      "lng": -99.2285,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Rinc%C3%B3n%20de%20Centokani%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Ángel Sur",
+      "normalized": "san angel sur",
+      "aliases": [
+        "san angel sur",
+        "colonia san angel sur",
+        "col san angel sur",
+        "col. san angel sur"
+      ],
+      "cp": "01000",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.348,
+      "lng": -99.192,
+      "zone": "Centro-Sur",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20%C3%81ngel%20Sur%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "San Bartolo Ameyalco Centro",
+      "normalized": "san bartolo ameyalco centro",
+      "aliases": [
+        "san bartolo ameyalco centro",
+        "colonia san bartolo ameyalco centro",
+        "col san bartolo ameyalco centro",
+        "col. san bartolo ameyalco centro"
+      ],
+      "cp": "01800",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3412,
+      "lng": -99.2598,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=San%20Bartolo%20Ameyalco%20Centro%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Santa Fe Cuajimalpa",
+      "normalized": "santa fe cuajimalpa",
+      "aliases": [
+        "santa fe cuajimalpa",
+        "colonia santa fe cuajimalpa",
+        "col santa fe cuajimalpa",
+        "col. santa fe cuajimalpa"
+      ],
+      "cp": "01219",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.363,
+      "lng": -99.265,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Santa%20Fe%20Cuajimalpa%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tepetongo",
+      "normalized": "tepetongo",
+      "aliases": [
+        "tepetongo",
+        "colonia tepetongo",
+        "col tepetongo",
+        "col. tepetongo"
+      ],
+      "cp": "01840",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.341,
+      "lng": -99.252,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tepetongo%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Tierra Nueva",
+      "normalized": "tierra nueva",
+      "aliases": [
+        "tierra nueva",
+        "colonia tierra nueva",
+        "col tierra nueva",
+        "col. tierra nueva"
+      ],
+      "cp": "01830",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.33,
+      "lng": -99.272,
+      "zone": "Sur-Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Tierra%20Nueva%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Unidad Habitacional Santa Fe",
+      "normalized": "unidad habitacional santa fe",
+      "aliases": [
+        "unidad habitacional santa fe",
+        "santa fe",
+        "colonia unidad habitacional santa fe",
+        "col unidad habitacional santa fe",
+        "col. unidad habitacional santa fe"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.362,
+      "lng": -99.257,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Unidad%20Habitacional%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Valle de Santa Fe",
+      "normalized": "valle de santa fe",
+      "aliases": [
+        "valle de santa fe",
+        "colonia valle de santa fe",
+        "col valle de santa fe",
+        "col. valle de santa fe"
+      ],
+      "cp": "01210",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3605,
+      "lng": -99.2595,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Valle%20de%20Santa%20Fe%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    },
+    {
+      "name": "Villa Solidaridad",
+      "normalized": "villa solidaridad",
+      "aliases": [
+        "villa solidaridad",
+        "colonia villa solidaridad",
+        "col villa solidaridad",
+        "col. villa solidaridad"
+      ],
+      "cp": "01510",
+      "municipality": "Álvaro Obregón",
+      "state": "Ciudad de México",
+      "lat": 19.3655,
+      "lng": -99.2385,
+      "zone": "Poniente",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=Villa%20Solidaridad%2C%20%C3%81lvaro%20Obreg%C3%B3n%2C%20CDMX"
+    }
+  ]
+}
