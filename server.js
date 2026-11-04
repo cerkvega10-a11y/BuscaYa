@@ -2494,13 +2494,17 @@ function detectReactionEmoji(intent, family, term, text) {
   if (/(?:violencia|golpe|maltrato|amenaza|acoso|765|abuso)/i.test(lower)) return '💜';
   if (/(?:derrumbe|socavon|inundacion|sismo|temblor|arbol\s+caido)/i.test(lower)) return '🛡️';
 
-  // 2. Intenciones del flujo conversacional
+  // 2. Intenciones de Control Directo (Identidad, Registro, Soporte)
+  if (intent === 'INSTITUCIONAL_IDENTIDAD' || /(?:qui[eé]n\s+(?:te\s+)?(?:hizo|cre[oó]|desarroll[oó]|program[oó])|de\s+qui[eé]n\s+eres)/i.test(lower)) return '🤖';
+  if (intent === 'DUDA_REGISTRO' || /(?:quiero\s+unirme|c[oó]mo\s+me\s+registro|quiero\s+aparecer|costo|planes)/i.test(lower)) return '🚀';
+  if (intent === 'SOPORTE_HUMANO' || /(?:hablar\s+con\s+(?:una\s+persona|un\s+humano)|soporte|ayuda\s+humana|marcar)/i.test(lower)) return '📱';
+
+  // 3. Intenciones conversacionales
   if (intent === 'SALUDO' || /^(?:hola|buenas|buenos\s+dias|buenas\s+tardes|hey|que\s+onda|saludos)/i.test(lower)) return '👋';
   if (intent === 'AGRADECIMIENTO_DESPEDIDA' || /(?:gracias|mil\s+gracias|chido|agradezco|bye|adios|hasta\s+luego|excelente|genial|perfecto)/i.test(lower)) return '❤️';
-  if (intent === 'SOPORTE_HUMANO') return '🤝';
-  if (intent === 'DUDA_REGISTRO') return '💼';
   if (intent === 'PEDIR_MAS_OPCIONES') return '🔍';
   if (intent === 'DAR_COLONIA') return '📍';
+  if (intent === 'CONVERSACIONAL_NO_GIRO') return '✨';
 
   // 3. Familias y Giros comerciales
   if (family === 'ALIMENTOS_Y_BEBIDAS' || /(?:taco|pizza|comida|comer|hambre|cenar|antojo|restaurante|cafe|pan|postre|hamburguesa|sushi|torta|alitas|bar)/i.test(lower)) return '🤤';
@@ -2664,40 +2668,54 @@ async function extractStructuredNLU(text, userSession = {}) {
   const t = (text || '').trim();
   const lower = t.toLowerCase();
 
-  // 1. Agradecimiento / Despedida
+  // 1. Intención Institucional / Identidad (¿Quién te hizo? ¿Quién te creó?) - CERO BÚSQUEDA
+  const isInstitutional = /(?:qui[eé]n\s+(?:te\s+)?(?:hizo|cre[oó]|desarroll[oó]|program[oó]|dise[ñn][oó]|invent[oó]|construy[oó]|administra)|de\s+qui[eé]n\s+eres|qui[eé]n\s+es\s+tu\s+(?:due[ñn]o|creador|desarrollador|programador)|qu[eé]\s+(?:empresa|agencia)\s+te\s+(?:cre[oó]|hizo|desarroll[oó])|qui[eé]n\s+est[aá]\s+detr[aá]s\s+de\s+ti|qui[eé]n\s+te\s+manda|qui[eé]n\s+te\s+opera)/i.test(lower);
+  if (isInstitutional) {
+    return {
+      intencion: 'INSTITUCIONAL_IDENTIDAD',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🤖'
+    };
+  }
+
+  // 2. Intención de Registro B2B / Unirse al Directorio - CERO BÚSQUEDA
+  const isRegistrationB2B = /(?:quiero\s+unirme|c[oó]mo\s+me\s+registro|c[oó]mo\s+registro\s+mi|quiero\s+aparecer|c[oó]mo\s+le\s+hago\s+para\s+estar\s+en\s+el\s+directorio|me\s+das\s+informaci[oó]n|(?:^|\b)(?:costo|costos|planes|precios?|cu[aá]nto\s+cuesta|cu[aá]nto\s+cobran|qu[eé]\s+cuesta)(?:$|[?!\s])|quiero\s+(?:anunciar|registrar|promocionar|afiliar|publicar|subir|sumar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa|mi\s+servicio)?|c[oó]mo\s+(?:anunciar|registrar|afiliar|sumar|publicar)\s+(?:mi\s+negocio|mi\s+local|mi\s+empresa)?|quiero\s+(?:formar\s+parte|ser\s+parte|estar\s+en\s+el\s+directorio|estar\s+en\s+buscaya|anunciarme|registrarme)|informes\s+(?:para\s+negocios|para\s+anunciarme|de\s+registro)|unir\s+mi\s+negocio)/i.test(lower);
+  if (isRegistrationB2B) {
+    return {
+      intencion: 'DUDA_REGISTRO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '🚀'
+    };
+  }
+
+  // 3. Intención de Soporte Humano / Ayuda Directa - CERO BÚSQUEDA
+  const isHumanSupport = /(?:necesito\s+hablar\s+con\s+(?:una\s+persona|un\s+humano|alguien)|quiero\s+soporte|ayuda\s+humana|(?:^|\b)marcar(?:$|[?!\s])|(?:^|\b)llamar(?:$|[?!\s])|hablar\s+con\s+(?:un\s+)?(?:humano|persona|asesor|operador|agente|alguien)|persona\s+real|atenci[oó]n\s+humana|soporte\s+humano|soporte\s+t[eé]cnico|atenci[oó]n\s+a\s+clientes|comunicarme\s+con\s+(?:un\s+humano|una\s+persona|alguien)|tel[eé]fono\s+de\s+(?:soporte|atenci[oó]n)|n[uú]mero\s+de\s+(?:soporte|atenci[oó]n)|hablar\s+con\s+un\s+asesor)/i.test(lower);
+  if (isHumanSupport) {
+    return {
+      intencion: 'SOPORTE_HUMANO',
+      familia_giro: null,
+      termino_especifico: null,
+      colonia_o_referencia: null,
+      emoji_reaccion: '📱'
+    };
+  }
+
+  // 4. Agradecimiento / Despedida
   if (/(?:^|\b)(?:muchas\s+gracias|mil\s+gracias|gracias|te\s+lo\s+agradezco|perfecto\s+gracias|ok\s+gracias|muy\s+amable|adi[oó]s|adios|bye|chao|hasta\s+luego|nos\s+vemos|much[ií]simas\s+gracias|vale\s+gracias|sale\s+bye|va\s+gracias|sale\s+gracias)(?:$|[!.\s])/i.test(lower)) {
     return {
       intencion: 'AGRADECIMIENTO_DESPEDIDA',
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: detectReactionEmoji('AGRADECIMIENTO_DESPEDIDA', null, null, t)
+      emoji_reaccion: '❤️'
     };
   }
 
-  // 2. Soporte Humano
-  if (/(?:hablar\s+con\s+(?:un\s+)?(?:humano|persona|asesor)|ayuda\s+humana|atenci[oó]n\s+humana|soporte\s+humano|operador)/i.test(lower)) {
-    return {
-      intencion: 'SOPORTE_HUMANO',
-      familia_giro: null,
-      termino_especifico: null,
-      colonia_o_referencia: null,
-      emoji_reaccion: detectReactionEmoji('SOPORTE_HUMANO', null, null, t)
-    };
-  }
-
-  // 3. Duda Registro / B2B
-  if (/(?:c[oó]mo\s+(?:me\s+)?(?:sumo|sumarme|aparecer|registrar|registro)|quiero\s+(?:aparecer|registrar|anunciar)|me\s+interesa\s+registrar|(?:cu[aá]nto\s+cuesta|costo|planes)\s+(?:anunciar|aparecer|el\s+servicio|buscaya)|sumar(?:me)?\s+a\s+buscaya|anunciarme|registrar\s+mi\s+negocio)/i.test(lower)) {
-    return {
-      intencion: 'DUDA_REGISTRO',
-      familia_giro: null,
-      termino_especifico: null,
-      colonia_o_referencia: null,
-      emoji_reaccion: detectReactionEmoji('DUDA_REGISTRO', null, null, t)
-    };
-  }
-
-  // 4. Confirmación afirmativa para opción lejana
+  // 5. Confirmación afirmativa para opción lejana
   const isAffirmative = /^(?:s[ií]|claro|por\s+favor|m[aá]ndal[oa]|p[aá]sal[oa]|adelante|va|ok|dale|sale|a\s+ver|me\s+late|de\s+acuerdo)(?:[,\s]+.*)?$/i.test(lower);
   if (userSession.esperando_confirmacion_expansion_2km && isAffirmative) {
     return {
@@ -2709,29 +2727,29 @@ async function extractStructuredNLU(text, userSession = {}) {
     };
   }
 
-  // 5. Pedir más opciones / Expansión de distancia
+  // 6. Pedir más opciones / Expansión de distancia
   if (/(?:otra\s+opci[oó]n|m[aá]ndame\s+otr[oa]|qu[eé]\s+m[aá]s\s+hay|qu[eé]\s+otro|ver\s+m[aá]s|mu[eé]strame\s+m[aá]s|hay\s+m[aá]s|alg[uú]n\s+otro|alguna\s+otra|otro\s+lugar|otro\s+restaurante|otra\s+comida|busca\s+m[aá]s\s+lejos|m[aá]s\s+lejos|dame\s+otra\s+opci[oó]n|no\s+tienes\s+otro|qu[eé]\s+m[aá]s\s+tienes|mu[eé]strame\s+los\s+que\s+tengas|^m[aá]s$|^otr[oa]$|otra\s+alternativa)/i.test(lower) && (userSession.lockedFamily || userSession.giro_buscado || userSession.esperando_confirmacion_expansion_2km)) {
     return {
       intencion: 'PEDIR_MAS_OPCIONES',
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: null,
-      emoji_reaccion: detectReactionEmoji('PEDIR_MAS_OPCIONES', userSession.lockedFamily, userSession.lockedTerm, t)
+      emoji_reaccion: '🔍'
     };
   }
 
-  // 6. Saludo puro (sin términos de búsqueda)
+  // 7. Saludo puro (sin términos de búsqueda)
   if (/^(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)(?:\s+(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|amig[oa]|a\s+todos))?[!.\s]*$/i.test(lower)) {
     return {
       intencion: 'SALUDO',
       familia_giro: null,
       termino_especifico: null,
       colonia_o_referencia: null,
-      emoji_reaccion: detectReactionEmoji('SALUDO', null, null, t)
+      emoji_reaccion: '👋'
     };
   }
 
-  // 7. Detección de colonias y direcciones
+  // 8. Detección de colonias y direcciones
   let detectedColonia = null;
   const addressInfo = typeof resolveAddressOrColonia === 'function' ? resolveAddressOrColonia(t, userSession.intencion_actual === 'esperando_ubicacion') : null;
   if (addressInfo && addressInfo.neighborhood) {
@@ -2755,11 +2773,28 @@ async function extractStructuredNLU(text, userSession = {}) {
   const isColoniaPrefix = /^(?:estoy\s+en|en|por|cerca\s+de|vivo\s+en|ubicado\s+en|desde)\s+/i.test(lower);
   const isWaitingColonia = userSession.intencion_actual === 'esperando_ubicacion' || userSession.intencion_actual === 'esperando_colonia' || (!userSession.coloniaActual && userSession.lockedFamily);
 
-  // 8. Detección de Familia y Término
+  // 9. Detección de Familia y Término de Giro Comercial Válido
   let matchedFamily = null;
   let matchedTerm = null;
 
-  if (/caramelo/i.test(lower)) {
+  // Comprobar si busca un negocio directamente por su nombre comercial registrado en el sistema
+  const directBiz = Array.isArray(SERVER_BUSINESSES) ? SERVER_BUSINESSES.find(b => {
+    if (!b || !b.businessName) return false;
+    const bName = b.businessName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    return bName.length >= 4 && lower.includes(bName);
+  }) : null;
+
+  if (directBiz) {
+    matchedTerm = directBiz.businessName;
+    const bCat = (directBiz.category || '').toLowerCase();
+    for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+      if (fData.categories && fData.categories.some(c => bCat.includes(c.toLowerCase()))) {
+        matchedFamily = fKey;
+        break;
+      }
+    }
+    if (!matchedFamily) matchedFamily = 'COMERCIO_LOCAL';
+  } else if (/caramelo/i.test(lower)) {
     matchedFamily = 'ENTRETENIMIENTO_Y_ARTE';
     matchedTerm = 'Caramelo Media Music';
   } else {
@@ -2778,16 +2813,19 @@ async function extractStructuredNLU(text, userSession = {}) {
     }
   }
 
+  // 10. Resolución Estricta de Intención
+  // A. Si está esperando colonia o el mensaje inicia con prefijo de ubicación
   if ((isWaitingColonia && detectedColonia) || (isColoniaPrefix && detectedColonia && !matchedFamily)) {
     return {
       intencion: 'DAR_COLONIA',
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: detectedColonia,
-      emoji_reaccion: detectReactionEmoji('DAR_COLONIA', userSession.lockedFamily, userSession.lockedTerm, t)
+      emoji_reaccion: '📍'
     };
   }
 
+  // B. BÚSQUEDA VÁLIDA: Solo si coincide con un giro comercial o negocio registrado
   if (matchedFamily) {
     return {
       intencion: 'BUSQUEDA',
@@ -2798,22 +2836,25 @@ async function extractStructuredNLU(text, userSession = {}) {
     };
   }
 
+  // C. Si solo proporcionó una colonia conocida
   if (detectedColonia) {
     return {
       intencion: 'DAR_COLONIA',
       familia_giro: userSession.lockedFamily || null,
       termino_especifico: userSession.lockedTerm || null,
       colonia_o_referencia: detectedColonia,
-      emoji_reaccion: detectReactionEmoji('DAR_COLONIA', userSession.lockedFamily, userSession.lockedTerm, t)
+      emoji_reaccion: '📍'
     };
   }
 
+  // D. RESTRICCIÓN DE HIERRO: Si el texto NO es un giro comercial ni ubicación
+  // PROHIBIDO buscar en la base de datos de negocios
   return {
-    intencion: 'BUSQUEDA',
-    familia_giro: userSession.lockedFamily || 'ALIMENTOS_Y_BEBIDAS',
-    termino_especifico: t,
+    intencion: 'CONVERSACIONAL_NO_GIRO',
+    familia_giro: null,
+    termino_especifico: null,
     colonia_o_referencia: null,
-    emoji_reaccion: detectReactionEmoji('BUSQUEDA', userSession.lockedFamily || 'ALIMENTOS_Y_BEBIDAS', t, t)
+    emoji_reaccion: '✨'
   };
 }
 
@@ -3062,8 +3103,36 @@ async function processBuscaYaMessage({
   // 5. MÁQUINA DE ESTADOS FINITA (FSM) DETERMINISTA
   let selectedBiz = null;
 
-  // A. AGRADECIMIENTO / DESPEDIDA
-  if (nluResult.intencion === 'AGRADECIMIENTO_DESPEDIDA') {
+  // A. INTENCIÓN INSTITUCIONAL / IDENTIDAD (CERO BÚSQUEDA)
+  if (nluResult.intencion === 'INSTITUCIONAL_IDENTIDAD') {
+    currentPhase = 1;
+    userSession.intencion_actual = "institucional_identidad";
+    finalBotReplyText = "¡Hola! 🤖✨ Fui diseñado y desarrollado exclusivamente por el equipo de **Neural Media House** para ayudarte a encontrar los mejores negocios, servicios y establecimientos locales en BuscaYa de forma rápida y directa aquí en WhatsApp 🚀";
+  }
+
+  // B. INTENCIÓN DE REGISTRO B2B / UNIRSE AL DIRECTORIO (CERO BÚSQUEDA)
+  else if (nluResult.intencion === 'DUDA_REGISTRO') {
+    currentPhase = 5;
+    userSession.intencion_actual = "duda_registro";
+    finalBotReplyText = "¡Qué excelente noticia! 😊🙌 Me encantaría que tu negocio forme parte de BuscaYa para que comiences a recibir clientes directos de la zona en tu WhatsApp. Revisa todos los detalles y realiza tu registro oficial aquí: https://buscaya.neuralmediahouse.com/ 🚀✨";
+  }
+
+  // C. INTENCIÓN DE SOPORTE HUMANO / AYUDA DIRECTA (CERO BÚSQUEDA)
+  else if (nluResult.intencion === 'SOPORTE_HUMANO') {
+    currentPhase = 5;
+    userSession.intencion_actual = "soporte_humano";
+    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Si necesitas atención directa o deseas hablar con una persona de nuestro equipo, contáctanos o marca a nuestro número oficial de atención personalizada: 5645234452 📱🤝 ¡Con gusto te atenderemos!";
+  }
+
+  // D. PREGUNTA CONVERSACIONAL GENERAL (NO ES UN GIRO COMERCIAL - CERO BÚSQUEDA)
+  else if (nluResult.intencion === 'CONVERSACIONAL_NO_GIRO') {
+    currentPhase = 1;
+    userSession.intencion_actual = "conversacional_no_giro";
+    finalBotReplyText = "¡Hola! 😊 En BuscaYa te ayudo a encontrar los mejores negocios, comida, oficios y servicios locales verificados cerca de ti en la Ciudad de México 📍✨\n\nPuedes pedirme por ejemplo: tacos, pizzería, cerrajero, plomero, veterinaria, médico, farmacia o cualquier negocio local que necesites. ¿Qué te gustaría buscar hoy? 🙌";
+  }
+
+  // E. AGRADECIMIENTO / DESPEDIDA
+  else if (nluResult.intencion === 'AGRADECIMIENTO_DESPEDIDA') {
     userSession.lockedFamily = null;
     userSession.lockedTerm = null;
     userSession.shownBusinessIds = [];
@@ -3075,21 +3144,7 @@ async function processBuscaYaMessage({
     finalBotReplyText = "¡No hay de qué, fue un verdadero placer ayudarte! 😊🙌 Espero que te atiendan increíble ✨ Recuerda que aquí en BuscaYa estoy disponible para ti las 24 horas cuando necesites encontrar otro negocio o servicio cerca de ti 📍 ¡Que pases un excelente día! 🌟";
   }
 
-  // B. SOPORTE HUMANO
-  else if (nluResult.intencion === 'SOPORTE_HUMANO') {
-    currentPhase = 5;
-    userSession.intencion_actual = "soporte_humano";
-    finalBotReplyText = "¡Claro que sí con muchísimo gusto! 🤝✨ Comprendo perfectamente que a veces es mejor platicar directamente con alguien de nuestro equipo. Puedes mandar un mensaje de WhatsApp a nuestro número de atención personalizada y soporte humano: 5645234452 📲👤 ¡Con gusto te atenderemos personalmente!";
-  }
-
-  // C. DUDA DE REGISTRO / B2B
-  else if (nluResult.intencion === 'DUDA_REGISTRO') {
-    currentPhase = 5;
-    userSession.intencion_actual = "duda_registro";
-    finalBotReplyText = "¡Qué gran noticia, bienvenido a BuscaYa! 🚀✨ Nos entusiasma muchísimo que quieras sumar tu negocio a nuestro ecosistema. Contamos con días de prueba gratis para que empieces a recibir clientes directamente en tu WhatsApp sin compromiso alguno 🙌\n\nPuedes registrar y activar tu negocio fácilmente en nuestro portal oficial:\nhttps://buscaya.neuralmediahouse.com/ 🌐📲\n\n¡En un par de minutos tu negocio estará visible para miles de personas en tu zona! Si tienes alguna duda, aquí estamos para apoyarte 😊👏";
-  }
-
-  // D. SALUDO
+  // F. SALUDO
   else if (nluResult.intencion === 'SALUDO') {
     currentPhase = 1;
     userSession.intencion_actual = "saludo";

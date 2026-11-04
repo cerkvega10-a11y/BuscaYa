@@ -484,16 +484,7 @@ async function handleIncomingMessage(sock, msg) {
 
   if (!userText && !isLocation && !isAudio && !isMedia) return;
 
-  // Detección de Transferencia a Humano (Human Handoff)
-  const isHandoff = /humano|persona real|operador|agente|asesor|ayuda humana|queja|fraude|estafa/i.test(userText);
-  if (isHandoff) {
-    console.log(`[WhatsApp Human Handoff] Transferencia solicitada por ${phone} (${pushName})`);
-    const handoffNotice = `🔔 *Transferencia a Asesor Humano Activada*\n\nHola ${pushName}, hemos pausado la atención automática del bot. Un asesor de nuestro equipo de **Neural Media House** tomará este chat en breve para brindarte asistencia personalizada y resolver tu caso. Te atenderemos en este mismo chat a la brevedad.`;
-    await sock.sendMessage(remoteJid, { text: handoffNotice });
-    return;
-  }
-
-  // Delegar al Servidor Maestro de BuscaYa (port 3000) para unificar la Máquina de Estados, Ficha Canónica y Memoria
+  // Delegar al Servidor Maestro de BuscaYa (port 3000) para unificar NLU, FSM, Ficha Canónica y Memoria
   try {
     const payload = {
       id: msg?.key?.id,
