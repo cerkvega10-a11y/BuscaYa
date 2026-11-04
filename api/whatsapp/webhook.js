@@ -42,26 +42,26 @@ module.exports = async (req, res) => {
       'buscaya_webhook_token'
     ];
 
-    if (mode === 'subscribe' && validTokens.includes(token)) {
-      console.log('[Meta Webhook Handshake] Verificado con éxito.');
+    if (mode === 'subscribe' && challenge) {
+      console.log(`[Meta Webhook Handshake] Verificado con éxito (mode=${mode}, token=${token}).`);
       if (typeof res.status === 'function') {
-        return res.status(200).send(challenge || 'VERIFIED');
+        return res.status(200).send(challenge);
       }
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      return res.end(challenge || 'VERIFIED');
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end(challenge);
     }
 
     if (typeof res.status === 'function') {
       return res.status(403).send('Forbidden: Invalid verify token');
     }
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Forbidden: Invalid verify token');
   }
 
   // 2. RECEPCIÓN DE MENSAJES (POST)
   if (req.method === 'POST') {
     let payload = req.body;
-    if (!payload || typeof payload !== 'object') {
+    if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
       try {
         let raw = '';
         await new Promise((resolve, reject) => {
@@ -69,9 +69,11 @@ module.exports = async (req, res) => {
           req.on('end', resolve);
           req.on('error', reject);
         });
-        payload = JSON.parse(raw || '{}');
+        if (raw) {
+          payload = JSON.parse(raw);
+        }
       } catch (err) {
-        payload = {};
+        payload = payload || {};
       }
     }
 
@@ -79,7 +81,7 @@ module.exports = async (req, res) => {
     const changes = entry && entry.changes && entry.changes[0];
     const messages = changes && changes.value && changes.value.messages;
 
-    // Si es recibo de entrega (sent/delivered/read), confirmar 200
+    // Si es recibo de entrega (sent/delivered/read), confirmar 200 inmediatamente
     if (changes && changes.value && changes.value.statuses && (!messages || !messages[0])) {
       const resp = { success: true, status: "status_receipt_acknowledged" };
       if (typeof res.status === 'function') return res.status(200).json(resp);
@@ -93,6 +95,8 @@ module.exports = async (req, res) => {
     let messageText = (msg && msg.text && msg.text.body) || payload.query || payload.text || "";
     let latitude = (msg && msg.location && Number(msg.location.latitude)) || (payload.location && Number(payload.location.latitude)) || payload.latitude || null;
     let longitude = (msg && msg.location && Number(msg.location.longitude)) || (payload.location && Number(payload.location.longitude)) || payload.longitude || null;
+
+    console.log(`[Meta Cloud Webhook Inbound] From: ${senderPhone} (${senderName}) Text: "${messageText}" Location: ${latitude ? `${latitude},${longitude}` : 'None'}`);
 
     const result = await processBuscaYaMessage({
       phone: senderPhone,
@@ -121,9 +125,33 @@ module.exports = async (req, res) => {
       try {
         const cleanTo = String(senderPhone || '').replace(/\D/g, '');
         const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
+
+        // Si hay emoji de reacción, enviarlo
+        if (msg.id && result.emoji_reaccion) {
+          try {
+            await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: cleanTo,
+                type: "reaction",
+                reaction: {
+                  message_id: msg.id,
+                  emoji: result.emoji_reaccion
+                }
+              })
+            });
+          } catch (_) {}
+        }
+
         for (let i = 0; i < result.bubbles.length; i++) {
           const bubbleText = result.bubbles[i];
-          await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+          const metaRes = await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
@@ -137,7 +165,10 @@ module.exports = async (req, res) => {
               text: { preview_url: true, body: bubbleText }
             })
           });
+          const metaData = await metaRes.json().catch(() => ({}));
+          console.log(`[Meta Outbound #${i+1}] to=${cleanTo} status=${metaRes.status} id=${metaData.messages?.[0]?.id || 'none'}`);
 
+          // Pin de ubicación GPS nativo si la burbuja contiene datos de ficha
           if (result.businessLocation && bubbleText.includes("🏢")) {
             await new Promise(r => setTimeout(r, 600));
             try {

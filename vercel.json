@@ -3,27 +3,27 @@
   "rewrites": [
     {
       "source": "/api/whatsapp/webhook",
-      "destination": "/api/whatsapp/webhook.js"
+      "destination": "/api/whatsapp/webhook"
     },
     {
       "source": "/api/webhook",
-      "destination": "/api/webhook.js"
+      "destination": "/api/webhook"
     },
     {
       "source": "/api/auditor",
-      "destination": "/api/auditor.js"
+      "destination": "/api/auditor"
     },
     {
       "source": "/api/colonias/(.*)",
-      "destination": "/api/colonias.js"
+      "destination": "/api/colonias"
     },
     {
       "source": "/api/colonias",
-      "destination": "/api/colonias.js"
+      "destination": "/api/colonias"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api"
     }
   ]
 }

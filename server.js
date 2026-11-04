@@ -1727,8 +1727,8 @@ const DEFAULT_MARKET_DEMAND = {
 let SERVER_MARKET_DEMAND = { ...DEFAULT_MARKET_DEMAND };
 
 const DEFAULT_BIWEEKLY_REPORTS_CONFIG = {
-  enabled: true,
-  scheduleMode: "interval", // "interval" (cada N días) o "month_days" (días específicos del mes)
+  enabled: false,
+  scheduleMode: "interval",
   intervalDays: 15,
   scheduledDaysOfMonth: [1, 16],
   executionTime: "10:00",
@@ -2164,121 +2164,13 @@ function findBusinessByOwnerPhone(rawPhone) {
 // DISPARADOR QUINCENAL DE REPORTES A NEGOCIOS & AVISOS PREVENTIVOS
 // -------------------------------------------------------------
 function dispatchBiweeklyReports({ manual = false, targetBusinessId = null } = {}) {
-  if (!manual && (!SERVER_BIWEEKLY_REPORTS_CONFIG || SERVER_BIWEEKLY_REPORTS_CONFIG.enabled === false)) {
-    return { ran: false, reason: "disabled", sentCount: 0, reports: [] };
-  }
-
-  const now = Date.now();
-  const nowDate = new Date(now);
-  const DAY_MS = 24 * 3600 * 1000;
-  const intervalDays = Math.max(1, Number(SERVER_BIWEEKLY_REPORTS_CONFIG?.intervalDays) || 15);
-  const scheduleMode = SERVER_BIWEEKLY_REPORTS_CONFIG?.scheduleMode || "interval";
-  const scheduledDays = Array.isArray(SERVER_BIWEEKLY_REPORTS_CONFIG?.scheduledDaysOfMonth)
-    ? SERVER_BIWEEKLY_REPORTS_CONFIG.scheduledDaysOfMonth.map(Number)
-    : [1, 16];
-  const currentDayOfMonth = nowDate.getDate();
-  const todayStr = nowDate.toISOString().slice(0, 10);
-
-  let sentCount = 0;
-  const reports = [];
-
-  SERVER_BUSINESSES.forEach(b => {
-    if (b.status !== "active" && b.status !== "demo") return;
-    if (targetBusinessId && b.id !== targetBusinessId) return;
-
-    const cleanPhone = String(b.phone || '').replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 8) return;
-
-    const lastBiweekly = b.lastBiweeklyReportSentAt ? new Date(b.lastBiweeklyReportSentAt).getTime() : 0;
-    const lastSentDateStr = b.lastBiweeklyReportSentAt ? b.lastBiweeklyReportSentAt.slice(0, 10) : "";
-
-    let shouldSend = false;
-    if (manual) {
-      shouldSend = true;
-    } else if (scheduleMode === "month_days") {
-      if (scheduledDays.includes(currentDayOfMonth) && lastSentDateStr !== todayStr) {
-        shouldSend = true;
-      }
-    } else {
-      if (now - lastBiweekly >= intervalDays * DAY_MS) {
-        shouldSend = true;
-      }
-    }
-
-    if (shouldSend) {
-      const realViews = BUSINESS_ANALYTICS[b.id]?.impressions || 0;
-      const simViews = b.simulatedViews || 0;
-      const totalViews = realViews + simViews;
-      const waClicks = BUSINESS_ANALYTICS[b.id]?.whatsappClicks || 0;
-
-      const biweeklyMsg = `📊 ¡Hola ${b.ownerName || 'amigo'}! En estos últimos ${intervalDays} días tu negocio *${b.businessName}* ha aparecido ante ${totalViews} vecinos que buscaron tu servicio en BuscaYa${waClicks > 0 ? ` y generó ${waClicks} contactos directos` : ''} 🚀✨`;
-      sendWhatsAppNotificationDirect(cleanPhone, biweeklyMsg);
-      b.lastBiweeklyReportSentAt = new Date(now).toISOString();
-      sentCount++;
-
-      const reportEntry = {
-        id: `bw-rep-${now}-${sentCount}`,
-        businessId: b.id,
-        businessName: b.businessName,
-        ownerName: b.ownerName || "Propietario",
-        phone: b.phone,
-        totalViews: totalViews,
-        mode: manual ? "Manual" : "Automático",
-        sentAt: b.lastBiweeklyReportSentAt
-      };
-      reports.push(reportEntry);
-      if (SERVER_BIWEEKLY_REPORTS_CONFIG) {
-        if (!Array.isArray(SERVER_BIWEEKLY_REPORTS_CONFIG.history)) {
-          SERVER_BIWEEKLY_REPORTS_CONFIG.history = [];
-        }
-        SERVER_BIWEEKLY_REPORTS_CONFIG.history.unshift(reportEntry);
-        if (SERVER_BIWEEKLY_REPORTS_CONFIG.history.length > 50) {
-          SERVER_BIWEEKLY_REPORTS_CONFIG.history = SERVER_BIWEEKLY_REPORTS_CONFIG.history.slice(0, 50);
-        }
-      }
-    }
-  });
-
-  if (sentCount > 0 && SERVER_BIWEEKLY_REPORTS_CONFIG) {
-    SERVER_BIWEEKLY_REPORTS_CONFIG.lastRunAt = new Date(now).toISOString();
-    SERVER_BIWEEKLY_REPORTS_CONFIG.totalDispatched = (SERVER_BIWEEKLY_REPORTS_CONFIG.totalDispatched || 0) + sentCount;
-    saveServerDatabase();
-  }
-
-  return { ran: true, sentCount, reports, timestamp: new Date(now).toISOString() };
+  // ELIMINADO PERMANENTEMENTE: Cero envíos automáticos o programados de reportes a negocios
+  return { ran: false, reason: "disabled_permanently", sentCount: 0, reports: [] };
 }
 
 function checkAutomatedNotifications() {
-  const now = Date.now();
-  let sentCount = 0;
-
-  // 1. Ejecutar Disparador Quincenal según configuración del Control Maestro
-  const bwRes = dispatchBiweeklyReports({ manual: false });
-  sentCount += (bwRes.sentCount || 0);
-
-  // 2. Aviso Preventivo de Fin de Prueba (Exactamente 1 Día / 24h Antes de Expirar)
-  SERVER_BUSINESSES.forEach(b => {
-    const totalViews = (BUSINESS_ANALYTICS[b.id]?.impressions || 0) + (b.simulatedViews || 0);
-    const cleanPhone = String(b.phone || '').replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 8) return;
-
-    if (b.status === "demo" && b.expiresAt) {
-      const expiryTime = new Date(b.expiresAt).getTime();
-      const hoursRemaining = (expiryTime - now) / (1000 * 3600);
-      if (hoursRemaining > 0 && hoursRemaining <= 24 && !b.preventiveNoticeSentAt) {
-        const trialDays = b.initialTrialDays || 7;
-        const noticeMsg = `¡Hola ${b.ownerName || 'amigo'}! 😊✨ Te recordamos que mañana concluye tu periodo de prueba gratuito de ${trialDays} días en BuscaYa. Durante este tiempo ${totalViews} personas vieron tu negocio 📍. A partir de mañana tu suscripción continuará activa automáticamente para que sigas recibiendo clientes sin interrupción 🚀🙌`;
-        sendWhatsAppNotificationDirect(cleanPhone, noticeMsg);
-        b.preventiveNoticeSentAt = new Date().toISOString();
-        sentCount++;
-      }
-    }
-  });
-
-  if (sentCount > 0) {
-    saveServerDatabase();
-  }
-  return { checkedAt: new Date().toISOString(), notificationsDispatched: sentCount };
+  // ELIMINADO PERMANENTEMENTE: Cero envíos automáticos o programados de reportes o avisos a teléfonos
+  return { checkedAt: new Date().toISOString(), notificationsDispatched: 0 };
 }
 
 async function sendWhatsAppNotificationDirect(phone, text) {
@@ -5998,7 +5890,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(body || '{}');
         const targetBusinessId = payload.businessId || null;
-        const result = dispatchBiweeklyReports({ manual: true, targetBusinessId });
+        const result = { ran: false, sentCount: 0, reason: "disabled_permanently" };
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({
