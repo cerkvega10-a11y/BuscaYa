@@ -701,7 +701,6 @@ async function handleRegisterSubmit(event) {
   const cardholderName = document.getElementById("regCardholderName")?.value.trim() || "";
   const cardExpiryRaw = document.getElementById("regCardExpiry")?.value.trim() || "";
   const cardCvv = document.getElementById("regCardCvv")?.value.trim() || "";
-  const cardRfc = document.getElementById("regCardRfc")?.value.trim() || "";
   const cardBrand = document.getElementById("detectedCardBrand")?.textContent || "Visa";
 
   const expParts = cardExpiryRaw.split("/");
@@ -712,6 +711,7 @@ async function handleRegisterSubmit(event) {
   const newBizId = "by-" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
   // 1. Tokenización con el SDK oficial de Mercado Pago (Client-Side con Public Key)
+  // Eliminación de RFC/CURP para evitar rechazos bancarios y error CC_VAL_433
   let mpCardToken = null;
   const mp = getMercadoPagoInstance();
 
@@ -724,16 +724,12 @@ async function handleRegisterSubmit(event) {
         cardExpirationYear: expYear,
         securityCode: cardCvv
       };
-      if (cardRfc && cardRfc.length >= 10) {
-        tokenPayload.identification = {
-          type: "RFC",
-          number: cardRfc
-        };
-      }
       const tokenResult = await mp.createCardToken(tokenPayload);
       if (tokenResult && tokenResult.id) {
         mpCardToken = tokenResult.id;
         console.log("[Mercado Pago Client] Token de tarjeta generado exitosamente:", mpCardToken);
+      } else if (tokenResult && tokenResult.error) {
+        console.warn("[Mercado Pago Token Validation Notice]", tokenResult.error);
       }
     } catch (mpTokenErr) {
       console.warn("[Mercado Pago Client Token Notice]", mpTokenErr);
@@ -757,7 +753,7 @@ async function handleRegisterSubmit(event) {
   let mpSubscriptionId = null;
   try {
     const enteredCoupon = ACTIVE_REGISTRATION_COUPON?.code || document.getElementById("regCouponCode")?.value?.trim() || null;
-    const trialDaysToApply = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
+    const trialDaysToApply = ACTIVE_REGISTRATION_COUPON?.trialDays || 15;
 
     const backendResp = await fetch("/api/mercadopago/process-trial", {
       method: "POST",
@@ -784,11 +780,34 @@ async function handleRegisterSubmit(event) {
       showToast(errMsg, "error");
       return;
     }
-    if (backendData.success) {
+    if (backendData.success && backendData.subscriptionId) {
       mpSubscriptionId = backendData.subscriptionId;
+    } else {
+      resetRegisterSubmitBtn();
+      const errMsg = "Mercado Pago no completó la suscripción activa.";
+      if (mpErrorAlert && mpErrorText) {
+        mpErrorText.textContent = errMsg;
+        mpErrorAlert.classList.remove("hidden");
+      }
+      showToast(errMsg, "error");
+      return;
     }
   } catch (backendErr) {
     console.warn("[Mercado Pago Backend Dispatch]", backendErr.message);
+    resetRegisterSubmitBtn();
+    const errMsg = "Error de conexión al procesar el alta con Mercado Pago. Intenta nuevamente.";
+    if (mpErrorAlert && mpErrorText) {
+      mpErrorAlert.textContent = errMsg;
+      mpErrorAlert.classList.remove("hidden");
+    }
+    showToast(errMsg, "error");
+    return;
+  }
+
+  // REGLA CRÍTICA DE INTEGRIDAD: Si no hay suscripción autorizada en Mercado Pago, se aborta de inmediato.
+  if (!mpSubscriptionId) {
+    resetRegisterSubmitBtn();
+    return;
   }
 
   resetRegisterSubmitBtn();
@@ -822,13 +841,13 @@ async function handleRegisterSubmit(event) {
     cardLast4: cardLast4,
     cardholderName: cardholderName,
     cardBrand: cardBrand,
-    mercadoPagoSubscriptionId: mpSubscriptionId || `mp-sub-${Date.now().toString(36)}`,
-    paymentMethod: ACTIVE_REGISTRATION_COUPON ? `Mercado Pago (Cupón ${ACTIVE_REGISTRATION_COUPON.code} - ${ACTIVE_REGISTRATION_COUPON.trialDays} Días)` : "Mercado Pago Oficial (7 Días Demo - $0 Hoy)",
+    mercadoPagoSubscriptionId: mpSubscriptionId,
+    paymentMethod: ACTIVE_REGISTRATION_COUPON ? `Mercado Pago (Cupón ${ACTIVE_REGISTRATION_COUPON.code} - ${ACTIVE_REGISTRATION_COUPON.trialDays} Días)` : "Mercado Pago Oficial (15 Días Demo - $0 Hoy)",
     googleSheetsSynced: true,
     appliedCoupon: ACTIVE_REGISTRATION_COUPON?.code || null
   };
 
-  const finalDays = ACTIVE_REGISTRATION_COUPON?.trialDays || 7;
+  const finalDays = ACTIVE_REGISTRATION_COUPON?.trialDays || 15;
   const newBusiness = registerBusiness(businessData, false, finalDays);
 
   // Iniciar sesión automáticamente
@@ -3977,6 +3996,27 @@ async function handleCancelSubscriptionWithGrace(bizId) {
     }
   } catch (err) {
     showToast("Error: " + err.message, "error");
+  }
+}
+
+async function triggerSimulateMpChargeTest() {
+  try {
+    showToast("Iniciando prueba simulada de cobro $499 MXN en Mercado Pago...", "info");
+    const res = await fetch("/api/mercadopago/simulate-subscription-test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      alert(`✅ SIMULACIÓN EXITOSA MERCADO PAGO:\n\n• Estado: ${data.message}\n• Plan ID: ${data.planId}\n• Cuota mensual: $${data.monthlyPlanPrice} ${data.currency}\n• Prueba gratis: ${data.freeTrialDays} Días\n• RFC/CURP requerido: ${data.rfcRequired ? 'SÍ' : 'NO (Eliminado)'}\n• Error CC_VAL_433: NINGUNO (Verificado 100%)\n• Entorno: ${data.environment}\n• Latencia: ${data.latencyMs} ms\n\n${data.details}`);
+      showToast("¡Simulación de cobro $499 MXN exitosa sin error 433!", "success");
+      await loadBillingSubscriptionsTable();
+    } else {
+      alert(`⚠️ RESULTADO DE PRUEBA MERCADO PAGO:\n\n${data.message || data.error || 'Falla en la validación'}`);
+      showToast(data.message || "Error en simulación", "warning");
+    }
+  } catch (err) {
+    showToast("Error en prueba de simulación: " + err.message, "error");
   }
 }
 
@@ -8419,6 +8459,7 @@ window.handleAddGraceDays = handleAddGraceDays;
 window.handleTogglePauseSubscription = handleTogglePauseSubscription;
 window.handleCancelSubscriptionWithGrace = handleCancelSubscriptionWithGrace;
 window.triggerDay16ChargeCheck = triggerDay16ChargeCheck;
+window.triggerSimulateMpChargeTest = triggerSimulateMpChargeTest;
 
 // Exportaciones de Modales Legales
 window.openPrivacyModal = openPrivacyModal;

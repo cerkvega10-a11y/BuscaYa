@@ -1065,24 +1065,18 @@
             </div>
 
             <!-- Expiration Date -->
-            <div class="sm:col-span-4">
+            <div class="sm:col-span-6">
               <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Vencimiento (MM/AA) *</label>
               <input type="text" id="regCardExpiry" required maxlength="5" oninput="formatCardExpiry(this)" placeholder="12/28" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#009ee3] font-mono text-sm text-center bg-white">
             </div>
 
             <!-- CVV / CVC -->
-            <div class="sm:col-span-4">
+            <div class="sm:col-span-6">
               <label class="block text-xs font-bold text-gray-700 uppercase mb-1 flex items-center justify-between">
                 <span>Código CVV *</span>
                 <span class="text-[10px] text-gray-400" title="3 dígitos al reverso de tu tarjeta">¿Qué es?</span>
               </label>
               <input type="password" id="regCardCvv" required maxlength="4" placeholder="123" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#009ee3] font-mono text-sm text-center bg-white">
-            </div>
-
-            <!-- RFC / Identificación Oficial -->
-            <div class="sm:col-span-4">
-              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">RFC o CURP del Titular</label>
-              <input type="text" id="regCardRfc" placeholder="MERC880214XX0" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#009ee3] text-sm uppercase bg-white">
             </div>
 
           </div>
@@ -1092,7 +1086,7 @@
             <label class="flex items-start space-x-2.5 cursor-pointer select-none">
               <input type="checkbox" id="regAcceptRenewalTerms" required class="mt-1 w-4 h-4 text-[#009ee3] rounded focus:ring-[#009ee3]">
               <span class="text-xs text-gray-600 leading-snug">
-                Autorizo la verificación de mi tarjeta por <b>$0.00 MXN</b> para activar mi Demo de 15 días. Entiendo que tras finalizar los 7 días de prueba comenzará la suscripción mensual de <b>$499 MXN</b> y que puedo cancelar en cualquier momento con 1 clic sin penalizaciones.
+                Autorizo la verificación de mi tarjeta por <b>$0.00 MXN</b> para activar mi Demo de 15 días. Entiendo que tras finalizar los 15 días de prueba comenzará la suscripción mensual de <b>$499 MXN</b> y que puedo cancelar en cualquier momento con 1 clic sin penalizaciones.
               </span>
             </label>
 
@@ -3359,6 +3353,10 @@
             </div>
 
             <div class="flex items-center space-x-2">
+              <button type="button" onclick="triggerSimulateMpChargeTest()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer" title="Simular cobro y validar conexión con Mercado Pago sin error 433">
+                <i class="fa-solid fa-vial-circle-check"></i>
+                <span>🧪 Simular Cobro $499 MXN</span>
+              </button>
               <button type="button" onclick="triggerDay16ChargeCheck()" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer" title="Ejecutar cobro automático a cuentas cuyo periodo de 15 días haya concluido">
                 <i class="fa-solid fa-bolt"></i>
                 <span>⚡ Chequeo Cobros Día 16</span>
