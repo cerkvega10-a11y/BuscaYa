@@ -4810,6 +4810,7 @@ ${visualFormatRule}`;
         let senderName = payload.name || "Usuario WhatsApp";
         let messageText = "";
         let isLocationMessage = false;
+        let isLocationWithoutCoords = false;
         let isAudioMessage = false;
         let audioTranscription = null;
 
@@ -4850,10 +4851,16 @@ ${visualFormatRule}`;
           senderPhone = msg.from || senderPhone;
           senderName = (changes.value.contacts && changes.value.contacts[0]?.profile?.name) || senderName;
 
-          if (msg.type === 'location' && msg.location) {
-            latitude = Number(msg.location.latitude);
-            longitude = Number(msg.location.longitude);
-            isLocationMessage = true;
+          if ((msg.type === 'location' && msg.location) || msg.type === 'live_location') {
+            const rawLat = msg.location ? Number(msg.location.latitude) : null;
+            const rawLng = msg.location ? Number(msg.location.longitude) : null;
+            if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
+              latitude = rawLat;
+              longitude = rawLng;
+              isLocationMessage = true;
+            } else {
+              isLocationWithoutCoords = true;
+            }
           } else if (msg.type === 'text' && msg.text && msg.text.body) {
             messageText = msg.text.body;
           } else if (msg.type === 'audio') {
@@ -4879,16 +4886,26 @@ ${visualFormatRule}`;
             messageText = audioTranscription || "";
           }
         } else if (payload.location) {
-          latitude = Number(payload.location.latitude);
-          longitude = Number(payload.location.longitude);
-          isLocationMessage = true;
+          const rawLat = Number(payload.location.latitude);
+          const rawLng = Number(payload.location.longitude);
+          if (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)) {
+            latitude = rawLat;
+            longitude = rawLng;
+            isLocationMessage = true;
+          } else {
+            isLocationWithoutCoords = true;
+          }
           senderPhone = payload.from || senderPhone;
           senderName = payload.name || senderName;
           messageText = payload.query || "";
         } else if (typeof payload.latitude === 'number' && typeof payload.longitude === 'number') {
-          latitude = payload.latitude;
-          longitude = payload.longitude;
-          isLocationMessage = true;
+          if (!isNaN(payload.latitude) && !isNaN(payload.longitude)) {
+            latitude = payload.latitude;
+            longitude = payload.longitude;
+            isLocationMessage = true;
+          } else {
+            isLocationWithoutCoords = true;
+          }
           senderPhone = payload.from || senderPhone;
           senderName = payload.name || senderName;
           messageText = payload.query || "";
@@ -4896,6 +4913,9 @@ ${visualFormatRule}`;
           messageText = payload.query || payload.text || "";
           senderPhone = payload.from || senderPhone;
           senderName = payload.name || senderName;
+          if (/ubicaci[oó]n.*(?:finalizada|sin\s+coordenadas)/i.test(messageText)) {
+            isLocationWithoutCoords = true;
+          }
         }
 
         // Si el texto contiene coordenadas o link de maps
@@ -5571,6 +5591,11 @@ ${visualFormatRule}`;
 
         if (isHumanSupportIntent || isRegistrationIntent || isSystemFaqIntent) {
           currentPhase = 5; // FASE ESPECIAL: Atención directa inmediata sin desvío
+        } else if (isLocationWithoutCoords) {
+          // Bucle de Capturas Resuelto: Si llega un aviso de ubicación sin coordenadas (ej. fin de ubicación en vivo)
+          // NO inventar posición, NO reiniciar sesión, NO saludar de nuevo, conservar la categoría activa
+          currentPhase = 2;
+          userSession.intencion_actual = "esperando_ubicacion";
         } else if (isLocationMessage || ((userLocationColonia || locationIsFromMemory) && (userSession.intencion_actual === "esperando_ubicacion" || userSession.familia_giro))) {
           // REGLA DE UBICACIÓN ANTES DEL CLASIFICADOR (CAPA 2 - PASO 2):
           // En cuanto el usuario comparte ubicación o colonia, transicionar de inmediato a la búsqueda
@@ -5866,12 +5891,22 @@ El usuario acaba de enviar su ubicación en ${userLocationColonia || 'su colonia
 El usuario solo ha enviado un saludo. TIENES ESTRICTAMENTE PROHIBIDO mostrar o recomendar negocios en este mensaje. Saluda con muchísima calidez acorde a la hora actual (${mexTime.greeting} ${mexTime.icon}), da la bienvenida a BuscaYa con frescura y pregúntale cómo está y qué servicio, comida o negocio le gustaría buscar hoy.`;
           }
         } else if (currentPhase === 2) {
-          contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
+          if (isLocationWithoutCoords) {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - AVISO DE UBICACIÓN SIN COORDENADAS (FIN DE UBICACIÓN EN VIVO)]
+El usuario envió un evento o respuesta de ubicación pero NO contiene coordenadas utilizables (por ejemplo, si la ubicación en tiempo real ya finalizó o expiró).
+TIENES ESTRICTAMENTE PROHIBIDO:
+1. Suponer o inventar una ubicación falsa.
+2. Volver a saludar con "Buenas noches" o bienvenidas genéricas.
+3. Preguntar qué busca desde cero (la categoría activa es "${userSession.giro_especifico || userSession.familia_giro}").
+ACCIÓN OBLIGATORIA: Explica con naturalidad y amabilidad que no te llegaron las coordenadas y pídele que te comparta un pin fijo de ubicación con el clip de WhatsApp o que te escriba el nombre de su colonia para buscarle opciones cerquita.`;
+          } else {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
 El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.familia_giro}). Aún NO tenemos su ubicación exacta o colonia.
 1. Responde con calidez y entusiasmo de anfitrión local de CDMX a lo que busca.
 2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍✨.
 PROHIBICIÓN ESTRICTA: Cero frases robóticas ("Para recomendarte los lugares abiertos a menos de 2 km de ti...", "Para brindarte un mejor servicio...").
 TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubicación.`;
+          }
         } else if (currentPhase === 3) {
           // Módulo 2: Registro de Demanda (Insatisfecha vs Atendida)
           recordMarketDemand(
@@ -5998,9 +6033,13 @@ Informa con cariño que por el momento son todas las opciones que tenemos regist
                 : `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
             }
           } else if (currentPhase === 2) {
-            const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
-            const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
-            finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿me compartes tu ubicación actual con el botón de abajo o en qué colonia estás? 📍✨`;
+            if (isLocationWithoutCoords) {
+              finalBotReplyText = `Fíjate que no me llegaron las coordenadas de tu ubicación (por ejemplo si la ubicación en tiempo real ya finalizó) 📍🤔 ¿Podrías compartirme un pin fijo de ubicación con el clip de WhatsApp o escribirme en qué colonia estás para buscarte opciones de ${userSession.giro_especifico || userSession.familia_giro || 'comida'} cerquita de ti? ✨`;
+            } else {
+              const foodEmoji = (userSession.familia_giro === "Alimentos y Bebidas") ? "🤤🍕" : "🛠️✨";
+              const greetingPfx = isSessionAlreadyActive ? "" : `${mexTime.greeting} ${mexTime.icon} `;
+              finalBotReplyText = `${greetingPfx}¡Con gusto te ayudo! ${foodEmoji} Para pasarte las mejores opciones abiertas cerquita de ti, ¿me compartes tu ubicación actual con el botón de abajo o en qué colonia estás? 📍✨`;
+            }
           } else if (selectedBusinesses.length > 0) {
             const introPrefix = isCategoryCorrection
               ? `¡Entendido! Cambiamos de inmediato a ${userSession.giro_especifico || userSession.familia_giro} cerca de tu ubicación 📍✨ Aquí tienes esta opción:`

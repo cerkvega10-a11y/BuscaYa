@@ -463,9 +463,13 @@ async function handleIncomingMessage(sock, msg) {
 
   if (isLocation) {
     const loc = msg.message.locationMessage || msg.message.liveLocationMessage;
-    lat = loc.degreesLatitude;
-    lng = loc.degreesLongitude;
-    userText = `📍 Ubicación GPS compartida: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
+    if (loc && typeof loc.degreesLatitude === 'number' && typeof loc.degreesLongitude === 'number') {
+      lat = loc.degreesLatitude;
+      lng = loc.degreesLongitude;
+      userText = `📍 Ubicación GPS compartida: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
+    } else {
+      userText = "📍 [Ubicación compartida sin coordenadas o finalizada]";
+    }
   } else if (msg.message.audioMessage) {
     userText = "🎙️ [Nota de voz recibida del usuario]";
   }
