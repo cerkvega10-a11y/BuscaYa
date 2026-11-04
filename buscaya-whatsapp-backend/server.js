@@ -604,13 +604,22 @@ INSTRUCCIONES OBLIGATORIAS:
   if (prevHistory.length > 8) prevHistory.splice(0, prevHistory.length - 8);
   waConversationMemory.set(phone, prevHistory);
 
-  // Enviar respuesta por WhatsApp
-  const sentMsg = await sock.sendMessage(remoteJid, { text: replyText });
-  if (sentMsg?.key?.id) {
-    sentBotMessageIds.add(sentMsg.key.id);
-    if (sentBotMessageIds.size > 2000) sentBotMessageIds.clear();
+  // Enviar respuesta por WhatsApp (Multi-Burbuja con |||SEPARAR|||)
+  const rawBubbles = replyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbols(b.trim())).filter(Boolean);
+  const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbols(replyText)];
+
+  for (let i = 0; i < bubbles.length; i++) {
+    const bubbleText = bubbles[i];
+    const sentMsg = await sock.sendMessage(remoteJid, { text: bubbleText });
+    if (sentMsg?.key?.id) {
+      sentBotMessageIds.add(sentMsg.key.id);
+      if (sentBotMessageIds.size > 2000) sentBotMessageIds.clear();
+    }
+    if (i < bubbles.length - 1) {
+      await new Promise(r => setTimeout(r, 700));
+    }
   }
-  console.log(`[WhatsApp Persistent Enviado a +${phone}]: Respuesta entregada exitosamente.`);
+  console.log(`[WhatsApp Persistent Enviado a +${phone}]: ${bubbles.length} burbuja(s) entregada(s) exitosamente.`);
 
   waState.messagesLog.unshift({
     id: `reply-${Date.now()}`,

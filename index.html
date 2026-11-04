@@ -2005,6 +2005,10 @@
           <i class="fa-solid fa-brain text-purple-600 text-base"></i>
           <span>🧠 Entrenamiento IA &amp; Sandbox</span>
         </button>
+        <button id="adminTabBtnLandingCms" onclick="switchAdminSubTab('landing-cms')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 border border-gray-300">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 text-base"></i>
+          <span>🎨 Editor CMS (Página Principal)</span>
+        </button>
         <button id="adminTabBtnCoupons" onclick="switchAdminSubTab('coupons')" class="px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:text-amber-700 hover:bg-amber-50 border border-gray-300">
           <i class="fa-solid fa-ticket text-amber-500 text-base"></i>
           <span>🎟️ Cupones &amp; Promos</span>
@@ -2741,202 +2745,159 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           <!-- ========================================== -->
-          <!-- ÁREA 1: PANEL DE CONFIGURACIÓN Y PROMPT    -->
+          <!-- ÁREA 1: PANEL MODULAR DE ENTRENAMIENTO IA  -->
           <!-- ========================================== -->
           <div class="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-7 border border-gray-200 shadow-sm space-y-6">
             
             <div class="flex items-center justify-between pb-3 border-b border-gray-100">
               <div class="flex items-center space-x-2.5">
-                <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold">
-                  <i class="fa-solid fa-sliders"></i>
+                <div class="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl font-bold shadow-xs">
+                  <i class="fa-solid fa-brain"></i>
                 </div>
                 <div>
-                  <h4 class="font-extrabold text-gray-900 text-base">Directrices y System Prompt</h4>
-                  <p class="text-xs text-gray-500">Personalidad, tono empático, emojis de WhatsApp y reglas de negocio</p>
+                  <h4 class="font-black text-gray-900 text-base">🧠 Centro de Entrenamiento de IA por Tarjetas</h4>
+                  <p class="text-xs text-gray-500">Sin editar código ni prompts gigantes — Agrega tareas, reglas rápidas y gestiona memoria</p>
                 </div>
               </div>
-
-              <!-- Selector de Presets -->
-              <select id="aiPresetSelect" onchange="handleAiPresetChange()" class="text-xs px-3 py-1.5 rounded-xl border border-gray-300 font-bold bg-white text-gray-800">
-                <option value="concierge-pro">🌟 BuscaYa Concierge Pro (Recomendado)</option>
-                <option value="executive">👔 Asistente Ejecutivo Rápido</option>
-                <option value="friendly-neighbor">🤝 Atención Cálida de Barrio</option>
-              </select>
             </div>
 
             <!-- ============================================================== -->
-            <!-- CONSTRUCTOR MODULAR DEL SYSTEM PROMPT (CAMPOS INDEPENDIENTES) -->
+            <!-- MÓDULO 3: MEMORIA Y PERSONALIZACIÓN DEL CLIENTE               -->
             <!-- ============================================================== -->
-            <div class="space-y-4">
-              
-              <!-- 1. Rol y Objetivo Principal -->
-              <div class="space-y-1.5 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-200">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-black text-gray-800 uppercase flex items-center space-x-1.5">
-                    <span class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-                    <span>Rol y Objetivo Principal</span>
-                  </label>
-                  <span class="text-[10px] text-gray-400 font-mono">Identidad y Misión</span>
-                </div>
-                <textarea id="aiPromptRole" rows="3" oninput="updateModularCharCount()" placeholder="Define quién es la IA y su meta principal. Ej. Eres BuscaYa, el asistente virtual y concierge oficial en WhatsApp para encontrar negocios locales verificados en México..." class="w-full p-3 rounded-xl border border-gray-300 font-mono text-xs leading-relaxed bg-white text-gray-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-all"></textarea>
-              </div>
-
-              <!-- 2. Funciones Principales -->
-              <div class="space-y-1.5 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-200">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-black text-gray-800 uppercase flex items-center space-x-1.5">
-                    <span class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
-                    <span>Funciones Principales</span>
-                  </label>
-                  <span class="text-[10px] text-gray-400 font-mono">Acciones permitidas</span>
-                </div>
-                <textarea id="aiPromptFunctions" rows="4" oninput="updateModularCharCount()" placeholder="Enumera las tareas clave de la IA. Ej.
-- Saludar con calidez y abundantes emojis de WhatsApp (🇲🇽, 🏢, 📍, 📞).
-- Preguntar qué servicio o producto busca y en qué colonia o alcaldía se encuentra.
-- Recomendar únicamente negocios activos con teléfono, dirección y Google Maps..." class="w-full p-3 rounded-xl border border-gray-300 font-mono text-xs leading-relaxed bg-white text-gray-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-all"></textarea>
-              </div>
-
-              <!-- 3. Directrices y Reglas de Oro -->
-              <div class="space-y-1.5 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-200">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-black text-gray-800 uppercase flex items-center space-x-1.5">
-                    <span class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
-                    <span>Directrices y Reglas de Oro</span>
-                  </label>
-                  <span class="text-[10px] text-gray-400 font-mono">Límites y Anti-inyección</span>
-                </div>
-                <textarea id="aiPromptGuidelines" rows="5" oninput="updateModularCharCount()" placeholder="REGLA ESTRICTA DE FORMATO VISUAL (WHATSAPP):
-Tienes estrictamente prohibido responder con párrafos densos o bloques de texto largos. Toda la información debes estructurarla OBLIGATORIAMENTE en formato de lista con viñetas (bullet points).
-- Cada viñeta debe comenzar siempre con un emoji representativo y coherente.
-- Utiliza negritas (*texto*) para resaltar los nombres de los negocios o conceptos clave.
-- Mantén cada punto conciso y directo al grano, optimizado para celulares." class="w-full p-3 rounded-xl border border-gray-300 font-mono text-xs leading-relaxed bg-white text-gray-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-all"></textarea>
-              </div>
-
-              <!-- 4. Cierre Conversacional -->
-              <div class="space-y-1.5 bg-[#F8FAFC] p-4 rounded-2xl border border-gray-200">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-black text-gray-800 uppercase flex items-center space-x-1.5">
-                    <span class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">4</span>
-                    <span>Cierre Conversacional y Llamado a la Acción</span>
-                  </label>
-                  <span class="text-[10px] text-gray-400 font-mono">Despedida y CTA</span>
-                </div>
-                <textarea id="aiPromptClosing" rows="2" oninput="updateModularCharCount()" placeholder="Define cómo se despide la IA y su llamado a la acción. Ej. ¿Te gustaría que te comunique directamente por WhatsApp con este negocio o prefieres que busquemos otra opción cerca de ti? ✨🇲🇽" class="w-full p-3 rounded-xl border border-gray-300 font-mono text-xs leading-relaxed bg-white text-gray-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-all"></textarea>
-              </div>
-
-            </div>
-
-            <!-- ============================================================== -->
-            <!-- 5. CONSTRUCTOR DINÁMICO DE TAREAS Y ESCENARIOS                -->
-            <!-- ============================================================== -->
-            <div class="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3">
-              <div class="flex items-center justify-between">
+            <div class="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/70 to-purple-50/50 border border-indigo-200 space-y-4">
+              <div class="flex items-center justify-between pb-2 border-b border-indigo-100">
                 <div class="flex items-center space-x-2">
-                  <div class="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs font-black">
+                  <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-user-tag"></i>
+                  </div>
+                  <div>
+                    <h5 class="text-xs font-black text-indigo-950 uppercase">👤 Memoria y Personalización del Cliente</h5>
+                    <p class="text-[10px] text-indigo-700">Persistencia de contexto por número telefónico y CRM</p>
+                  </div>
+                </div>
+                <span class="text-[10px] bg-indigo-200 text-indigo-900 font-extrabold px-2 py-0.5 rounded-full" id="activeMemorySessionsCount">0 sesiones</span>
+              </div>
+
+              <div class="space-y-3 text-xs">
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80 border border-indigo-100">
+                  <div>
+                    <span class="font-bold text-gray-900 block">Llamar al usuario por su nombre automáticamente</span>
+                    <span class="text-[11px] text-gray-500">Extrae el PushName de WhatsApp o detecta 'Soy Carlos' para dirigirse por su nombre</span>
+                  </div>
+                  <input type="checkbox" id="memAutoUseName" checked onchange="handleSaveMemorySettings()" class="w-5 h-5 text-indigo-600 rounded">
+                </div>
+
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80 border border-indigo-100">
+                  <div>
+                    <span class="font-bold text-gray-900 block">Preguntar el nombre amablemente si no está registrado</span>
+                    <span class="text-[11px] text-gray-500">Pregunta casualmente: 'Por cierto, ¿cómo te llamas para atenderte como te mereces? 😊'</span>
+                  </div>
+                  <input type="checkbox" id="memAskNameIfUnknown" checked onchange="handleSaveMemorySettings()" class="w-5 h-5 text-indigo-600 rounded">
+                </div>
+
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/80 border border-indigo-100">
+                  <div>
+                    <span class="font-bold text-gray-900 block">Recordar historial de plática y última ubicación</span>
+                    <span class="text-[11px] text-gray-500">Mantiene los últimos 15 turnos para responder preguntas de seguimiento y no repetir negocios</span>
+                  </div>
+                  <input type="checkbox" id="memRememberHistory" checked onchange="handleSaveMemorySettings()" class="w-5 h-5 text-indigo-600 rounded">
+                </div>
+              </div>
+
+              <!-- Herramienta de Limpieza de Prueba para SuperAdmin -->
+              <div class="pt-2 border-t border-indigo-100 flex flex-col sm:flex-row items-center gap-2">
+                <input type="text" id="memClearPhoneInput" placeholder="+52 1 55... (o vacío para todos)" class="w-full sm:flex-1 px-3 py-1.5 rounded-xl border border-indigo-300 text-xs font-mono bg-white">
+                <button type="button" onclick="handleClearTestMemory()" class="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold transition-all flex items-center justify-center space-x-1 cursor-pointer">
+                  <i class="fa-solid fa-broom"></i>
+                  <span>🧹 Limpiar memoria</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ============================================================== -->
+            <!-- GESTOR DE TAREAS POR TARJETAS INTERACTIVAS                     -->
+            <!-- ============================================================== -->
+            <div class="p-5 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center space-x-2">
+                  <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs">
                     <i class="fa-solid fa-list-check"></i>
                   </div>
                   <div>
-                    <h5 class="text-xs font-extrabold text-purple-950 uppercase tracking-wide">Constructor Dinámico de Tareas</h5>
-                    <p class="text-[11px] text-purple-700">Comportamiento condicional ante escenarios específicos</p>
+                    <h5 class="text-xs font-black text-purple-950 uppercase">📋 Tareas y Respuestas Específicas de la IA</h5>
+                    <p class="text-[10px] text-purple-700">Comportamiento condicional por tarjetas sin editar prompts largos</p>
                   </div>
                 </div>
 
-                <button type="button" onclick="addDynamicAiTask()" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5">
+                <button type="button" onclick="openAddAiTaskModal()" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black transition-all shadow-sm flex items-center space-x-1.5 cursor-pointer">
                   <i class="fa-solid fa-plus text-[10px]"></i>
-                  <span>Agregar Nueva Tarea</span>
+                  <span>+ Agregar Nueva Tarea</span>
                 </button>
               </div>
 
-              <!-- Lista Dinámica de Tareas -->
-              <div id="aiDynamicTasksContainer" class="space-y-3 pt-1">
+              <!-- Contenedor de Tarjetas de Tareas -->
+              <div id="aiTasksCardsContainer" class="space-y-3 pt-1">
                 <!-- Se inyecta dinámicamente con JavaScript -->
               </div>
             </div>
 
-            <!-- Controles de Personalización y Afinamiento -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tono Conversacional</label>
-                <select id="aiToneSelect" class="w-full p-1.5 rounded-lg border border-gray-300 text-xs font-medium bg-white">
-                  <option value="warm">Cálido y Empático</option>
-                  <option value="sales">Comercial / Vendedor</option>
-                  <option value="formal">Formal y Preciso</option>
-                </select>
-              </div>
-
-              <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Frecuencia de Emojis</label>
-                <select id="aiEmojiFreqSelect" class="w-full p-1.5 rounded-lg border border-gray-300 text-xs font-medium bg-white">
-                  <option value="high">Abundante (Estilo WhatsApp)</option>
-                  <option value="medium">Moderado</option>
-                  <option value="low">Mínimo</option>
-                </select>
-              </div>
-
-              <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <div class="flex items-center justify-between mb-1">
-                  <label class="text-[10px] font-bold text-gray-500 uppercase">Creatividad</label>
-                  <span class="text-[10px] font-mono font-bold text-purple-700" id="tempValueLabel">0.4</span>
+            <!-- ============================================================== -->
+            <!-- PANEL RÁPIDO DE SEÑALIZACIONES Y REGLAS RÁPIDAS               -->
+            <!-- ============================================================== -->
+            <div class="p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-thumbtack"></i>
                 </div>
-                <input type="range" id="aiTemperatureRange" min="0" max="1" step="0.1" value="0.4" oninput="document.getElementById('tempValueLabel').textContent = this.value" class="w-full accent-purple-600">
+                <div>
+                  <h5 class="text-xs font-black text-amber-950 uppercase">📌 Cosas Importantes y Señalizaciones (Reglas Rápidas)</h5>
+                  <p class="text-[10px] text-amber-800">Escribe una regla corta y añádela como chip con un clic</p>
+                </div>
+              </div>
+
+              <!-- Formulario de Añadir Señalización -->
+              <div class="flex items-center space-x-2">
+                <input type="text" id="newQuickRuleInput" onkeydown="if(event.key==='Enter'){event.preventDefault(); handleAddQuickRule();}" placeholder="Ej. Hoy hay promoción especial en restaurantes / Hablar de tú..." class="flex-1 px-3.5 py-2 rounded-xl border border-amber-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <button type="button" onclick="handleAddQuickRule()" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-sm flex items-center space-x-1 cursor-pointer">
+                  <i class="fa-solid fa-plus text-[10px]"></i>
+                  <span>➕ Añadir Señalización</span>
+                </button>
+              </div>
+
+              <!-- Chips de Señalizaciones Activas -->
+              <div id="aiQuickRulesChipsContainer" class="flex flex-wrap gap-2 pt-1">
+                <!-- Se inyectan dinámicamente con JavaScript -->
               </div>
             </div>
 
-            <!-- Switches de Restricción Estricta y Recomendaciones Patrocinadas -->
-            <div class="space-y-3 pt-2 border-t border-gray-100">
-              
-              <!-- Switch 1: Restricción Estricta de BD (Inviolable) -->
-              <div class="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
-                <div class="space-y-0.5 pr-2">
-                  <div class="flex items-center space-x-1.5">
-                    <i class="fa-solid fa-lock text-emerald-700 text-xs"></i>
-                    <span class="font-extrabold text-emerald-900 text-xs">Restricción Estricta de Base de Datos</span>
-                    <span class="bg-emerald-200 text-emerald-900 text-[9px] font-black px-1.5 py-0.2 rounded">INVIOLABLE</span>
-                  </div>
-                  <p class="text-[11px] text-emerald-800">
-                    Prohíbe a la IA inventar negocios o servicios. Solo recomienda negocios 100% activos y verificados en BuscaYa.
-                  </p>
-                </div>
-                <input type="checkbox" id="aiStrictDbToggle" checked disabled class="w-5 h-5 text-emerald-600 rounded">
+            <!-- ============================================================== -->
+            <!-- ACORDEÓN TÉCNICO OPCIONAL (CERO EDICIÓN GIGANTE OBLIGATORIA)   -->
+            <!-- ============================================================== -->
+            <details class="rounded-2xl bg-gray-50 border border-gray-200 overflow-hidden text-xs">
+              <summary class="p-4 font-bold text-gray-700 cursor-pointer hover:text-purple-700 flex items-center justify-between">
+                <span class="flex items-center space-x-2">
+                  <i class="fa-solid fa-code text-purple-600"></i>
+                  <span>Ver compilación técnica avanzada del System Prompt Maestro</span>
+                </span>
+                <i class="fa-solid fa-chevron-down text-gray-400 text-xs"></i>
+              </summary>
+              <div class="p-4 border-t border-gray-200 bg-white space-y-2">
+                <p class="text-[11px] text-gray-500">Este texto es compilado automáticamente por el motor invisible incorporando la máquina de estados, el reloj de CDMX, el radio de 2 km, las tareas activas y las señalizaciones:</p>
+                <textarea id="aiPromptCompiledView" readonly rows="10" class="w-full p-3 rounded-xl border border-gray-300 font-mono text-[11px] leading-relaxed bg-gray-50 text-gray-800 select-all"></textarea>
               </div>
+            </details>
 
-              <!-- Switch 2: Recomendaciones Patrocinadas Plus ($300 MXN) -->
-              <div class="flex items-center justify-between p-3 rounded-2xl bg-purple-50 border border-purple-200">
-                <div class="space-y-0.5 pr-2">
-                  <div class="flex items-center space-x-1.5">
-                    <i class="fa-solid fa-crown text-amber-500 text-xs"></i>
-                    <span class="font-extrabold text-purple-900 text-xs">Módulo de Recomendaciones Patrocinadas (+ $300 MXN)</span>
-                  </div>
-                  <p class="text-[11px] text-purple-800">
-                    Ofrece automáticamente una recomendación cruzada complementaria de socios con suscripción Plus.
-                  </p>
-                </div>
-                <input type="checkbox" id="aiSponsoredAddonToggle" checked onchange="handleAiConfigChange()" class="w-5 h-5 text-purple-600 rounded">
-              </div>
+            <!-- Botones de Acción Globales -->
+            <div class="pt-2 flex items-center justify-between border-t border-gray-100">
+              <button type="button" onclick="handleResetAiTrainingConfig()" class="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-arrow-rotate-left text-gray-500"></i>
+                <span>Restablecer Original</span>
+              </button>
 
-            </div>
-
-            <!-- Total Caracteres Compilados y Botones de Acción -->
-            <div class="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100">
-              <div class="flex items-center space-x-2">
-                <button type="button" onclick="openCompiledPromptModal()" class="px-3.5 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-black transition-all flex items-center space-x-1.5 shadow-2xs">
-                  <i class="fa-solid fa-eye"></i>
-                  <span>Ver Prompt Compilado</span>
-                </button>
-                <span class="text-[11px] text-gray-500 font-mono" id="promptCharCount">~1450 caracteres</span>
-              </div>
-
-              <div class="flex items-center space-x-2">
-                <button type="button" onclick="handleResetAiModularConfig()" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1">
-                  <i class="fa-solid fa-arrow-rotate-left"></i>
-                  <span>Restablecer</span>
-                </button>
-
-                <button type="button" onclick="handleSaveAiModularConfig()" class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition-all shadow-md flex items-center space-x-1.5">
-                  <i class="fa-solid fa-floppy-disk"></i>
-                  <span>Guardar Configuración</span>
-                </button>
-              </div>
+              <button type="button" onclick="handleSaveAiTrainingConfig()" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>💾 Guardar Configuración de IA</span>
+              </button>
             </div>
 
           </div>
@@ -3042,6 +3003,156 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
 
       </div>
       <!-- FIN CONTENEDOR 2: CENTRO DE ENTRENAMIENTO DE IA -->
+
+      <!-- ============================================================== -->
+      <!-- MÓDULO 1: EDITOR VISUAL DE PÁGINA PRINCIPAL (CMS EN CONTROL MAESTRO) -->
+      <!-- ============================================================== -->
+      <div id="adminTabContentLandingCms" class="hidden space-y-8">
+        
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border-2 border-indigo-500/40 shadow-lg space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-600/30">
+                <i class="fa-solid fa-paintbrush"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-black text-gray-900">🎨 Editor Visual de Página Principal (CMS Dinámico)</h3>
+                <p class="text-xs text-gray-500">Personaliza textos, botones, colores y visibilidad de secciones de BuscaYa en tiempo real</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <button type="button" onclick="handleResetLandingCms()" class="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-arrow-rotate-left text-gray-500"></i>
+                <span>Restablecer Original</span>
+              </button>
+              <button type="button" onclick="handleSaveLandingCms()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>💾 Guardar y Publicar Cambios</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Columna Izquierda: Edición de Textos y Colores -->
+            <div class="lg:col-span-7 space-y-6">
+              
+              <!-- 1. Textos del Hero y Portada -->
+              <div class="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-4">
+                <h4 class="text-xs font-black text-indigo-950 uppercase flex items-center space-x-2">
+                  <i class="fa-solid fa-heading text-indigo-600"></i>
+                  <span>1. Textos de la Portada Principal (Hero)</span>
+                </h4>
+
+                <div class="space-y-3 text-xs">
+                  <div>
+                    <label class="block font-bold text-gray-700 mb-1">Etiqueta Superior (Badge):</label>
+                    <input type="text" id="cmsHeroBadge" oninput="updateLandingCmsPreview()" value="DIRECTORIO INTELIGENTE EN WHATSAPP" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold focus:ring-2 focus:ring-indigo-500">
+                  </div>
+
+                  <div>
+                    <label class="block font-bold text-gray-700 mb-1">Título Principal (Hero Title):</label>
+                    <input type="text" id="cmsHeroTitle" oninput="updateLandingCmsPreview()" value="Encuentra lo que necesitas en segundos por WhatsApp" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold text-sm focus:ring-2 focus:ring-indigo-500">
+                  </div>
+
+                  <div>
+                    <label class="block font-bold text-gray-700 mb-1">Subtítulo Descriptivo:</label>
+                    <textarea id="cmsHeroSubtitle" rows="2" oninput="updateLandingCmsPreview()" class="w-full px-3 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 leading-relaxed">Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.</textarea>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 1 (Prueba Gratis):</label>
+                      <input type="text" id="cmsHeroCtaTrial" oninput="updateLandingCmsPreview()" value="Prueba nuestro sistema por 7 días GRATIS" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
+                    </div>
+                    <div>
+                      <label class="block font-bold text-gray-700 mb-1">Texto Botón 2 (Chat en Vivo):</label>
+                      <input type="text" id="cmsHeroCtaChat" oninput="updateLandingCmsPreview()" value="Probar Chat en Vivo" class="w-full px-3 py-2 rounded-xl border border-gray-300 font-bold">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Paleta de Estilos y Colores -->
+              <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-4">
+                <h4 class="text-xs font-black text-gray-900 uppercase flex items-center space-x-2">
+                  <i class="fa-solid fa-palette text-indigo-600"></i>
+                  <span>2. Paleta de Colores de la Plataforma</span>
+                </h4>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div class="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
+                    <label class="block font-bold text-gray-700 text-[11px]">Color Primario</label>
+                    <div class="flex items-center space-x-2">
+                      <input type="color" id="cmsColorPrimary" value="#075E54" onchange="updateLandingCmsPreview()" class="w-8 h-8 rounded-lg cursor-pointer border-0 p-0">
+                      <span class="font-mono text-[11px] font-bold" id="cmsColorPrimaryLabel">#075E54</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
+                    <label class="block font-bold text-gray-700 text-[11px]">Color Secundario</label>
+                    <div class="flex items-center space-x-2">
+                      <input type="color" id="cmsColorSecondary" value="#128C7E" onchange="updateLandingCmsPreview()" class="w-8 h-8 rounded-lg cursor-pointer border-0 p-0">
+                      <span class="font-mono text-[11px] font-bold" id="cmsColorSecondaryLabel">#128C7E</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
+                    <label class="block font-bold text-gray-700 text-[11px]">Color Acento / Botones</label>
+                    <div class="flex items-center space-x-2">
+                      <input type="color" id="cmsColorAccent" value="#25D366" onchange="updateLandingCmsPreview()" class="w-8 h-8 rounded-lg cursor-pointer border-0 p-0">
+                      <span class="font-mono text-[11px] font-bold" id="cmsColorAccentLabel">#25D366</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
+                    <label class="block font-bold text-gray-700 text-[11px]">Color Fondo Suave</label>
+                    <div class="flex items-center space-x-2">
+                      <input type="color" id="cmsColorBg" value="#F0F2F5" onchange="updateLandingCmsPreview()" class="w-8 h-8 rounded-lg cursor-pointer border-0 p-0">
+                      <span class="font-mono text-[11px] font-bold" id="cmsColorBgLabel">#F0F2F5</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Columna Derecha: Ordenamiento de Secciones y Vista Previa -->
+            <div class="lg:col-span-5 space-y-6">
+              
+              <!-- Ordenamiento y Visibilidad de Secciones -->
+              <div class="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h4 class="text-xs font-black text-gray-900 uppercase flex items-center space-x-2">
+                    <i class="fa-solid fa-arrows-up-down text-indigo-600"></i>
+                    <span>3. Visibilidad y Orden de Secciones</span>
+                  </h4>
+                  <span class="text-[10px] text-gray-400 font-bold">Mover / Ocultar</span>
+                </div>
+
+                <div id="cmsSectionsListContainer" class="space-y-2 text-xs">
+                  <!-- Se inyectan dinámicamente las secciones con botones subir/bajar y switch de visibilidad -->
+                </div>
+              </div>
+
+              <!-- Vista Previa Rápida de Hero -->
+              <div class="p-5 rounded-2xl bg-gradient-to-br from-[#075E54] via-[#0d7367] to-[#128C7E] text-white space-y-3 shadow-md" id="cmsHeroPreviewCard">
+                <span class="inline-block bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase" id="cmsHeroPreviewBadge">DIRECTORIO INTELIGENTE EN WHATSAPP</span>
+                <h4 class="text-base font-black leading-snug" id="cmsHeroPreviewTitle">Encuentra lo que necesitas en segundos por WhatsApp</h4>
+                <p class="text-xs text-gray-200 line-clamp-3" id="cmsHeroPreviewSubtitle">Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.</p>
+                <div class="pt-2 flex items-center space-x-2">
+                  <span class="px-3 py-1.5 rounded-lg bg-[#25D366] text-[#075E54] font-black text-xs" id="cmsHeroPreviewCta1">Prueba 7 días GRATIS</span>
+                  <span class="px-3 py-1.5 rounded-lg bg-white/10 text-white font-bold text-xs" id="cmsHeroPreviewCta2">Chat en Vivo</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
 
       <!-- ============================================================== -->
       <!-- MÓDULO 2: GENERADOR DE PROMOCIONES Y CUPONES DE DESCUENTO       -->
@@ -4690,6 +4801,66 @@ Tienes estrictamente prohibido responder con párrafos densos o bloques de texto
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: AGREGAR / EDITAR TAREA DE IA (MÓDULO 2)                 -->
+  <!-- ============================================================== -->
+  <div id="aiTaskModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-gray-200 overflow-hidden flex flex-col">
+      <div class="bg-purple-700 text-white p-5 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+            <i class="fa-solid fa-list-check text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-black" id="aiTaskModalTitle">Nueva Tarea de IA</h3>
+            <span class="text-[11px] text-purple-200">Condición, respuesta y prioridad</span>
+          </div>
+        </div>
+        <button type="button" onclick="closeAiTaskModal()" class="text-purple-200 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitAiTaskForm(event)" class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="modalAiTaskId" value="">
+
+        <div>
+          <label class="block font-black text-gray-800 uppercase mb-1">
+            ¿Cuándo se activa? (Condición o pregunta del usuario) *
+          </label>
+          <input type="text" id="modalAiTaskCondition" required placeholder="Ej. Cuando el usuario pregunte cómo registrar su negocio" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-black text-gray-800 uppercase mb-1">
+            ¿Qué debe hacer o responder la IA? (Acción obligatoria) *
+          </label>
+          <textarea id="modalAiTaskAction" rows="3" required placeholder="Ej. Darle la bienvenida con entusiasmo e invitarlo a registrarse en https://buscaya.neuralmediahouse.com/ para probar 7 días gratis" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:outline-none leading-relaxed"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-black text-gray-800 uppercase mb-1">
+            Prioridad de Ejecución *
+          </label>
+          <select id="modalAiTaskPriority" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white font-bold text-xs focus:ring-2 focus:ring-purple-600">
+            <option value="Alta (Obligatoria)">⚡ Alta (Obligatoria - Se ejecuta antes que cualquier otra regla)</option>
+            <option value="Normal">Normal (Guía de comportamiento contextual)</option>
+          </select>
+        </div>
+
+        <div class="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2">
+          <button type="button" onclick="closeAiTaskModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-all cursor-pointer">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Guardar Tarea</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
   <!-- ========================================== -->

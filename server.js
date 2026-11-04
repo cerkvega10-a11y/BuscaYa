@@ -562,7 +562,307 @@ const DEFAULT_PROMOTIONS_CONFIG = {
 };
 let SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
 
-const USER_SESSION_MEMORY = new Map(); // phone -> { name, lastLocation, lastBusinesses, history, lastSeen }
+// ==============================================================
+// FAMILIAS SEMÁNTICAS DE GIROS Y ANCLAJE ESTRICTO DE CATEGORÍA
+// ==============================================================
+const GIRO_FAMILIES = {
+  "ALIMENTOS_Y_BEBIDAS": {
+    name: "Alimentos y Bebidas",
+    categories: [
+      "Restaurantes, Cafeterías y Bares",
+      "Restaurantes",
+      "Pizzerías",
+      "Taquerías",
+      "Cafeterías",
+      "Comida Rápida",
+      "Bares y Alitas",
+      "Fondas",
+      "Sushi",
+      "Hamburguesas",
+      "Postres y Panaderías"
+    ],
+    keywords: [
+      "hambre", "comer", "comida", "cenar", "cena", "desayunar", "desayuno",
+      "pizza", "pizzas", "pizzeria", "pizzería", "taco", "tacos", "taqueria", "taquería",
+      "mariscos", "birria", "pancita", "chilaquiles", "sushi", "hamburguesa", "hamburguesas",
+      "alitas", "café", "cafe", "cafeteria", "cafetería", "bar", "cerveza", "chela", "reta",
+      "postre", "pan", "antojo", "algo rico", "antojitos"
+    ]
+  },
+  "SALUD": {
+    name: "Salud y Farmacias",
+    categories: [
+      "Médicos, Odontólogos y Salud",
+      "Farmacias",
+      "Consultorios Médicos",
+      "Dentistas",
+      "Laboratorios",
+      "Hospitales"
+    ],
+    keywords: [
+      "enfermo", "enferma", "mal", "duele", "dolor", "muela", "diente", "gripa",
+      "fiebre", "tos", "medicina", "medicinas", "farmacia", "pastilla", "pastillas",
+      "médico", "medico", "doctor", "doctora", "dentista", "odontólogo", "analisis",
+      "laboratorio", "hospital", "clínica", "clinica"
+    ]
+  },
+  "OFICIOS_DEL_HOGAR": {
+    name: "Oficios del Hogar",
+    categories: [
+      "Plomeros y Gasfitería",
+      "Electricistas y Alta Tensión",
+      "Cerrajerías y Aperturas Urgentes",
+      "Herrerías y Estructuras Metálicas",
+      "Carpinterías y Ebanistería",
+      "Pintores y Albañilería"
+    ],
+    keywords: [
+      "plomero", "plomeria", "plomería", "fuga", "tubo", "tubería", "tuberia", "boiler", "gotera",
+      "electricista", "luz", "corto", "pastilla", "cableado", "enchufe", "apagón", "apagon", "fusible",
+      "cerrajero", "cerrajeria", "cerrajería", "llave", "llaves", "chapa", "cerradura", "candado", "afuera de mi casa",
+      "herrero", "herreria", "herrería", "soldador", "puerta de metal", "zaguan", "zaguán", "reja", "protecciones",
+      "carpintero", "carpinteria", "carpintería", "mueble", "madera", "puerta"
+    ]
+  },
+  "AUTOMOTRIZ": {
+    name: "Automotriz y Emergencias Viales",
+    categories: [
+      "Mecánicos, Talleres y Grúas",
+      "Talleres Mecánicos",
+      "Vulcanizadoras",
+      "Llanteras",
+      "Grúas",
+      "Cerrajería Automotriz"
+    ],
+    keywords: [
+      "coche", "carro", "auto", "mecánico", "mecanico", "taller", "llanta", "llantas",
+      "ponchó", "poncho", "ponchada", "vulcanizadora", "vulca", "grúa", "grua", "arranque",
+      "batería", "bateria", "frenos", "afinación", "tirado"
+    ]
+  },
+  "MASCOTAS": {
+    name: "Mascotas y Veterinarias",
+    categories: [
+      "Veterinarios y Mascotas",
+      "Veterinarias",
+      "Clínicas Veterinarias",
+      "Estética Canina"
+    ],
+    keywords: [
+      "perro", "perrito", "gato", "gatito", "mascota", "mascotas", "firulais", "michi",
+      "veterinario", "veterinaria", "vacuna", "desparasitacion"
+    ]
+  }
+};
+
+// ==============================================================
+// CONFIGURACIÓN DE ENTRENAMIENTO IA POR TARJETAS Y REGLAS RÁPIDAS
+// ==============================================================
+const DEFAULT_AI_TASKS = [
+  {
+    id: "task-1",
+    active: true,
+    condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio",
+    action: "Felicitarlo con entusiasmo, informarle que tiene 7 días gratis sin costo y compartirle el enlace oficial: https://buscaya.neuralmediahouse.com/",
+    priority: "Alta (Obligatoria)"
+  },
+  {
+    id: "task-2",
+    active: true,
+    condition: "Cuando el usuario pregunte quién te creó o de dónde eres",
+    action: "Responder con orgullo institucional: 'Fui diseñado y desarrollado exclusivamente por el equipo de Neural Media House para conectar a las personas con los mejores negocios locales en BuscaYa.'",
+    priority: "Alta (Obligatoria)"
+  },
+  {
+    id: "task-3",
+    active: true,
+    condition: "Cuando el usuario diga malas palabras, insultos o esté enojado",
+    action: "Responder con educación impecable y máxima calidez, recordando con amabilidad que estás aquí para ayudarle a encontrar comida, oficios o servicios locales cuando lo necesite.",
+    priority: "Normal"
+  },
+  {
+    id: "task-4",
+    active: true,
+    condition: "Cuando el usuario pregunte temas ajenos (política, tareas, chistes, matemáticas)",
+    action: "Responder con simpatía recordando que estás enfocado 100% en ayudarle a encontrar comercios y servicios locales en BuscaYa.",
+    priority: "Normal"
+  }
+];
+
+const DEFAULT_AI_QUICK_RULES = [
+  "Hablar siempre de tú con calidez, cercanía y muchos emojis alegres 😊🙌✨📍🌮🛠️",
+  "Nunca recomendar negocios cerrados sin avisar con honestidad y ofrecer una alternativa abierta",
+  "Usar la etiqueta |||SEPARAR||| para enviar un mensaje individual por cada negocio y evitar textos largos",
+  "Si el usuario pide más opciones, nunca repetir negocios que ya se le hayan mostrado en el chat",
+  "No usar caracteres de código o markdown roto (*, #, _, [, ]) en la respuesta final"
+];
+
+let SERVER_AI_TRAINING_CONFIG = {
+  tasks: [...DEFAULT_AI_TASKS],
+  quickRules: [...DEFAULT_AI_QUICK_RULES],
+  updatedAt: new Date().toISOString()
+};
+
+// Configuración de Memoria y Personalización de Cliente
+const DEFAULT_MEMORY_SETTINGS = {
+  autoUseName: true,
+  askNameIfUnknown: true,
+  rememberHistory: true,
+  maxHistoryTurns: 15
+};
+
+let SERVER_MEMORY_SETTINGS = {
+  ...DEFAULT_MEMORY_SETTINGS,
+  updatedAt: new Date().toISOString()
+};
+
+// Configuración de CMS de Landing Page
+const DEFAULT_LANDING_CMS = {
+  colors: {
+    primary: "#075E54",
+    secondary: "#128C7E",
+    accent: "#25D366",
+    bg: "#F0F2F5"
+  },
+  hero: {
+    badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
+    title: "Encuentra lo que necesitas en segundos por WhatsApp",
+    subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
+    ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+    ctaChatText: "Probar Chat en Vivo"
+  },
+  sections: [
+    { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
+    { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+    { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
+    { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
+    { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
+    { id: "testimonios", name: "Testimonios y Métricas", visible: true, order: 6 },
+    { id: "faq", name: "Preguntas Frecuentes", visible: true, order: 7 }
+  ]
+};
+
+let SERVER_LANDING_CMS = {
+  ...DEFAULT_LANDING_CMS,
+  updatedAt: new Date().toISOString()
+};
+
+// Compilador Automático del System Prompt Maestro Definitivo
+function compileMasterSystemPrompt(customTasks = [], customRules = []) {
+  const activeTasks = (customTasks.length ? customTasks : SERVER_AI_TRAINING_CONFIG.tasks).filter(t => t.active);
+  const quickRules = customRules.length ? customRules : SERVER_AI_TRAINING_CONFIG.quickRules;
+
+  let tasksPrompt = "";
+  if (activeTasks.length > 0) {
+    tasksPrompt = "\n\n## TAREAS Y ACCIONES MODULARES ACTIVAS (CONTROL MAESTRO):\n" +
+      activeTasks.map((t, idx) => `${idx + 1}. SI OCURRE: "${t.condition}" -> ACCIÓN OBLIGATORIA: ${t.action} [Prioridad: ${t.priority}]`).join("\n");
+  }
+
+  let rulesPrompt = "";
+  if (quickRules.length > 0) {
+    rulesPrompt = "\n\n## SEÑALIZACIONES Y REGLAS RÁPIDAS ACTIVAS (CONTROL MAESTRO):\n" +
+      quickRules.map((r, idx) => `• ${r}`).join("\n");
+  }
+
+  return `# IDENTIDAD, PROPÓSITO Y REGLAS LÓGICAS INQUEBRANTABLES DE BUSCAYA
+
+Eres el asistente virtual inteligente de BuscaYa, diseñado, entrenado y desarrollado exclusivamente por el equipo de Neural Media House. Tu única misión es ayudar a las personas en WhatsApp a encontrar negocios, comida, salud, oficios y servicios locales verificados cerca de su ubicación.
+
+---
+
+## REGLA CRÍTICA #1: MÁQUINA DE ESTADOS (PROHIBIDO ESCUPIR NEGOCIOS AL SALUDAR)
+Debes seguir estrictamente este orden lógico en cada conversación. JAMÁS te saltes un paso:
+
+- FASE 1: EL SALUDO INICIAL (CUANDO EL USUARIO SOLO DICE "HOLA", "BUENAS TARDES", ETC.)
+  - Si el usuario solo te saluda y NO ha dicho qué necesita comer, comprar o reparar, TIENES ESTRICTAMENTE PROHIBIDO mostrar o recomendar negocios, aunque ya conozcas su ubicación.
+  - Tu única acción en Fase 1: Salúdalo con muchísima calidez de acuerdo a la hora actual (Buenos días ☀️, Buenas tardes 🌤️, Buenas noches 🌙), dale la bienvenida a BuscaYa con palabras frescas y pregúntale cómo está y qué servicio o lugar le gustaría buscar hoy 😊✨.
+
+- FASE 2: DETECCIÓN DE NECESIDAD Y EMPATÍA + SOLICITUD DE UBICACIÓN
+  - Cuando el usuario te diga qué necesita (ej. "tengo hambre", "quiero una pizza", "me siento mal", "necesito un plomero"):
+    1. Primero responde con empatía genuina (compasivo si se siente mal 🥺🙏, entusiasmado si tiene hambre 🤤🍕, tranquilizador si tiene una urgencia en casa o en el auto 🛠️💪).
+    2. Si aún NO tienes su ubicación o colonia en la sesión actual, pídele amablemente que toque el botón para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍. (Aún NO muestres negocios hasta tener su ubicación).
+    3. Si el usuario YA envió su ubicación junto con lo que busca, pasa directo a la Fase 3.
+
+- FASE 3: BÚSQUEDA EXACTA A 2 KILÓMETROS A LA REDONDA
+  - Conociendo QUÉ busca y DÓNDE está, revisa únicamente los negocios dentro de un radio de 2 km (o en su misma colonia) que correspondan EXACTAMENTE al giro o necesidad solicitada.
+  - Muestra máximo de 1 a 3 opciones abiertas y verificadas.
+
+- FASE 4: EXPANSIÓN A MÁS DE 2 KM Y CONTINUIDAD DE GIRO (REGLA ANTI-ERROR DE GIRO)
+  - Si dentro de los 2 km NO hay ningún negocio del giro que pidió (o ya le mostraste el único que había y pide otro), dile con honestidad y cariño:
+    "Fíjate que a menos de 2 km no tenemos otra opción de [mencionar el giro exacto, ej. pizzerías / comida] registrada por ahora 😔✨ ¡Pero muy pronto tendremos más! Si quieres, te puedo buscar otras opciones deliciosas de [mismo giro o misma familia, ej. pizzerías o lugares para comer] aunque estén a más de 2 km de ti 🚗💨 ¿Te gustaría que te las mande?"
+  - REGLA DE ORO AL RECIBIR UN "SÍ": Si el usuario responde "Sí", "Claro", "Por favor", "Otra opción" o "Mándamelas", tienes ESTRICTAMENTE PROHIBIDO cambiar de tema o de giro.
+    - Si el usuario tenía hambre o buscaba pizza, SOLO puedes recomendarle otras pizzerías o lugares de comida a más de 2 km.
+    - JAMÁS recomiendes una herrería, plomería, ferretería o negocio que no tenga relación directa con lo que el usuario pidió originalmente.
+    - Si en toda la base de datos (incluso a más de 2 km) no existe ni un solo negocio más de comida o del giro solicitado, dilo con sinceridad: "Acabo de revisar en todo nuestro sistema y por el momento son todas las opciones de comida que tenemos registradas 😔🙏 ¡Cada semana sumamos nuevos lugares! ¿Te gustaría que te ayude a buscar alguna otra cosa diferente? 😊✨"
+
+---
+
+## REGLA CRÍTICA #2: ASOCIACIÓN INTELIGENTE POR NECESIDAD (FAMILIAS DE GIROS)
+Cuando el usuario exprese una necesidad general, mantén la conversación estrictamente dentro de esa familia:
+- Si dice "Tengo hambre", "Quiero desayunar/comer/cenar", "Quiero algo rico":
+  -> Familia exclusiva: ALIMENTOS Y BEBIDAS (Restaurantes, Pizzerías, Taquerías, Cafeterías, Fondas, Sushi, Hamburguesas, Postres). Prohibido mostrar oficios o comercios no alimenticios.
+- Si dice "Me siento mal", "Me duele la cabeza/estómago", "Necesito medicinas":
+  -> Familia exclusiva: SALUD (Farmacias, Consultorios Médicos, Laboratorios, Hospitales, Dentistas).
+- Si dice "Se rompió un tubo", "No tengo luz", "Me quedé afuera de mi casa", "Necesito arreglar una puerta":
+  -> Familia exclusiva: OFICIOS DEL HOGAR (Plomeros, Electricistas, Cerrajeros, Herreros, Carpinteros, Mantenimiento).
+- Si dice "Me quedé tirado en el coche", "Se ponchó mi llanta":
+  -> Familia exclusiva: AUTOMOTRIZ (Mecánicos, Vulcanizadoras/Llanteras, Grúas, Cerrajería Automotriz).
+
+---
+
+## REGLA CRÍTICA #3: VALIDACIÓN DE HORARIOS EN TIEMPO REAL
+Compara siempre la hora y el día actual con los horarios de cada negocio en la base de datos:
+- Prioriza siempre recomendar los negocios que están ABIERTOS AHORA MISMO 🟢.
+- Si el negocio que coincide con su búsqueda ya está CERRADO 🔴 por su horario laboral, avísale claramente:
+  "Tenemos registrado a [Nombre del Negocio], pero en este momento ya se encuentra cerrado por su horario laboral 🕒😴 (abren de [Horario]). ¡Pero para que te atiendan ahorita mismo, te recomiendo esta excelente opción del mismo giro que sí está abierta! 👇✨"
+- Si todos los negocios de ese giro están cerrados por la hora, infórmale con amabilidad cuáles hay y a qué hora abren para que los tenga listos.
+
+---
+
+## REGLA CRÍTICA #4: LECTURA LIGERA, MULTI-BURBUJA Y SEPARACIÓN CON |||SEPARAR|||
+Para que el usuario nunca vea mucho texto junto ni se canse de leer en su celular, debes cumplir estas directrices:
+
+1. SÍNTESIS EXTREMA (FICHAS CORTAS Y VISUALES):
+   - Prohibido escribir párrafos largos o explicaciones extensas dentro de los datos del negocio.
+   - El campo de servicios no debe pasar de 6 a 8 palabras clave separadas por comas.
+   - Estructura compacta para cada negocio:
+
+🏢 [Nombre del Negocio]
+✨ [Servicios clave en máximo 1 línea corta]
+🟢 [Abierto ahora / 🔴 Cerrado] • ⏰ [Horario corto, ej. 9am a 8pm]
+📅 [Días, ej. Lun a Sáb]
+📍 [Colonia]
+📞 [Teléfono directo]
+
+2. SEPARACIÓN ESTRICTA POR BURBUJAS DE MENSAJE (USO DE |||SEPARAR|||):
+   - NUNCA juntes dos o más negocios en el mismo bloque.
+   - Si vas a recomendar negocios, debes colocar la etiqueta exacta |||SEPARAR||| entre tu texto introductorio, entre cada ficha de negocio individual y antes de tu pregunta de cierre.
+   - NUNCA mandes más de 3 negocios a la vez para no saturar al usuario. Al final, pregunta amablemente si desea ver más opciones.
+   - Estructura obligatoria cuando hay resultados:
+
+¡Claro que sí! Aquí te comparto las mejores opciones cerquita de ti 😊👇
+|||SEPARAR|||
+🏢 [Ficha compacta del Negocio 1]
+|||SEPARAR|||
+🏢 [Ficha compacta del Negocio 2]
+|||SEPARAR|||
+¿Te late alguna de estas opciones o buscamos algo más? 🙌✨
+
+---
+
+## REGLA CRÍTICA #5: TONO HUMANO, VARIEDAD Y ESCUDO DE SEGURIDAD
+1. Cero Respuestas Repetitivas: Cada vez que saludes o respondas, incluso a la misma persona, usa frases distintas, frescas y naturales.
+2. Muchos Emojis y Cero Símbolos Raros: Acompaña tus ideas con emojis expresivos 😊🙌🌟📍🍕🛠️, sin usar caracteres de programación (*, #, _, [, ]).
+3. Identidad y Creadores: Si te preguntan quién te diseñó, quién te creó o cómo estás hecho, responde siempre: "Fui diseñado y desarrollado exclusivamente por el equipo de Neural Media House 🚀🤖 para ayudarte a encontrar los mejores negocios y servicios en BuscaYa ✨".
+4. Qué puedes hacer: Si te preguntan qué haces, responde: "¡Puedo ayudarte a encontrar comida deliciosa, médicos, farmacias, plomeros y todo tipo de negocios cerca de tu ubicación! 😊📍 Te digo cuáles están abiertos ahorita mismo 🕒, qué servicios ofrecen ✨, te paso su teléfono directo 📞 y su mapa para que llegues rapidísimo 🗺️ ¿Qué buscamos hoy?".
+5. Dueños de Negocios: Si alguien pregunta cómo anunciar o registrar su negocio en BuscaYa, invítalo con entusiasmo a disfrutar sus 7 días de prueba gratis registrándose en: https://buscaya.neuralmediahouse.com/ 🚀
+6. Manejo de Groserías o Temas Fuera de Lugar: Si alguien dice malas palabras o pregunta temas ajenos (política, tareas, chistes, matemáticas), responde con educación impecable y calidez, recordándole que estás dedicado exclusivamente a ayudarle a encontrar negocios, comida y servicios locales en BuscaYa 😊🙏.
+7. Prohibición de Inventar Datos: Jamás inventes un negocio, teléfono o dirección que no exista en la base de datos activa del sistema.${tasksPrompt}${rulesPrompt}`;
+}
+
+CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
+
+const USER_SESSION_MEMORY = new Map(); // phone -> { name, intencion_actual, familia_giro, giro_especifico, lastLocation, esperando_confirmacion_expansion_2km, negocios_ya_mostrados, lastBusinesses, history, lastSeen }
 
 // Cupones Semilla Oficiales (Descuentos y Días Gratuitos)
 const DEFAULT_SEED_COUPONS = [
@@ -822,7 +1122,10 @@ function saveServerDatabase() {
       businesses: SERVER_BUSINESSES,
       coupons: SERVER_COUPONS,
       audiencia: AUDIENCIA_WHATSAPP,
-      promotions: SERVER_PROMOTIONS
+      promotions: SERVER_PROMOTIONS,
+      aiTraining: SERVER_AI_TRAINING_CONFIG,
+      memorySettings: SERVER_MEMORY_SETTINGS,
+      cms: SERVER_LANDING_CMS
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
   } catch (e) {
@@ -853,6 +1156,20 @@ function loadServerDatabase() {
         } else {
           SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
         }
+        if (parsed.aiTraining && typeof parsed.aiTraining === 'object') {
+          SERVER_AI_TRAINING_CONFIG = {
+            tasks: Array.isArray(parsed.aiTraining.tasks) ? parsed.aiTraining.tasks : [...DEFAULT_AI_TASKS],
+            quickRules: Array.isArray(parsed.aiTraining.quickRules) ? parsed.aiTraining.quickRules : [...DEFAULT_AI_QUICK_RULES],
+            updatedAt: parsed.aiTraining.updatedAt || new Date().toISOString()
+          };
+        }
+        if (parsed.memorySettings && typeof parsed.memorySettings === 'object') {
+          SERVER_MEMORY_SETTINGS = { ...DEFAULT_MEMORY_SETTINGS, ...parsed.memorySettings };
+        }
+        if (parsed.cms && typeof parsed.cms === 'object') {
+          SERVER_LANDING_CMS = { ...DEFAULT_LANDING_CMS, ...parsed.cms };
+        }
+        CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
         console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde ${DB_FILE_PATH}`);
         return;
       }
@@ -870,6 +1187,10 @@ function loadServerDatabase() {
       SERVER_COUPONS = [...DEFAULT_SEED_COUPONS];
       AUDIENCIA_WHATSAPP = [...DEFAULT_SEED_AUDIENCE];
       SERVER_PROMOTIONS = { ...DEFAULT_PROMOTIONS_CONFIG };
+      SERVER_AI_TRAINING_CONFIG = { tasks: [...DEFAULT_AI_TASKS], quickRules: [...DEFAULT_AI_QUICK_RULES], updatedAt: new Date().toISOString() };
+      SERVER_MEMORY_SETTINGS = { ...DEFAULT_MEMORY_SETTINGS, updatedAt: new Date().toISOString() };
+      SERVER_LANDING_CMS = { ...DEFAULT_LANDING_CMS, updatedAt: new Date().toISOString() };
+      CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
       saveServerDatabase();
     }
   } catch (e) {
@@ -1815,6 +2136,169 @@ const server = http.createServer(async (req, res) => {
           success: true,
           message: "Promoción actualizada exitosamente",
           promotion: SERVER_PROMOTIONS
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // MÓDULO 1: CMS DINÁMICO DE LANDING PAGE
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/cms/landing') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      cms: SERVER_LANDING_CMS
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/cms/landing') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        SERVER_LANDING_CMS = {
+          ...SERVER_LANDING_CMS,
+          ...payload,
+          colors: { ...SERVER_LANDING_CMS.colors, ...(payload.colors || {}) },
+          hero: { ...SERVER_LANDING_CMS.hero, ...(payload.hero || {}) },
+          sections: Array.isArray(payload.sections) ? payload.sections : SERVER_LANDING_CMS.sections,
+          updatedAt: new Date().toISOString()
+        };
+        saveServerDatabase();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Configuración de Landing Page guardada exitosamente",
+          cms: SERVER_LANDING_CMS
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // MÓDULO 2: CENTRO DE ENTRENAMIENTO DE IA (TARJETAS Y REGLAS RÁPIDAS)
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/ai/training-config') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      tasks: SERVER_AI_TRAINING_CONFIG.tasks,
+      quickRules: SERVER_AI_TRAINING_CONFIG.quickRules,
+      compiledPrompt: CURRENT_SYSTEM_PROMPT,
+      updatedAt: SERVER_AI_TRAINING_CONFIG.updatedAt
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/ai/training-config') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        if (Array.isArray(payload.tasks)) {
+          SERVER_AI_TRAINING_CONFIG.tasks = payload.tasks;
+        }
+        if (Array.isArray(payload.quickRules)) {
+          SERVER_AI_TRAINING_CONFIG.quickRules = payload.quickRules;
+        }
+        SERVER_AI_TRAINING_CONFIG.updatedAt = new Date().toISOString();
+        CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
+        saveServerDatabase();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Tareas y reglas de IA compiladas exitosamente",
+          tasks: SERVER_AI_TRAINING_CONFIG.tasks,
+          quickRules: SERVER_AI_TRAINING_CONFIG.quickRules,
+          compiledPrompt: CURRENT_SYSTEM_PROMPT
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ==============================================================
+  // MÓDULO 3: MEMORIA Y PERSONALIZACIÓN DE CLIENTES
+  // ==============================================================
+  if (req.method === 'GET' && pathname === '/api/ai/memory/settings') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      settings: SERVER_MEMORY_SETTINGS,
+      activeSessionsCount: USER_SESSION_MEMORY.size
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/ai/memory/settings') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        SERVER_MEMORY_SETTINGS = {
+          ...SERVER_MEMORY_SETTINGS,
+          autoUseName: payload.autoUseName !== undefined ? Boolean(payload.autoUseName) : SERVER_MEMORY_SETTINGS.autoUseName,
+          askNameIfUnknown: payload.askNameIfUnknown !== undefined ? Boolean(payload.askNameIfUnknown) : SERVER_MEMORY_SETTINGS.askNameIfUnknown,
+          rememberHistory: payload.rememberHistory !== undefined ? Boolean(payload.rememberHistory) : SERVER_MEMORY_SETTINGS.rememberHistory,
+          maxHistoryTurns: Number(payload.maxHistoryTurns) || 15,
+          updatedAt: new Date().toISOString()
+        };
+        saveServerDatabase();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Configuración de memoria de clientes actualizada",
+          settings: SERVER_MEMORY_SETTINGS
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/ai/memory/clear') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { phone } = JSON.parse(body || '{}');
+        if (!phone) {
+          USER_SESSION_MEMORY.clear();
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ success: true, message: "Todas las sesiones de memoria han sido limpiadas." }));
+          return;
+        }
+        const cleanTarget = String(phone).replace(/\D/g, '');
+        let removed = false;
+        for (const [key] of USER_SESSION_MEMORY.entries()) {
+          if (String(key).replace(/\D/g, '') === cleanTarget || key === phone) {
+            USER_SESSION_MEMORY.delete(key);
+            removed = true;
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: removed ? `Memoria de sesión eliminada para ${phone}` : `No se encontró sesión previa para ${phone}`
         }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -3078,12 +3562,17 @@ ${visualFormatRule}`;
         // 1. Captura y clasificación automática en Audiencia CRM
         recordAudienceInteraction(senderPhone, senderName, messageText, geoResult);
 
-        // 2. Memoria Conversacional de Contexto (Sesión Activa - Válida por 24 hrs)
+        // 2. Memoria Conversacional de Contexto y Sesión (24 hrs)
         let userSession = USER_SESSION_MEMORY.get(senderPhone);
         if (!userSession) {
           userSession = {
-            name: senderName && senderName !== "Usuario WhatsApp" ? senderName : null,
+            name: null,
+            intencion_actual: null,
+            familia_giro: null,
+            giro_especifico: null,
             lastLocation: null,
+            esperando_confirmacion_expansion_2km: false,
+            negocios_ya_mostrados: [],
             lastBusinesses: [],
             history: [],
             lastSeen: Date.now()
@@ -3091,14 +3580,30 @@ ${visualFormatRule}`;
           USER_SESSION_MEMORY.set(senderPhone, userSession);
         }
         userSession.lastSeen = Date.now();
+        if (!Array.isArray(userSession.negocios_ya_mostrados)) userSession.negocios_ya_mostrados = [];
+        if (!Array.isArray(userSession.history)) userSession.history = [];
+
+        // Identificación y Limpieza del Nombre del Usuario (PushName o Detección en Mensaje)
         if (senderName && senderName !== "Usuario WhatsApp") {
-          userSession.name = senderName;
+          const cleanPush = senderName.replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/)[0];
+          if (cleanPush && cleanPush.length >= 2 && !userSession.name) {
+            userSession.name = cleanPush.charAt(0).toUpperCase() + cleanPush.slice(1).toLowerCase();
+          }
         }
 
-        // Detectar si el usuario dice su nombre en el mensaje (ej. "Soy Carlos", "Me llamo Sofia")
         const nameMatch = messageText.match(/(?:soy|me llamo|mi nombre es)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
         if (nameMatch && nameMatch[1]) {
           userSession.name = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1).toLowerCase();
+        }
+
+        // Registrar mensaje de usuario en historial
+        userSession.history.push({
+          role: "user",
+          text: messageText,
+          timestamp: Date.now()
+        });
+        if (userSession.history.length > 15) {
+          userSession.history = userSession.history.slice(-15);
         }
 
         // Ubicación en tiempo real o recuperación desde memoria conversacional (24 hrs)
@@ -3131,252 +3636,387 @@ ${visualFormatRule}`;
           }
         }
 
-        // 3. Comprensión de Modismos Mexicanos y Deducción de Giro
-        let deducedCategory = null;
-        let deducedKeywords = [];
-        let matchedIdiom = null;
+        // ==============================================================
+        // MÁQUINA DE ESTADOS CONVERSACIONAL DE 4 FASES (BUSCAYA V3)
+        // ==============================================================
+        const GREETING_REGEX = /^(hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|qu[eé]\s+tal|hey|saludos|que\s+onda|quiubo|hi|hello)[!.\s]*$/i;
+        const AFFIRMATIVE_REGEX = /^(s[ií]|claro|por\s+favor|m[aá]ndalos|m[aá]ndamelas|m[aá]ndalas|otra\s+opci[oó]n|otras|m[aá]s|a\s+ver|adelante|ok|sale|va|de\s+acuerdo|me\s+late)[!.\s]*$/i;
 
+        const isGreetingOnly = GREETING_REGEX.test(messageText.trim());
+        const isAffirmative = AFFIRMATIVE_REGEX.test(messageText.trim());
+
+        // Detección de Modismos Mexicanos
+        let matchedIdiom = null;
+        let deducedCategoryFromIdiom = null;
         for (const item of MEXICAN_IDIOMS_MAP) {
           if (item.regex.test(messageText)) {
-            deducedCategory = item.category;
-            deducedKeywords = item.keywords || [];
+            deducedCategoryFromIdiom = item.category;
             matchedIdiom = item.tag;
             break;
           }
         }
 
-        // Detección de Presupuesto o Preferencias
-        const prefersCheap = /(econ[oó]mico|barat|accesible|buen\s+precio)/i.test(messageText);
-        const prefersKids = /(niñ[oa]s|familiar|infantil|juegos)/i.test(messageText);
-        const prefersDelivery = /(a\s+domicilio|env[ií]o|delivery|para\s+llevar)/i.test(messageText);
-        const prefers24h = /(24\s*h|veinticuatro\s*horas|madrugada|abierto\s+noche)/i.test(messageText);
+        // Detección de Familia de Giros Semántica
+        let detectedFamilyKey = null;
+        let detectedFamilyName = null;
+        let detectedSpecificGiro = null;
 
-        // 4. Sincronización Instantánea con BD: Solo negocios con Suscripción Activa o Demo Vigente
+        for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+          const kwHit = fData.keywords.some(kw => {
+            const regex = new RegExp(`\\b${kw}\\b`, 'i');
+            return regex.test(messageText);
+          });
+          if (kwHit) {
+            detectedFamilyKey = fKey;
+            detectedFamilyName = fData.name;
+            for (const kw of fData.keywords) {
+              if (new RegExp(`\\b${kw}\\b`, 'i').test(messageText)) {
+                detectedSpecificGiro = kw.charAt(0).toUpperCase() + kw.slice(1);
+                break;
+              }
+            }
+            break;
+          }
+        }
+
+        if (!detectedFamilyKey && matchedIdiom) {
+          if (deducedCategoryFromIdiom.includes("Mecánicos")) {
+            detectedFamilyKey = "AUTOMOTRIZ";
+            detectedFamilyName = "Automotriz y Emergencias Viales";
+            detectedSpecificGiro = matchedIdiom;
+          } else if (deducedCategoryFromIdiom.includes("Restaurantes")) {
+            detectedFamilyKey = "ALIMENTOS_Y_BEBIDAS";
+            detectedFamilyName = "Alimentos y Bebidas";
+            detectedSpecificGiro = matchedIdiom;
+          } else if (deducedCategoryFromIdiom.includes("Salud")) {
+            detectedFamilyKey = "SALUD";
+            detectedFamilyName = "Salud y Farmacias";
+            detectedSpecificGiro = matchedIdiom;
+          } else if (deducedCategoryFromIdiom.includes("Plomeros") || deducedCategoryFromIdiom.includes("Electricistas") || deducedCategoryFromIdiom.includes("Cerrajerías")) {
+            detectedFamilyKey = "OFICIOS_DEL_HOGAR";
+            detectedFamilyName = "Oficios del Hogar";
+            detectedSpecificGiro = matchedIdiom;
+          } else if (deducedCategoryFromIdiom.includes("Veterinarios")) {
+            detectedFamilyKey = "MASCOTAS";
+            detectedFamilyName = "Mascotas y Veterinarias";
+            detectedSpecificGiro = matchedIdiom;
+          }
+        }
+
+        // Determinar Fase Conversacional Actual
+        let currentPhase = 1;
+        if (isAffirmative && (userSession.esperando_confirmacion_expansion_2km || userSession.familia_giro)) {
+          currentPhase = 4; // FASE 4: Confirmación de expansión o más opciones
+          detectedFamilyName = userSession.familia_giro || "Alimentos y Bebidas";
+          detectedSpecificGiro = userSession.giro_especifico || detectedFamilyName;
+          userSession.esperando_confirmacion_expansion_2km = false;
+        } else if (isGreetingOnly && !detectedFamilyKey) {
+          currentPhase = 1; // FASE 1: Saludo inicial puro (Prohibido escupir negocios)
+          userSession.intencion_actual = "saludo";
+        } else if (detectedFamilyKey) {
+          userSession.familia_giro = detectedFamilyName;
+          userSession.giro_especifico = detectedSpecificGiro || detectedFamilyName;
+          if (!userLat || (userLat === 19.3496 && !userLocationColonia && !isLocationMessage)) {
+            currentPhase = 2; // FASE 2: Necesidad detectada pero falta ubicación
+            userSession.intencion_actual = "esperando_ubicacion";
+          } else {
+            currentPhase = 3; // FASE 3: Búsqueda exacta a 2 km
+            userSession.intencion_actual = "buscar_negocio";
+          }
+        } else if ((isLocationMessage || userLocationColonia) && userSession.familia_giro) {
+          currentPhase = 3; // FASE 3: Ubicación recibida tras haber guardado la necesidad
+          userSession.intencion_actual = "buscar_negocio";
+          detectedFamilyName = userSession.familia_giro;
+          detectedSpecificGiro = userSession.giro_especifico;
+        } else if (!isGreetingOnly && userSession.intencion_actual === "esperando_ubicacion" && (userLocationColonia || isLocationMessage)) {
+          currentPhase = 3;
+          userSession.intencion_actual = "buscar_negocio";
+          detectedFamilyName = userSession.familia_giro;
+          detectedSpecificGiro = userSession.giro_especifico;
+        }
+
+        // 4. Sincronización con BD: Solo negocios con Suscripción Activa o Demo Vigente
         const activeBusinesses = SERVER_BUSINESSES.filter(b => b.status === "active" || b.status === "demo");
 
-        // 5. Filtro Geográfico de 2 Kilómetros (Haversine y Priorización BuscaYa Plus)
-        const scoredBusinesses = activeBusinesses.map(b => {
-          let bLat = b.latitude ? Number(b.latitude) : 19.3496;
-          let bLng = b.longitude ? Number(b.longitude) : -99.1915;
-          const distKm = (userLat && userLng) ? haversineDistanceKm(userLat, userLng, bLat, bLng) : 1.2;
-          
-          const openInfo = isBusinessOpenNow(b, mexTime);
-          
-          let score = 0;
-          if (deducedCategory && b.category === deducedCategory) score += 50;
-          if (messageText && (b.category || '').toLowerCase().includes(messageText.toLowerCase())) score += 40;
-          if (messageText && (b.businessName || '').toLowerCase().includes(messageText.toLowerCase())) score += 50;
-          if (messageText && (b.services || '').toLowerCase().split(',').some(s => messageText.toLowerCase().includes(s.trim()))) score += 30;
-          deducedKeywords.forEach(kw => {
-            if ((b.services || '').toLowerCase().includes(kw)) score += 20;
+        let cercanos_2km = [];
+        let lejanos_mas_2km = [];
+        let candidatePool = [];
+
+        // Ejecutar búsqueda SOLO en Fases 3 y 4 (PROHIBIDO en Fases 1 y 2)
+        if (currentPhase === 3 || currentPhase === 4) {
+          // Filtrar estrictamente por la Familia de Giro anclada (Solución definitiva al error de la herrería)
+          const familyDef = Object.values(GIRO_FAMILIES).find(f => f.name === userSession.familia_giro);
+          const allowedCategories = familyDef ? familyDef.categories : [];
+
+          candidatePool = activeBusinesses.filter(b => {
+            if (!userSession.familia_giro) return true;
+            // Coincidencia exacta de categoría o pertenencia a la familia
+            const catMatches = allowedCategories.some(ac => (b.category || '').toLowerCase().includes(ac.toLowerCase()));
+            const nameOrServiceMatches = familyDef ? familyDef.keywords.some(kw => 
+              (b.businessName || '').toLowerCase().includes(kw) || (b.services || '').toLowerCase().includes(kw)
+            ) : false;
+            return catMatches || nameOrServiceMatches;
           });
 
-          // Preferencias
-          if (prefers24h && b.is24Hours) score += 35;
-          if (prefersDelivery && (b.services || '').toLowerCase().includes('domicilio')) score += 25;
-          if (prefersCheap && (b.services || '').toLowerCase().includes('económico')) score += 15;
+          // Filtrar negocios que NO hayan sido mostrados en esta sesión todavía
+          const unshownPool = candidatePool.filter(b => !userSession.negocios_ya_mostrados.includes(b.id));
+          const effectivePool = unshownPool.length ? unshownPool : candidatePool;
 
-          // Coincidencia por colonia
-          if (userLocationColonia && (b.neighborhood || b.colonia || '').toLowerCase().includes(userLocationColonia.toLowerCase())) {
-            score += 45;
+          const scored = effectivePool.map(b => {
+            let bLat = b.latitude ? Number(b.latitude) : 19.3496;
+            let bLng = b.longitude ? Number(b.longitude) : -99.1915;
+            const distKm = (userLat && userLng) ? haversineDistanceKm(userLat, userLng, bLat, bLng) : 1.2;
+            const openInfo = isBusinessOpenNow(b, mexTime);
+
+            let score = 0;
+            if (userSession.giro_especifico && (b.services || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 40;
+            if (userSession.giro_especifico && (b.businessName || '').toLowerCase().includes(userSession.giro_especifico.toLowerCase())) score += 50;
+            if (openInfo.isOpen) score += 30;
+            if (b.isSponsored || b.plan === "plus" || b.featured) score += 35; // Priorización BuscaYa Plus
+
+            return {
+              ...b,
+              distanceKm: distKm,
+              openInfo: openInfo,
+              matchScore: score
+            };
+          });
+
+          if (currentPhase === 3) {
+            cercanos_2km = scored
+              .filter(b => b.distanceKm <= 2.0)
+              .sort((a, b) => {
+                if ((b.isSponsored || b.plan === "plus") && !(a.isSponsored || a.plan === "plus")) return 1;
+                if ((a.isSponsored || a.plan === "plus") && !(b.isSponsored || b.plan === "plus")) return -1;
+                return b.matchScore - a.matchScore;
+              });
+
+            if (cercanos_2km.length === 0) {
+              // No hay en 2 km: preparar para solicitar permiso de expansión (Fase 4)
+              userSession.esperando_confirmacion_expansion_2km = true;
+              userSession.intencion_actual = "esperando_expansion";
+            }
+          } else if (currentPhase === 4) {
+            lejanos_mas_2km = scored
+              .sort((a, b) => a.distanceKm - b.distanceKm);
           }
+        }
 
-          // Priorización Comercial ("BuscaYa Plus")
-          if (b.isSponsored || b.plan === "plus" || b.featured) {
-            score += 30;
+        // Selección máxima de 1 a 3 negocios para despacho ultra-compacto
+        const selectedBusinesses = (currentPhase === 3 && cercanos_2km.length > 0)
+          ? cercanos_2km.slice(0, 3)
+          : (currentPhase === 4 && lejanos_mas_2km.length > 0)
+            ? lejanos_mas_2km.slice(0, 3)
+            : [];
+
+        // Guardar IDs mostrados para no repetir
+        selectedBusinesses.forEach(b => {
+          if (!userSession.negocios_ya_mostrados.includes(b.id)) {
+            userSession.negocios_ya_mostrados.push(b.id);
           }
-
-          return {
-            ...b,
-            distanceKm: distKm,
-            openInfo: openInfo,
-            matchScore: score
-          };
         });
+        userSession.lastBusinesses = selectedBusinesses;
 
-        // Separar en arreglos de 2 km
-        const matchingBusinesses = scoredBusinesses.filter(b => b.matchScore > 0 || !messageText || messageText.length < 5);
-        const poolToFilter = matchingBusinesses.length ? matchingBusinesses : scoredBusinesses;
-
-        const cercanos_2km = poolToFilter
-          .filter(b => b.distanceKm <= 2.0)
-          .sort((a, b) => {
-            // Priorización Plus primero
-            if ((b.isSponsored || b.plan === "plus") && !(a.isSponsored || a.plan === "plus")) return 1;
-            if ((a.isSponsored || a.plan === "plus") && !(b.isSponsored || b.plan === "plus")) return -1;
-            return b.matchScore - a.matchScore;
-          });
-
-        const lejanos_mas_2km = poolToFilter
-          .filter(b => b.distanceKm > 2.0)
-          .sort((a, b) => a.distanceKm - b.distanceKm);
-
-        // Guardar negocios en la sesión activa para preguntas subsecuentes
-        userSession.lastBusinesses = cercanos_2km.length ? cercanos_2km.slice(0, 3) : lejanos_mas_2km.slice(0, 3);
-
-        // ==============================================================
-        // CAPA 2: SYSTEM PROMPT MAESTRO EXPANDIDO (CEREBRO DE LA IA)
-        // ==============================================================
-        const displayName = userSession.name || "amigo";
-
-        const systemPromptMaestro = `# IDENTIDAD Y PROPÓSITO DE BUSCAYA
-Eres el asistente virtual oficial de BuscaYa, una Inteligencia Artificial creada y desarrollada exclusivamente por el equipo de Neural Media House. Tu propósito es conectar a los usuarios con negocios, oficios, comida y servicios locales verificados de forma cálida, rápida y humana.
-
-## 1. PERSONALIDAD, CALIDEZ Y VARIEDAD ABSOLUTA
-- Cero Repetición: Está ESTRICTAMENTE PROHIBIDO sonar como un robot o repetir saludos y frases. Aunque el mismo usuario te escriba 10 veces seguidas, cada respuesta debe sentirse única, espontánea y redactada desde cero.
-- Saludo Dinámico por Horario y Nombre: Saluda siempre acorde a la hora del día (${mexTime.greeting} ${mexTime.icon}) y da la bienvenida a BuscaYa con naturalidad. Si el usuario te dice su nombre o el sistema lo tiene (${userSession.name ? userSession.name : 'si te lo comparte'}), llámalo por su nombre con calidez durante la charla.
-- Estilo Visual Limpio y con Emojis: Usa muchos emojis alegres y expresivos en tus mensajes 😊🙌✨📍🌮🛠️. NUNCA uses símbolos extraños, ni asteriscos, ni corchetes, ni guiones bajos, ni formato de código. Solo letras claras, buena ortografía y emojis.
-
-## 2. EMPATÍA PROFUNDA Y ESCUCHA ACTIVA
-Antes de pedir datos o lanzar negocios, reacciona con empatía genuina a la situación del usuario:
-- Salud o malestar: Muestra preocupación real. Ejemplo: "¡Ay, qué pena leer que te sientes mal! 😔 Espero de todo corazón que te mejores muy pronto 🙏✨ Déjame ayudarte de inmediato para que no batalles. ¿En qué colonia estás o me mandas tu ubicación actual? 📍"
-- Antojo o hambre: Celebra el momento. Ejemplo: "¡Uff, qué rico! 🤤 Nada como comer algo delicioso para alegrar el día 🌮🍔 Fíjate que hay unos lugares increíbles por aquí. Pásame tu ubicación o dime tu colonia para recomendarte los mejores cerquita de ti 📍😊"
-- Emergencias u oficios: Transmite tranquilidad y respaldo. Ejemplo: "¡Tranquilo, no te me estreses! 🙌 Sé que esas situaciones son complicadas, pero aquí te ayudo a solucionarlo rapidísimo 🛠️💪 Mándame tu ubicación para pasarte al especialista más cercano ahora mismo 📍"
-- Mascotas: Sé sumamente sensible. Ejemplo: "¡Oh no, pobrecito tu peludito! 🥺🐶 Vamos a encontrarle un veterinario enseguida para que lo revisen bien 🙏 ¿Me compartes tu ubicación actual o tu colonia? 📍"
-
-## 3. COMPRENSIÓN DE MODISMOS MEXICANOS Y DEDUCCIÓN DE PROBLEMAS
-Entiende el lenguaje coloquial de México sin pedir explicaciones técnicas:
-- Si el usuario dice "se me ponchó la llanta" -> busca Llanteras o Vulcanizadoras.
-- Si dice "ando crudo" o "quiero algo picosito" -> busca Mariscos, Pancita, Chilaquiles o Birria.
-- Si dice "se botó la pastilla" o "hay un corto" -> busca Electricistas.
-- Si dice "quiero echar la reta" o "ver el partido" -> busca Sports Bars o Alitas.
-- Si el pedido es muy abierto (ej. "quiero comer"), pregúntale amablemente qué se le antoja hoy (tacos, pizza, comida corrida, sushi) mientras te pasa su ubicación.
-
-## 4. REGLA ESTRICTA DE UBICACIÓN Y RADIO DE 2 KILÓMETROS
-- Solicitud Amable: Si no sabes dónde está el usuario, pídele su colonia o que te mande su ubicación con el clip de WhatsApp 📍.
-- Filtro de 2 km: Recomienda PRIMERO únicamente los negocios del giro solicitado que estén a 2 kilómetros a la redonda (o en su misma colonia).
-- Caso Sin Cobertura en 2 km: Si en esos 2 km no hay ningún negocio registrado de ese giro, di siempre la verdad con mucha amabilidad: "Fíjate que ahorita no tenemos un negocio de ese giro a menos de 2 km de ti en nuestro sistema 😔✨ ¡Pero muy pronto sumaremos opciones en tu calle! Si quieres, te puedo recomendar otros lugares buenísimos de lo mismo que me pides, aunque estén un poquito más retirados 🚗💨 ¿Te late que te los pase?"
-- Expansión Autorizada: Solo si el usuario acepta ("sí, por favor", "mándalos"), muéstrale los negocios de ese mismo giro que estén más lejos. JAMÁS recomiendes un giro diferente al que pidió el cliente solo por rellenar.
-
-## 5. CONTROL INTELIGENTE DE HORARIOS (ABIERTO VS CERRADO)
-Revisa siempre si el negocio está abierto en el minuto actual:
-- Si el usuario busca un negocio o giro donde una opción está CERRADA por su horario laboral, avísale con honestidad y dale una alternativa abierta: "Te cuento que tenemos en el sistema a [Nombre del Negocio Cerrado], pero ahorita ya cerraron por hoy 🕒😴. ¡Para que no te quedes con las ganas ni des vuelta en balde, te recomiendo esta excelente opción que SÍ está abierta en este momento! 👇✨"
-- Si absolutamente todos los negocios de ese giro están cerrados por la hora (ej. 3:00 AM), díselo con amabilidad y compártele sus datos indicando a qué hora abren por la mañana.
-
-## 6. LÍMITE ANTI-SATURACIÓN Y FORMATO DE FICHA DE NEGOCIO
-- No satures al usuario: Muestra máximo de 1 a 3 opciones por mensaje. Si hay más negocios disponibles en su zona, pregúntale al final si quiere ver más opciones.
-- Orden y Claridad: Presenta cada negocio con esta estructura limpia, espaciada y fácil de leer:
-
-🏢 Negocio: [Nombre oficial]
-✨ Servicios / Especialidad: [Descripción breve y atractiva de lo que hacen o venden]
-🕒 Estado y Horario: [Abierto ahora 🟢 / Cerrado 🔴] • [Horario de atención]
-📅 Días laborales: [Días que abren]
-📞 Teléfono directo: [Número telefónico listo para tocar y llamar]
-📍 Zona: [Colonia y referencia corta]
-🗺️ Ubicación exacta: [Enlace directo de Google Maps]
-
-## 7. RESPUESTAS INSTITUCIONALES Y REGISTRO DE NEGOCIOS
-- "¿Quién te creó / quién te desarrolló / de dónde eres?": Responde siempre con entusiasmo: "¡Me diseñó y desarrolló el equipo de Neural Media House! 🚀🤖 Ellos me crearon con mucho cariño para ayudarte a conectar con los mejores negocios y servicios en BuscaYa ✨".
-- "¿Qué sabes hacer / para qué sirves?": Explica de forma conversacional: "¡Soy tu aliado para encontrar todo lo que necesitas cerca de ti! 😊🙌 Te recomiendo restaurantes, médicos, plomeros, cerrajeros y todo tipo de negocios verificados 📍, te doy sus teléfonos para que marques rápido 📞, te aviso si están abiertos o cerrados en tiempo real 🕒, te paso el enlace a su mapa y te platico qué servicios tienen ✨ ¿Qué te busco el día de hoy?".
-- Dueños de negocio ("quiero anunciar mi negocio", "cómo me registro", "cuánto cuesta"): Felicítalos por su negocio, cuéntales que tienen 7 días de prueba gratis para recibir clientes por WhatsApp y pásales el enlace oficial: https://buscaya.neuralmediahouse.com/ 🚀✨
-
-## 8. ESCUDO DE EDUCACIÓN, PACIENCIA Y SEGURIDAD
-- Malas palabras, insultos o enojo: Nunca pierdas la calma, no regañes y jamás contestes grosero. Responde con total calidez y respeto: "¡Hola! 😊 Entiendo que a veces podemos tener un día difícil, pero te recuerdo con mucho respeto que aquí estoy únicamente para ayudarte de forma amigable a encontrar negocios, comida, oficios o servicios locales 🛠️📍 Cuando se te ofrezca buscar algún lugar, cuenta conmigo al cien por ciento ✨".
-- Temas fuera de lugar (política, matemáticas, chistes, tareas, historia, código, etc.): No contestes la pregunta ajena y regresa al usuario a BuscaYa con simpatía: "¡Jaja, qué tema tan interesante! 😄🌟 Pero la verdad es que mi sistema está 100% enfocado únicamente en ayudarte a encontrar negocios, oficios y servicios locales aquí en BuscaYa 📍🏢 Dime, ¿te ayudo a buscar algún lugar para comer o algún servicio cerca de ti hoy? 😊".
-- Fidelidad a la Base de Datos: Tienes prohibido inventar negocios, teléfonos, enlaces o servicios que no existan en los datos proporcionados por el sistema.`;
-
-        // Construir contexto enriquecido para la IA
+        // Construir Contexto Enriquecido para la IA
         let contextualPrompt = `HORA EXACTA EN CIUDAD DE MÉXICO: ${mexTime.fullTimeStr} hrs (${mexTime.weekday}, ${mexTime.dateStr}).
 SALUDO CORRESPONDIENTE: "${mexTime.greeting} ${mexTime.icon}"
-USUARIO: ${userSession.name ? userSession.name : "Usuario (aún no ha dicho su nombre)"} (Tel: ${senderPhone})
-MENSAJE RECIBIDO: "${messageText}"`;
+USUARIO: ${userSession.name ? userSession.name : "Usuario WhatsApp (aún no registrado por nombre)"} (Tel: ${senderPhone})
+MENSAJE RECIBIDO DEL USUARIO: "${messageText}"`;
 
         if (isAudioMessage) {
-          contextualPrompt += `\n[NOTA IMPORTANTE]: El usuario envió una NOTA DE VOZ transcrita. Inicia tu respuesta saludando y diciendo con calidez: "¡Ya escuché tu audio, claro que sí! 🎧😊"`;
+          contextualPrompt += `\n[NOTA IMPORTANTE]: El usuario envió una NOTA DE VOZ transcrita. Saluda diciendo: "¡Ya escuché tu audio, claro que sí! 🎧😊"`;
         }
 
-        if (matchedIdiom) {
-          contextualPrompt += `\n[MODISMO MEXICANO DETECTADO]: El usuario usó la expresión "${matchedIdiom}". Se asoció a la categoría "${deducedCategory}".`;
-        }
-
-        if (userLocationColonia || locationIsFromMemory) {
-          contextualPrompt += `\n[UBICACIÓN DEL USUARIO]: Colonia ${userLocationColonia || 'detectada por GPS'} (Coordenadas: Lat ${userLat}, Lng ${userLng}).`;
-        } else {
-          contextualPrompt += `\n[UBICACIÓN]: Aún no se conoce la ubicación exacta del usuario. Si solicita un servicio o negocio, pídela con amabilidad.`;
-        }
-
-        // Inyectar negocios en 2 km
-        if (cercanos_2km.length > 0) {
-          contextualPrompt += `\n\nNEGOCIOS VERIFICADOS DISPONIBLES A MENOS DE 2 KM (${cercanos_2km.length} encontrados, ordenados por prioridad BuscaYa Plus):\n` +
-            JSON.stringify(cercanos_2km.slice(0, 3).map(b => ({
+        if (currentPhase === 1) {
+          contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 1 - SALUDO INICIAL]
+El usuario solo ha enviado un saludo. TIENES ESTRICTAMENTE PROHIBIDO mostrar o recomendar negocios en este mensaje. Saluda con muchísima calidez acorde a la hora actual (${mexTime.greeting} ${mexTime.icon}), da la bienvenida a BuscaYa con frescura y pregúntale cómo está y qué servicio, comida o negocio le gustaría buscar hoy.`;
+        } else if (currentPhase === 2) {
+          contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 2 - DETECCIÓN DE NECESIDAD Y SOLICITUD DE UBICACIÓN]
+El usuario necesita: "${userSession.giro_especifico}" (Familia: ${userSession.familia_giro}). Aún NO tenemos su ubicación exacta o colonia.
+1. Responde primero con empatía genuina a lo que busca.
+2. Pídele amablemente que toque el botón de abajo para enviar su ubicación actual o que te escriba en qué colonia se encuentra 📍.
+TIENES ESTRICTAMENTE PROHIBIDO mostrar negocios en este turno hasta tener su ubicación.`;
+        } else if (currentPhase === 3) {
+          if (selectedBusinesses.length > 0) {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - RESULTADOS EN 2 KM DISPONIBLES]
+Se encontraron ${selectedBusinesses.length} opciones verificadas a menos de 2 km de ${userSession.giro_especifico}.
+Debes usar OBLIGATORIAMENTE la etiqueta |||SEPARAR||| para enviar cada negocio en una burbuja de mensaje separada.
+Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => ({
               nombre: b.businessName,
-              servicios: b.services,
+              servicios: b.services || b.category,
               estado: b.openInfo.label,
               horario: b.openInfo.hoursDisplay,
-              dias: b.daysOpen || ["Lunes a Domingo"],
-              telefono: b.phone,
-              zona: `${b.neighborhood || b.colonia}, ${b.municipality}`,
+              dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
+              colonia: b.neighborhood || b.colonia || "CDMX",
+              telefono: b.phone
+            })), null, 2) + `\n\nAl final, en otra burbuja tras |||SEPARAR|||, pregunta amablemente si le agrada alguna opción o si desea ver más.`;
+          } else {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 3 - SIN COBERTURA EN 2 KM]
+NO hay opciones de "${userSession.giro_especifico}" a menos de 2 km registradas actualmente.
+Dile con amabilidad que en 2 km no hay opciones por ahora pero que muy pronto habrá más, y pregúntale con amabilidad si desea que le busques otras opciones deliciosas de ${userSession.familia_giro} aunque estén a más de 2 km 🚗💨.`;
+          }
+        } else if (currentPhase === 4) {
+          if (selectedBusinesses.length > 0) {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - EXPANSIÓN CONFIRMADA (MÁS DE 2 KM)]
+El usuario autorizó ver opciones a más de 2 km o solicitó más opciones de ${userSession.giro_especifico}.
+REGLA INQUEBRANTABLE: ÚNICAMENTE puedes recomendar estos negocios de la familia ${userSession.familia_giro}.
+Usa la etiqueta |||SEPARAR||| entre la introducción, entre cada negocio y en el cierre.
+Negocios a presentar:\n` + JSON.stringify(selectedBusinesses.map(b => ({
+              nombre: b.businessName,
+              servicios: b.services || b.category,
+              estado: b.openInfo.label,
+              horario: b.openInfo.hoursDisplay,
+              dias: (b.daysOpen || ["Lunes a Sábado"]).join(", "),
+              colonia: b.neighborhood || b.colonia || "CDMX",
               distanciaKm: b.distanceKm,
-              maps: b.mapsUrl || `https://maps.google.com/?q=${encodeURIComponent(b.businessName + ' ' + (b.neighborhood || ''))}`
+              telefono: b.phone
             })), null, 2);
-        } else if (lejanos_mas_2km.length > 0) {
-          contextualPrompt += `\n\n[ATENCIÓN REGLA DE 2 KM]: NO hay negocios de este giro a menos de 2 km de distancia en este momento. Aplica la regla 4: Explica con amabilidad que no hay a menos de 2 km en el sistema y pregúntale si desea que le recomiendes otros buenísimos aunque estén un poco más retirados.`;
-        }
-
-        // Si el usuario agradece ("gracias", "muchas gracias")
-        if (/(muchas\s+gracias|gracias|agradezco|te\s+lo\s+agradezco)/i.test(messageText)) {
-          contextualPrompt += `\n[AGRADECIMIENTO DEL USUARIO]: El usuario está dando las gracias. Despídete con mucha alegría y pregúntale casualmente si el negocio lo atendió bien para nuestra encuesta de calidad de BuscaYa.`;
+          } else {
+            contextualPrompt += `\n\n[ESTADO CONVERSACIONAL: FASE 4 - TODAS LAS OPCIONES MOSTRADAS]
+Ya se mostraron todas las opciones registradas en la base de datos para ${userSession.giro_especifico} (${userSession.familia_giro}).
+Informa con cariño que por el momento son todas las opciones que tenemos registradas y pregúntale si le gustaría buscar alguna otra cosa diferente.`;
+          }
         }
 
         let finalBotReplyText = "";
         try {
           const aiRes = await callGroqApi({
             prompt: contextualPrompt,
-            systemInstruction: systemPromptMaestro,
-            temperature: 0.75 // Ajustado a 0.75 para respuestas frescas y naturales
+            systemInstruction: CURRENT_SYSTEM_PROMPT,
+            temperature: 0.75
           });
 
           if (aiRes.success && aiRes.reply) {
-            // Aplicar Filtro Limpiador de Símbolos y Markdown Roto
             finalBotReplyText = cleanAiSymbols(aiRes.reply);
           }
         } catch (groqErr) {
           console.warn("[WhatsApp Webhook Groq AI Fallback]:", groqErr.message);
         }
 
+        // Fallbacks inteligentes por fase
         if (!finalBotReplyText) {
-          // Fallback con calidez humana garantizada
-          if (isAudioMessage) {
-            finalBotReplyText = `¡Ya escuché tu audio, claro que sí! 🎧😊 ${mexTime.greeting} ✨ Con mucho gusto te ayudo a encontrar lo que necesitas. ¿En qué colonia te encuentras o gustas compartirme tu ubicación con el clip de WhatsApp 📍?`;
-          } else if (cercanos_2km.length > 0) {
-            const topBiz = cercanos_2km[0];
-            finalBotReplyText = `${mexTime.greeting} 👋 ¡Qué gusto saludarte! Encontré una excelente opción para ti aquí cerquita 👇✨\n\n` +
-              `🏢 Negocio: ${topBiz.businessName}\n` +
-              `✨ Servicios / Especialidad: ${topBiz.services || topBiz.category}\n` +
-              `🕒 Estado y Horario: ${topBiz.openInfo.label} • ${topBiz.openInfo.hoursDisplay}\n` +
-              `📅 Días laborales: ${(topBiz.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
-              `📞 Teléfono directo: ${topBiz.phone}\n` +
-              `📍 Zona: ${topBiz.neighborhood || topBiz.colonia}, ${topBiz.municipality}\n` +
-              `🗺️ Ubicación exacta: ${topBiz.mapsUrl || 'https://maps.google.com'}\n\n` +
-              `¿Qué te parece esta opción, te late o buscamos algo diferente? 😊✨`;
+          if (currentPhase === 1) {
+            finalBotReplyText = `${mexTime.greeting} ${mexTime.icon} ¡Hola${userSession.name ? ' ' + userSession.name : ''}! Bienvenido a BuscaYa 😊✨ Me alegra mucho saludarte. ¿Qué servicio, comida o negocio te gustaría buscar hoy cerca de ti? 📍`;
+          } else if (currentPhase === 2) {
+            finalBotReplyText = `¡Claro que sí! Con gusto te ayudo a buscar las mejores opciones de ${userSession.giro_especifico || 'lo que necesitas'} 😊🙌 Para recomendarte los lugares abiertos a menos de 2 km de ti, ¿me compartes tu ubicación actual o en qué colonia estás? 📍✨`;
+          } else if (selectedBusinesses.length > 0) {
+            const b = selectedBusinesses[0];
+            finalBotReplyText = `¡Aquí tienes una excelente opción cerquita de ti! 😊👇\n|||SEPARAR|||\n` +
+              `🏢 ${b.businessName}\n` +
+              `✨ ${b.services || b.category}\n` +
+              `${b.openInfo.isOpen ? '🟢 Abierto ahora' : '🔴 Cerrado'} • ⏰ ${b.openInfo.hoursDisplay}\n` +
+              `📅 ${(b.daysOpen || ["Lunes a Sábado"]).join(", ")}\n` +
+              `📍 Col. ${b.neighborhood || b.colonia || 'CDMX'}\n` +
+              `📞 ${b.phone}\n|||SEPARAR|||\n` +
+              `¿Te late esta opción o buscamos algo más? 🙌✨`;
           } else {
-            finalBotReplyText = `${mexTime.greeting} 👋 ¡Bienvenido a BuscaYa! Me diseñó el equipo de Neural Media House para ayudarte a encontrar negocios, comida, oficios y servicios locales verificados cerca de ti 🏢📍 ¿Qué se te ofrece o qué te gustaría buscar el día de hoy? 😊✨`;
+            finalBotReplyText = `Fíjate que en este momento no tenemos opciones registradas a menos de 2 km 😔✨ ¡Pero muy pronto sumaremos más! ¿Te gustaría que te recomiende otras opciones de ${userSession.familia_giro || 'lo mismo'} aunque estén un poquito más retiradas? 🚗💨`;
           }
         }
 
-        // Si el mensaje proviene de Meta Cloud API oficial y existe Access Token configurado, enviar respuesta real a WhatsApp
+        // Registrar respuesta del asistente en el historial de sesión
+        userSession.history.push({
+          role: "assistant",
+          text: finalBotReplyText,
+          timestamp: Date.now()
+        });
+        if (userSession.history.length > 15) {
+          userSession.history = userSession.history.slice(-15);
+        }
+
+        // ==============================================================
+        // DESPACHO MULTI-BURBUJA Y BOTONES NATIVOS DE WHATSAPP (META CLOUD API)
+        // ==============================================================
         if (messages && messages[0] && META_CLOUD_ACCESS_TOKEN && finalBotReplyText) {
           try {
             const cleanTo = String(senderPhone || '').replace(/\D/g, '');
             const inboundPhoneId = changes?.value?.metadata?.phone_number_id || META_CLOUD_PHONE_NUMBER_ID;
-            const metaRes = await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: cleanTo,
-                type: "text",
-                text: { preview_url: true, body: finalBotReplyText }
-              })
-            });
-            const metaResText = await metaRes.text();
-            console.log(`[Meta Cloud API Outbound]: Status ${metaRes.status} -> ${cleanTo}`, metaResText);
+
+            // Separación por |||SEPARAR||| en burbujas independientes
+            const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => cleanAiSymbols(b.trim())).filter(Boolean);
+            const bubbles = rawBubbles.length ? rawBubbles : [cleanAiSymbols(finalBotReplyText)];
+
+            let bizIndex = 0;
+            for (let i = 0; i < bubbles.length; i++) {
+              const bubbleText = bubbles[i];
+
+              // Enviar burbuja de texto
+              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: cleanTo,
+                  type: "text",
+                  text: { preview_url: true, body: bubbleText }
+                })
+              });
+
+              // Si la burbuja es una ficha de negocio y tenemos coordenadas, enviar Pin de Ubicación Nativo de WhatsApp
+              if (bubbleText.includes("🏢") && selectedBusinesses[bizIndex]) {
+                const b = selectedBusinesses[bizIndex];
+                bizIndex++;
+                if (b.latitude && b.longitude) {
+                  await new Promise(r => setTimeout(r, 400));
+                  await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      messaging_product: "whatsapp",
+                      recipient_type: "individual",
+                      to: cleanTo,
+                      type: "location",
+                      location: {
+                        latitude: Number(b.latitude),
+                        longitude: Number(b.longitude),
+                        name: b.businessName,
+                        address: `${b.neighborhood || b.colonia || ''}, ${b.municipality || 'CDMX'}`
+                      }
+                    })
+                  });
+                }
+              }
+
+              if (i < bubbles.length - 1) {
+                await new Promise(r => setTimeout(r, 700));
+              }
+            }
+
+            // En Fase 2: Enviar botón interactivo nativo "📍 Enviar ubicación"
+            if (currentPhase === 2) {
+              await new Promise(r => setTimeout(r, 600));
+              await fetch(`https://graph.facebook.com/v21.0/${inboundPhoneId}/messages`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${META_CLOUD_ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  recipient_type: "individual",
+                  to: cleanTo,
+                  type: "interactive",
+                  interactive: {
+                    type: "location_request_message",
+                    body: {
+                      text: "Toca el botón de abajo para enviar tu ubicación actual con un solo toque 📍✨"
+                    },
+                    action: {
+                      name: "send_location"
+                    }
+                  }
+                })
+              });
+            }
           } catch (metaSendErr) {
-            console.warn("[Meta Cloud API Send Warning]:", metaSendErr.message);
+            console.warn("[Meta Cloud API Multi-Bubble Send Warning]:", metaSendErr.message);
           }
         }
 

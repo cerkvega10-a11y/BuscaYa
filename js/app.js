@@ -185,6 +185,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.warn("[Init Promo Banner Notice]", e);
   }
 
+  // 6.6. Cargar y Aplicar Configuración de Landing Page CMS
+  try {
+    if (typeof loadLandingCmsUI === "function") {
+      loadLandingCmsUI();
+    }
+  } catch (e) {
+    console.warn("[Init Landing CMS Notice]", e);
+  }
+
   // 7. Verificar si hay sesión activa previa y enrutar
   try {
     checkSessionState();
@@ -3580,6 +3589,7 @@ function handleResetAiConfig() {
 function switchAdminSubTab(tabName) {
   const tabBtnDir = document.getElementById("adminTabBtnDirectory");
   const tabBtnAi = document.getElementById("adminTabBtnAiTraining");
+  const tabBtnCms = document.getElementById("adminTabBtnLandingCms");
   const tabBtnCoupons = document.getElementById("adminTabBtnCoupons");
   const tabBtnCrm = document.getElementById("adminTabBtnCrmBroadcast");
   const tabBtnRetarget = document.getElementById("adminTabBtnRetargeting");
@@ -3587,6 +3597,7 @@ function switchAdminSubTab(tabName) {
 
   const contentDir = document.getElementById("adminTabContentDirectory");
   const contentAi = document.getElementById("adminTabContentAiTraining");
+  const contentCms = document.getElementById("adminTabContentLandingCms");
   const contentCoupons = document.getElementById("adminTabContentCoupons");
   const contentCrm = document.getElementById("adminTabContentCrmBroadcast");
   const contentRetarget = document.getElementById("adminTabContentRetargeting");
@@ -3595,6 +3606,7 @@ function switchAdminSubTab(tabName) {
   // Ocultar todos los contenedores
   if (contentDir) contentDir.classList.add("hidden");
   if (contentAi) contentAi.classList.add("hidden");
+  if (contentCms) contentCms.classList.add("hidden");
   if (contentCoupons) contentCoupons.classList.add("hidden");
   if (contentCrm) contentCrm.classList.add("hidden");
   if (contentRetarget) contentRetarget.classList.add("hidden");
@@ -3604,6 +3616,7 @@ function switchAdminSubTab(tabName) {
   const inactiveBtnClass = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 text-gray-700 hover:bg-gray-100 border border-gray-300";
   if (tabBtnDir) tabBtnDir.className = inactiveBtnClass;
   if (tabBtnAi) tabBtnAi.className = inactiveBtnClass;
+  if (tabBtnCms) tabBtnCms.className = inactiveBtnClass;
   if (tabBtnCoupons) tabBtnCoupons.className = inactiveBtnClass;
   if (tabBtnCrm) tabBtnCrm.className = inactiveBtnClass;
   if (tabBtnRetarget) tabBtnRetarget.className = inactiveBtnClass;
@@ -3612,7 +3625,12 @@ function switchAdminSubTab(tabName) {
   if (tabName === "ai-training") {
     if (contentAi) contentAi.classList.remove("hidden");
     if (tabBtnAi) tabBtnAi.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-purple-700 text-white shadow-md";
-    syncAiConfigToUI();
+    loadAiTrainingConfigUI();
+    loadMemorySettingsUI();
+  } else if (tabName === "landing-cms") {
+    if (contentCms) contentCms.classList.remove("hidden");
+    if (tabBtnCms) tabBtnCms.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-indigo-700 text-white shadow-md";
+    loadLandingCmsUI();
   } else if (tabName === "coupons") {
     if (contentCoupons) contentCoupons.classList.remove("hidden");
     if (tabBtnCoupons) tabBtnCoupons.className = "px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center space-x-2 bg-amber-600 text-white shadow-md";
@@ -6600,6 +6618,627 @@ async function startBroadcastDispatch() {
 }
 
 // ==============================================================
+// MÓDULO 1: CMS DINÁMICO DE PÁGINA PRINCIPAL (FRONTEND)
+// ==============================================================
+let CURRENT_LANDING_CMS = {
+  colors: {
+    primary: "#075E54",
+    secondary: "#128C7E",
+    accent: "#25D366",
+    bg: "#F0F2F5"
+  },
+  hero: {
+    badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
+    title: "Encuentra lo que necesitas en segundos por WhatsApp",
+    subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
+    ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+    ctaChatText: "Probar Chat en Vivo"
+  },
+  sections: [
+    { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
+    { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+    { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
+    { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
+    { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
+    { id: "testimonios", name: "Testimonios y Métricas", visible: true, order: 6 },
+    { id: "faq", name: "Preguntas Frecuentes", visible: true, order: 7 }
+  ]
+};
+
+async function loadLandingCmsUI() {
+  try {
+    const res = await fetch("/api/cms/landing");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.cms) {
+        CURRENT_LANDING_CMS = { ...CURRENT_LANDING_CMS, ...data.cms };
+        localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
+      }
+    } else {
+      const cached = localStorage.getItem("BUSCAYA_LANDING_CMS");
+      if (cached) CURRENT_LANDING_CMS = { ...CURRENT_LANDING_CMS, ...JSON.parse(cached) };
+    }
+  } catch (e) {
+    const cached = localStorage.getItem("BUSCAYA_LANDING_CMS");
+    if (cached) {
+      try { CURRENT_LANDING_CMS = { ...CURRENT_LANDING_CMS, ...JSON.parse(cached) }; } catch (_) {}
+    }
+  }
+
+  // 1. Sincronizar inputs en el panel
+  syncLandingCmsInputs(CURRENT_LANDING_CMS);
+
+  // 2. Aplicar a la página principal
+  applyCmsToLandingPage(CURRENT_LANDING_CMS);
+}
+
+function syncLandingCmsInputs(cms) {
+  if (!cms) return;
+  const bInput = document.getElementById("cmsHeroBadge");
+  const tInput = document.getElementById("cmsHeroTitle");
+  const sInput = document.getElementById("cmsHeroSubtitle");
+  const cta1 = document.getElementById("cmsHeroCtaTrial");
+  const cta2 = document.getElementById("cmsHeroCtaChat");
+
+  const cPri = document.getElementById("cmsColorPrimary");
+  const cSec = document.getElementById("cmsColorSecondary");
+  const cAcc = document.getElementById("cmsColorAccent");
+  const cBg = document.getElementById("cmsColorBg");
+
+  if (bInput && cms.hero) bInput.value = cms.hero.badge || "";
+  if (tInput && cms.hero) tInput.value = cms.hero.title || "";
+  if (sInput && cms.hero) sInput.value = cms.hero.subtitle || "";
+  if (cta1 && cms.hero) cta1.value = cms.hero.ctaTrialText || "";
+  if (cta2 && cms.hero) cta2.value = cms.hero.ctaChatText || "";
+
+  if (cPri && cms.colors) {
+    cPri.value = cms.colors.primary || "#075E54";
+    const lbl = document.getElementById("cmsColorPrimaryLabel");
+    if (lbl) lbl.textContent = cPri.value;
+  }
+  if (cSec && cms.colors) {
+    cSec.value = cms.colors.secondary || "#128C7E";
+    const lbl = document.getElementById("cmsColorSecondaryLabel");
+    if (lbl) lbl.textContent = cSec.value;
+  }
+  if (cAcc && cms.colors) {
+    cAcc.value = cms.colors.accent || "#25D366";
+    const lbl = document.getElementById("cmsColorAccentLabel");
+    if (lbl) lbl.textContent = cAcc.value;
+  }
+  if (cBg && cms.colors) {
+    cBg.value = cms.colors.bg || "#F0F2F5";
+    const lbl = document.getElementById("cmsColorBgLabel");
+    if (lbl) lbl.textContent = cBg.value;
+  }
+
+  renderCmsSectionsList(cms.sections || []);
+  updateLandingCmsPreview();
+}
+
+function renderCmsSectionsList(sections) {
+  const container = document.getElementById("cmsSectionsListContainer");
+  if (!container) return;
+
+  container.innerHTML = sections.map((sec, idx) => `
+    <div class="flex items-center justify-between p-2.5 rounded-xl border ${sec.visible !== false ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-200 opacity-60'} transition-all">
+      <div class="flex items-center space-x-2">
+        <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px] flex items-center justify-center">${idx + 1}</span>
+        <span class="font-bold text-gray-800">${sec.name}</span>
+      </div>
+
+      <div class="flex items-center space-x-1">
+        <button type="button" onclick="moveCmsSection(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-30 text-gray-600 flex items-center justify-center text-xs cursor-pointer" title="Subir">
+          <i class="fa-solid fa-arrow-up"></i>
+        </button>
+        <button type="button" onclick="moveCmsSection(${idx}, 1)" ${idx === sections.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-30 text-gray-600 flex items-center justify-center text-xs cursor-pointer" title="Bajar">
+          <i class="fa-solid fa-arrow-down"></i>
+        </button>
+        <button type="button" onclick="toggleCmsSectionVisibility(${idx})" class="w-7 h-7 rounded-lg ${sec.visible !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-500'} flex items-center justify-center text-xs ml-1 cursor-pointer" title="${sec.visible !== false ? 'Ocultar sección' : 'Mostrar sección'}">
+          <i class="fa-solid ${sec.visible !== false ? 'fa-eye' : 'fa-eye-slash'}"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function moveCmsSection(index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= CURRENT_LANDING_CMS.sections.length) return;
+  const temp = CURRENT_LANDING_CMS.sections[index];
+  CURRENT_LANDING_CMS.sections[index] = CURRENT_LANDING_CMS.sections[targetIndex];
+  CURRENT_LANDING_CMS.sections[targetIndex] = temp;
+  renderCmsSectionsList(CURRENT_LANDING_CMS.sections);
+  applyCmsToLandingPage(CURRENT_LANDING_CMS);
+}
+
+function toggleCmsSectionVisibility(index) {
+  const sec = CURRENT_LANDING_CMS.sections[index];
+  if (!sec) return;
+  sec.visible = (sec.visible === false);
+  renderCmsSectionsList(CURRENT_LANDING_CMS.sections);
+  applyCmsToLandingPage(CURRENT_LANDING_CMS);
+}
+
+function updateLandingCmsPreview() {
+  const bInput = document.getElementById("cmsHeroBadge");
+  const tInput = document.getElementById("cmsHeroTitle");
+  const sInput = document.getElementById("cmsHeroSubtitle");
+  const cta1 = document.getElementById("cmsHeroCtaTrial");
+  const cta2 = document.getElementById("cmsHeroCtaChat");
+
+  const cPri = document.getElementById("cmsColorPrimary");
+  const cSec = document.getElementById("cmsColorSecondary");
+  const cAcc = document.getElementById("cmsColorAccent");
+  const cBg = document.getElementById("cmsColorBg");
+
+  const prevBadge = document.getElementById("cmsHeroPreviewBadge");
+  const prevTitle = document.getElementById("cmsHeroPreviewTitle");
+  const prevSubtitle = document.getElementById("cmsHeroPreviewSubtitle");
+  const prevCta1 = document.getElementById("cmsHeroPreviewCta1");
+  const prevCta2 = document.getElementById("cmsHeroPreviewCta2");
+
+  if (prevBadge && bInput) prevBadge.textContent = bInput.value || "DIRECTORIO INTELIGENTE EN WHATSAPP";
+  if (prevTitle && tInput) prevTitle.textContent = tInput.value || "Encuentra lo que necesitas en segundos por WhatsApp";
+  if (prevSubtitle && sInput) prevSubtitle.textContent = sInput.value || "";
+  if (prevCta1 && cta1) prevCta1.textContent = cta1.value || "Prueba 7 días GRATIS";
+  if (prevCta2 && cta2) prevCta2.textContent = cta2.value || "Chat en Vivo";
+
+  if (cPri) {
+    const lbl = document.getElementById("cmsColorPrimaryLabel");
+    if (lbl) lbl.textContent = cPri.value;
+  }
+  if (cSec) {
+    const lbl = document.getElementById("cmsColorSecondaryLabel");
+    if (lbl) lbl.textContent = cSec.value;
+  }
+  if (cAcc) {
+    const lbl = document.getElementById("cmsColorAccentLabel");
+    if (lbl) lbl.textContent = cAcc.value;
+    if (prevCta1) {
+      prevCta1.style.backgroundColor = cAcc.value;
+    }
+  }
+  if (cBg) {
+    const lbl = document.getElementById("cmsColorBgLabel");
+    if (lbl) lbl.textContent = cBg.value;
+  }
+}
+
+async function handleSaveLandingCms() {
+  const bInput = document.getElementById("cmsHeroBadge");
+  const tInput = document.getElementById("cmsHeroTitle");
+  const sInput = document.getElementById("cmsHeroSubtitle");
+  const cta1 = document.getElementById("cmsHeroCtaTrial");
+  const cta2 = document.getElementById("cmsHeroCtaChat");
+
+  const cPri = document.getElementById("cmsColorPrimary");
+  const cSec = document.getElementById("cmsColorSecondary");
+  const cAcc = document.getElementById("cmsColorAccent");
+  const cBg = document.getElementById("cmsColorBg");
+
+  CURRENT_LANDING_CMS.hero = {
+    badge: bInput?.value?.trim() || "DIRECTORIO INTELIGENTE EN WHATSAPP",
+    title: tInput?.value?.trim() || "Encuentra lo que necesitas en segundos por WhatsApp",
+    subtitle: sInput?.value?.trim() || "",
+    ctaTrialText: cta1?.value?.trim() || "Prueba nuestro sistema por 7 días GRATIS",
+    ctaChatText: cta2?.value?.trim() || "Probar Chat en Vivo"
+  };
+
+  CURRENT_LANDING_CMS.colors = {
+    primary: cPri?.value || "#075E54",
+    secondary: cSec?.value || "#128C7E",
+    accent: cAcc?.value || "#25D366",
+    bg: cBg?.value || "#F0F2F5"
+  };
+
+  try {
+    const res = await fetch("/api/cms/landing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(CURRENT_LANDING_CMS)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
+      applyCmsToLandingPage(CURRENT_LANDING_CMS);
+      showToast("¡Página Principal (CMS) actualizada y publicada con éxito!", "success");
+    } else {
+      showToast("Error al guardar CMS en el servidor.", "error");
+    }
+  } catch (err) {
+    localStorage.setItem("BUSCAYA_LANDING_CMS", JSON.stringify(CURRENT_LANDING_CMS));
+    applyCmsToLandingPage(CURRENT_LANDING_CMS);
+    showToast("Cambios guardados localmente en navegador.", "info");
+  }
+}
+
+async function handleResetLandingCms() {
+  if (!confirm("¿Deseas restablecer los textos, colores y secciones de la página principal a los originales?")) return;
+  CURRENT_LANDING_CMS = {
+    colors: { primary: "#075E54", secondary: "#128C7E", accent: "#25D366", bg: "#F0F2F5" },
+    hero: {
+      badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
+      title: "Encuentra lo que necesitas en segundos por WhatsApp",
+      subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
+      ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+      ctaChatText: "Probar Chat en Vivo"
+    },
+    sections: [
+      { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
+      { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+      { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
+      { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
+      { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
+      { id: "testimonios", name: "Testimonios y Métricas", visible: true, order: 6 },
+      { id: "faq", name: "Preguntas Frecuentes", visible: true, order: 7 }
+    ]
+  };
+  syncLandingCmsInputs(CURRENT_LANDING_CMS);
+  await handleSaveLandingCms();
+}
+
+function applyCmsToLandingPage(cms) {
+  if (!cms) return;
+
+  // 1. Hero texts
+  const heroBadge = document.querySelector("#view-landing .inline-flex span");
+  if (heroBadge && cms.hero?.badge) heroBadge.textContent = cms.hero.badge;
+
+  const heroH1 = document.querySelector("#view-landing h1");
+  if (heroH1 && cms.hero?.title) {
+    if (cms.hero.title.includes("WhatsApp")) {
+      heroH1.innerHTML = cms.hero.title.replace("WhatsApp", '<span class="text-[#25D366]">WhatsApp</span>');
+    } else {
+      heroH1.textContent = cms.hero.title;
+    }
+  }
+
+  const heroP = document.querySelector("#view-landing p.text-base.sm\\:text-xl");
+  if (heroP && cms.hero?.subtitle) heroP.textContent = cms.hero.subtitle;
+
+  const btnHeroTrial = document.getElementById("btnHeroFreeTrial");
+  if (btnHeroTrial && cms.hero?.ctaTrialText) {
+    const span = btnHeroTrial.querySelector("span");
+    if (span) span.textContent = cms.hero.ctaTrialText;
+  }
+
+  const btnHeroChat = document.getElementById("btnHeroLiveChat");
+  if (btnHeroChat && cms.hero?.ctaChatText) {
+    const span = btnHeroChat.querySelector("span");
+    if (span) span.textContent = cms.hero.ctaChatText;
+  }
+
+  // 2. Visibilidad de secciones
+  if (Array.isArray(cms.sections)) {
+    cms.sections.forEach(sec => {
+      let el = null;
+      if (sec.id === "promo") el = document.getElementById("promoBannerSection");
+      else if (sec.id === "como-funciona") el = document.getElementById("como-funciona");
+      else if (sec.id === "comparativa") el = document.getElementById("comparativa");
+      else if (sec.id === "beneficios") el = document.getElementById("beneficios");
+
+      if (el) {
+        if (sec.visible === false) el.classList.add("hidden");
+        else el.classList.remove("hidden");
+      }
+    });
+  }
+}
+
+// ==============================================================
+// MÓDULO 2: CENTRO DE ENTRENAMIENTO IA POR TARJETAS (FRONTEND)
+// ==============================================================
+let CURRENT_AI_TRAINING_STATE = {
+  tasks: [],
+  quickRules: []
+};
+
+async function loadAiTrainingConfigUI() {
+  try {
+    const res = await fetch("/api/ai/training-config");
+    if (res.ok) {
+      const data = await res.json();
+      CURRENT_AI_TRAINING_STATE.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      CURRENT_AI_TRAINING_STATE.quickRules = Array.isArray(data.quickRules) ? data.quickRules : [];
+
+      renderAiTasksCards(CURRENT_AI_TRAINING_STATE.tasks);
+      renderAiQuickRulesChips(CURRENT_AI_TRAINING_STATE.quickRules);
+
+      const promptView = document.getElementById("aiPromptCompiledView");
+      if (promptView && data.compiledPrompt) {
+        promptView.value = data.compiledPrompt;
+      }
+    }
+  } catch (err) {
+    console.warn("[AI Training UI Load Notice]:", err.message);
+  }
+}
+
+function renderAiTasksCards(tasks) {
+  const container = document.getElementById("aiTasksCardsContainer");
+  if (!container) return;
+
+  if (!tasks.length) {
+    container.innerHTML = `<div class="p-4 text-center text-gray-400 bg-white rounded-xl border border-gray-200">No hay tareas creadas aún. Presiona '+ Agregar Nueva Tarea'.</div>`;
+    return;
+  }
+
+  container.innerHTML = tasks.map(t => `
+    <div class="bg-white p-4 rounded-xl border ${t.active ? 'border-purple-200 shadow-xs' : 'border-gray-200 opacity-60'} space-y-2 transition-all">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${t.priority === 'Alta (Obligatoria)' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-gray-100 text-gray-700'}">${t.priority}</span>
+          <span class="text-xs font-black text-gray-900">${t.condition}</span>
+        </div>
+
+        <div class="flex items-center space-x-1.5 shrink-0">
+          <button type="button" onclick="toggleAiTaskStatus('${t.id}')" class="px-2 py-1 rounded-lg text-[10px] font-bold ${t.active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'} cursor-pointer">
+            ${t.active ? '🟢 Activa' : '🔴 Inactiva'}
+          </button>
+          <button type="button" onclick="openEditAiTaskModal('${t.id}')" class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-xs cursor-pointer" title="Editar">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button type="button" onclick="deleteAiTask('${t.id}')" class="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center text-xs cursor-pointer" title="Eliminar">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-purple-50/60 p-2.5 rounded-lg border border-purple-100 text-[11px] text-purple-950 font-medium leading-relaxed">
+        <b>Acción de la IA:</b> ${t.action}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderAiQuickRulesChips(rules) {
+  const container = document.getElementById("aiQuickRulesChipsContainer");
+  if (!container) return;
+
+  if (!rules.length) {
+    container.innerHTML = `<span class="text-xs text-gray-400">No hay señalizaciones activas. Escribe una arriba y presiona Añadir.</span>`;
+    return;
+  }
+
+  container.innerHTML = rules.map((r, idx) => `
+    <span class="inline-flex items-center space-x-1.5 bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-xs font-semibold shadow-2xs">
+      <span>${r}</span>
+      <button type="button" onclick="handleDeleteQuickRule(${idx})" class="w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 text-amber-900 flex items-center justify-center text-[10px] cursor-pointer ml-1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </span>
+  `).join("");
+}
+
+function openAddAiTaskModal() {
+  document.getElementById("modalAiTaskId").value = "";
+  document.getElementById("modalAiTaskCondition").value = "";
+  document.getElementById("modalAiTaskAction").value = "";
+  document.getElementById("modalAiTaskPriority").value = "Alta (Obligatoria)";
+  document.getElementById("aiTaskModalTitle").textContent = "Nueva Tarea de IA";
+  document.getElementById("aiTaskModal")?.classList.remove("hidden");
+}
+
+function openEditAiTaskModal(id) {
+  const task = CURRENT_AI_TRAINING_STATE.tasks.find(t => t.id === id);
+  if (!task) return;
+
+  document.getElementById("modalAiTaskId").value = task.id;
+  document.getElementById("modalAiTaskCondition").value = task.condition;
+  document.getElementById("modalAiTaskAction").value = task.action;
+  document.getElementById("modalAiTaskPriority").value = task.priority || "Normal";
+  document.getElementById("aiTaskModalTitle").textContent = "Editar Tarea de IA";
+  document.getElementById("aiTaskModal")?.classList.remove("hidden");
+}
+
+function closeAiTaskModal() {
+  document.getElementById("aiTaskModal")?.classList.add("hidden");
+}
+
+function submitAiTaskForm(event) {
+  if (event) event.preventDefault();
+  const id = document.getElementById("modalAiTaskId").value;
+  const condition = document.getElementById("modalAiTaskCondition").value.trim();
+  const action = document.getElementById("modalAiTaskAction").value.trim();
+  const priority = document.getElementById("modalAiTaskPriority").value;
+
+  if (!condition || !action) {
+    showToast("Completa la condición y la acción requerida.", "warning");
+    return;
+  }
+
+  if (id) {
+    const idx = CURRENT_AI_TRAINING_STATE.tasks.findIndex(t => t.id === id);
+    if (idx >= 0) {
+      CURRENT_AI_TRAINING_STATE.tasks[idx] = {
+        ...CURRENT_AI_TRAINING_STATE.tasks[idx],
+        condition, action, priority
+      };
+    }
+  } else {
+    CURRENT_AI_TRAINING_STATE.tasks.push({
+      id: `task-${Date.now()}`,
+      active: true,
+      condition, action, priority
+    });
+  }
+
+  renderAiTasksCards(CURRENT_AI_TRAINING_STATE.tasks);
+  closeAiTaskModal();
+  handleSaveAiTrainingConfig();
+}
+
+function toggleAiTaskStatus(id) {
+  const task = CURRENT_AI_TRAINING_STATE.tasks.find(t => t.id === id);
+  if (!task) return;
+  task.active = !task.active;
+  renderAiTasksCards(CURRENT_AI_TRAINING_STATE.tasks);
+  handleSaveAiTrainingConfig();
+}
+
+function deleteAiTask(id) {
+  CURRENT_AI_TRAINING_STATE.tasks = CURRENT_AI_TRAINING_STATE.tasks.filter(t => t.id !== id);
+  renderAiTasksCards(CURRENT_AI_TRAINING_STATE.tasks);
+  handleSaveAiTrainingConfig();
+}
+
+function handleAddQuickRule() {
+  const input = document.getElementById("newQuickRuleInput");
+  const val = input ? input.value.trim() : "";
+  if (!val) return;
+
+  CURRENT_AI_TRAINING_STATE.quickRules.push(val);
+  if (input) input.value = "";
+  renderAiQuickRulesChips(CURRENT_AI_TRAINING_STATE.quickRules);
+  handleSaveAiTrainingConfig();
+}
+
+function handleDeleteQuickRule(index) {
+  CURRENT_AI_TRAINING_STATE.quickRules.splice(index, 1);
+  renderAiQuickRulesChips(CURRENT_AI_TRAINING_STATE.quickRules);
+  handleSaveAiTrainingConfig();
+}
+
+async function handleSaveAiTrainingConfig() {
+  try {
+    const res = await fetch("/api/ai/training-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tasks: CURRENT_AI_TRAINING_STATE.tasks,
+        quickRules: CURRENT_AI_TRAINING_STATE.quickRules
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const promptView = document.getElementById("aiPromptCompiledView");
+      if (promptView && data.compiledPrompt) {
+        promptView.value = data.compiledPrompt;
+      }
+      showToast("Configuración de IA compilada y activa.", "success");
+    }
+  } catch (err) {
+    showToast("Error de conexión al guardar entrenamiento.", "error");
+  }
+}
+
+async function handleResetAiTrainingConfig() {
+  if (!confirm("¿Deseas restablecer las tareas y reglas rápidas de IA a las oficiales de BuscaYa?")) return;
+  CURRENT_AI_TRAINING_STATE.tasks = [
+    {
+      id: "task-1",
+      active: true,
+      condition: "Cuando el usuario pregunte cómo registrar o anunciar su negocio",
+      action: "Felicitarlo con entusiasmo, informarle que tiene 7 días gratis sin costo y compartirle el enlace oficial: https://buscaya.neuralmediahouse.com/",
+      priority: "Alta (Obligatoria)"
+    },
+    {
+      id: "task-2",
+      active: true,
+      condition: "Cuando el usuario pregunte quién te creó o de dónde eres",
+      action: "Responder con orgullo institucional: 'Fui diseñado y desarrollado exclusivamente por el equipo de Neural Media House para conectar a las personas con los mejores negocios locales en BuscaYa.'",
+      priority: "Alta (Obligatoria)"
+    },
+    {
+      id: "task-3",
+      active: true,
+      condition: "Cuando el usuario diga malas palabras, insultos o esté enojado",
+      action: "Responder con educación impecable y máxima calidez, recordando con amabilidad que estás aquí para ayudarle a encontrar comida, oficios o servicios locales cuando lo necesite.",
+      priority: "Normal"
+    },
+    {
+      id: "task-4",
+      active: true,
+      condition: "Cuando el usuario pregunte temas ajenos (política, tareas, chistes, matemáticas)",
+      action: "Responder con simpatía recordando que estás enfocado 100% en ayudarle a encontrar comercios y servicios locales en BuscaYa.",
+      priority: "Normal"
+    }
+  ];
+  CURRENT_AI_TRAINING_STATE.quickRules = [
+    "Hablar siempre de tú con calidez, cercanía y muchos emojis alegres 😊🙌✨📍🌮🛠️",
+    "Nunca recomendar negocios cerrados sin avisar con honestidad y ofrecer una alternativa abierta",
+    "Usar la etiqueta |||SEPARAR||| para enviar un mensaje individual por cada negocio y evitar textos largos",
+    "Si el usuario pide más opciones, nunca repetir negocios que ya se le hayan mostrado en el chat",
+    "No usar caracteres de código o markdown roto (*, #, _, [, ]) en la respuesta final"
+  ];
+  renderAiTasksCards(CURRENT_AI_TRAINING_STATE.tasks);
+  renderAiQuickRulesChips(CURRENT_AI_TRAINING_STATE.quickRules);
+  await handleSaveAiTrainingConfig();
+}
+
+// ==============================================================
+// MÓDULO 3: MEMORIA Y PERSONALIZACIÓN DEL CLIENTE (FRONTEND)
+// ==============================================================
+async function loadMemorySettingsUI() {
+  try {
+    const res = await fetch("/api/ai/memory/settings");
+    if (res.ok) {
+      const data = await res.json();
+      const s = data.settings || {};
+      const sw1 = document.getElementById("memAutoUseName");
+      const sw2 = document.getElementById("memAskNameIfUnknown");
+      const sw3 = document.getElementById("memRememberHistory");
+      const badge = document.getElementById("activeMemorySessionsCount");
+
+      if (sw1) sw1.checked = s.autoUseName !== false;
+      if (sw2) sw2.checked = s.askNameIfUnknown !== false;
+      if (sw3) sw3.checked = s.rememberHistory !== false;
+      if (badge && data.activeSessionsCount !== undefined) {
+        badge.textContent = `${data.activeSessionsCount} sesión(es) activa(s)`;
+      }
+    }
+  } catch (err) {
+    console.warn("[Memory UI Load Notice]:", err.message);
+  }
+}
+
+async function handleSaveMemorySettings() {
+  const sw1 = document.getElementById("memAutoUseName");
+  const sw2 = document.getElementById("memAskNameIfUnknown");
+  const sw3 = document.getElementById("memRememberHistory");
+
+  try {
+    const res = await fetch("/api/ai/memory/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        autoUseName: sw1 ? sw1.checked : true,
+        askNameIfUnknown: sw2 ? sw2.checked : true,
+        rememberHistory: sw3 ? sw3.checked : true
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Configuración de memoria de clientes actualizada.", "success");
+    }
+  } catch (e) {
+    showToast("Error al guardar memoria.", "error");
+  }
+}
+
+async function handleClearTestMemory() {
+  const input = document.getElementById("memClearPhoneInput");
+  const phone = input ? input.value.trim() : "";
+
+  try {
+    const res = await fetch("/api/ai/memory/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phone || null })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || "Memoria de prueba reiniciada.", "success");
+      if (input) input.value = "";
+      loadMemorySettingsUI();
+    }
+  } catch (e) {
+    showToast("Error al limpiar memoria.", "error");
+  }
+}
+
+// ==============================================================
 // PROTOCOLO DE ORQUESTACIÓN: DIAGNÓSTICO DEL ENJAMBRE DE 7 AGENTES
 // ==============================================================
 async function runSwarmDiagnostics() {
@@ -6683,6 +7322,43 @@ window.closeShareLocationModal = closeShareLocationModal;
 window.loadBusinessAnalyticsUI = loadBusinessAnalyticsUI;
 window.trackBusinessEvent = trackBusinessEvent;
 window.handleInteractiveAction = handleInteractiveAction;
+
+// Exportaciones del CMS de la Landing Page
+window.loadLandingCmsUI = loadLandingCmsUI;
+window.syncLandingCmsInputs = syncLandingCmsInputs;
+window.renderCmsSectionsList = renderCmsSectionsList;
+window.moveCmsSection = moveCmsSection;
+window.toggleCmsSectionVisibility = toggleCmsSectionVisibility;
+window.updateLandingCmsPreview = updateLandingCmsPreview;
+window.handleSaveLandingCms = handleSaveLandingCms;
+window.handleResetLandingCms = handleResetLandingCms;
+window.applyCmsToLandingPage = applyCmsToLandingPage;
+
+// Exportaciones de Entrenamiento IA por Tarjetas y Señalizaciones
+window.loadAiTrainingConfigUI = loadAiTrainingConfigUI;
+window.renderAiTasksCards = renderAiTasksCards;
+window.renderAiQuickRulesChips = renderAiQuickRulesChips;
+window.openAddAiTaskModal = openAddAiTaskModal;
+window.openEditAiTaskModal = openEditAiTaskModal;
+window.closeAiTaskModal = closeAiTaskModal;
+window.submitAiTaskForm = submitAiTaskForm;
+window.toggleAiTaskStatus = toggleAiTaskStatus;
+window.deleteAiTask = deleteAiTask;
+window.handleAddQuickRule = handleAddQuickRule;
+window.handleDeleteQuickRule = handleDeleteQuickRule;
+window.handleSaveAiTrainingConfig = handleSaveAiTrainingConfig;
+window.handleResetAiTrainingConfig = handleResetAiTrainingConfig;
+
+// Exportaciones de Memoria Conversacional Profunda
+window.loadMemorySettingsUI = loadMemorySettingsUI;
+window.handleSaveMemorySettings = handleSaveMemorySettings;
+window.handleClearTestMemory = handleClearTestMemory;
+
+// Exportaciones de Sincronización Google Sheets
+if (typeof handleOpenGoogleSheetsDirect === "function") window.handleOpenGoogleSheetsDirect = handleOpenGoogleSheetsDirect;
+if (typeof openGoogleSheetsConfigModal === "function") window.openGoogleSheetsConfigModal = openGoogleSheetsConfigModal;
+if (typeof closeGoogleSheetsConfigModal === "function") window.closeGoogleSheetsConfigModal = closeGoogleSheetsConfigModal;
+if (typeof handleSaveGoogleSheetsConfigModal === "function") window.handleSaveGoogleSheetsConfigModal = handleSaveGoogleSheetsConfigModal;
 
 console.log("App Inicializada");
 
