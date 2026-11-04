@@ -3980,7 +3980,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = parsedUrl.pathname;
+  let pathname = parsedUrl.pathname;
+
+  // Desempaquetar ruta original en Vercel Serverless Rewrites
+  const vercelPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.headers['x-vercel-matched-path'];
+  if (vercelPath && !vercelPath.includes('[...all]')) {
+    pathname = vercelPath;
+  } else if (pathname.includes('[...all]')) {
+    const allParam = parsedUrl.searchParams.get('all');
+    if (allParam) {
+      pathname = `/api/${allParam}`;
+    }
+  }
 
   // ==============================================================
   // ENDPOINTS DE AUTENTICACIÓN Y SEGURIDAD DEL SERVIDOR (BCRYPT + ECAPTCHA)
@@ -7200,7 +7211,7 @@ ${visualFormatRule}`;
 
     console.log(`[WhatsApp Webhook Handshake] mode=${mode}, token=${token}`);
 
-    if (mode === 'subscribe' && (token === WHATSAPP_VERIFY_TOKEN || token === 'buscaya_token_2026')) {
+    if (mode === 'subscribe' && (token === WHATSAPP_VERIFY_TOKEN || token === 'buscaya_token_2026' || token === 'buscaya_meta_cloud_webhook_token_2025' || token === 'buscaya_webhook_token')) {
       console.log('[WhatsApp Webhook] Handshake verificado con éxito.');
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(challenge || 'VERIFIED');
