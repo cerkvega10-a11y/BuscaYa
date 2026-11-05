@@ -8398,7 +8398,7 @@ if (waService && typeof waService.configureWhatsAppService === 'function') {
 }
 
 if (require.main === module && !process.env.VERCEL) {
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, () => {
     console.log(`\n======================================================`);
     console.log(` BuscaYa Server con Suscripciones Mercado Pago Activo`);
     console.log(` Local:          http://localhost:${PORT}`);
