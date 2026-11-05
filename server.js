@@ -4,6 +4,14 @@ const path = require('path');
 const vm = require('vm');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+// Guardias de Estabilidad de Procesos y Sockets (Neural Media House)
+process.on('uncaughtException', (err) => {
+  console.warn('[Server UncaughtException Guard]:', err && err.message ? err.message : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Server UnhandledRejection Guard]:', reason && reason.message ? reason.message : reason);
+});
+
 
 // Cargar variables de entorno desde .env ANTES de importar servicios dependientes
 const envPath = path.join(__dirname, '.env');
@@ -7809,102 +7817,53 @@ ${visualFormatRule}`;
   if (req.method === 'GET' && (pathname === '/api/whatsapp/status' || pathname === '/api/whatsapp/qr-status')) {
     (async () => {
       try {
-        // 1. Prioridad: Consultar Microservicio Persistente Node.js/Express (Render / Railway / Localhost:4000)
-        const remoteStatus = await fetchFromPersistentBackend('/api/whatsapp/status');
-        if (remoteStatus && remoteStatus.success) {
-          remoteStatus.source = "persistent_microservice";
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(remoteStatus));
-          return;
-        }
-
-        // 2. Fallback local si el microservicio remoto aún no está disponible
-        const keepAlive = parsedUrl.searchParams.get('keepAlive') === '1';
-        let statusObj = waService && typeof waService.ensureWhatsAppQrOrConnected === 'function'
-          ? await waService.ensureWhatsAppQrOrConnected({ waitMs: 4000, keepAlive })
-          : (waService ? waService.getWhatsAppStatus() : { status: 'waiting', qr: null });
-
-        statusObj.metaCloudApi = {
-          connected: true,
+        const statusObj = {
+          success: true,
+          mode: "meta_cloud_api",
+          connected: !WHATSAPP_API_PAUSED,
+          paused: WHATSAPP_API_PAUSED,
+          status: WHATSAPP_API_PAUSED ? "paused_by_user" : "active",
           phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
           phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
-          status: "active",
           webhookPath: "/api/whatsapp/webhook",
-          label: "Conexión Activa vía Meta Cloud API (Webhook)"
+          label: WHATSAPP_API_PAUSED
+            ? "🟡 WhatsApp: Desconectado / En Pausa Temporal (Credenciales Preservadas al 100%)"
+            : "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)",
+          metaCloudApi: {
+            connected: !WHATSAPP_API_PAUSED,
+            paused: WHATSAPP_API_PAUSED,
+            phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
+            phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
+            status: WHATSAPP_API_PAUSED ? "paused_by_user" : "active",
+            webhookPath: "/api/whatsapp/webhook",
+            label: WHATSAPP_API_PAUSED
+              ? "🟡 WhatsApp: Desconectado / En Pausa Temporal (Credenciales Preservadas al 100%)"
+              : "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)"
+          }
         };
+
+        const wantQr = parsedUrl.searchParams.get('qr') === '1';
+        if (wantQr && waService && typeof waService.ensureWhatsAppQrOrConnected === 'function') {
+          const keepAlive = parsedUrl.searchParams.get('keepAlive') === '1';
+          const qrStatus = await waService.ensureWhatsAppQrOrConnected({ waitMs: 3000, keepAlive }).catch(() => null);
+          if (qrStatus) Object.assign(statusObj, qrStatus);
+        }
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(statusObj));
-      } catch (qrErr) {
+      } catch (err) {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({
-          status: 'waiting',
-          qr: null,
-          metaCloudApi: { connected: true, phoneNumberId: META_CLOUD_PHONE_NUMBER_ID, phoneNumber: META_OFFICIAL_PHONE_DISPLAY, status: "active" },
-          error: qrErr.message
+          success: true,
+          connected: !WHATSAPP_API_PAUSED,
+          paused: WHATSAPP_API_PAUSED,
+          status: WHATSAPP_API_PAUSED ? "paused_by_user" : "active",
+          phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
+          phoneNumber: META_OFFICIAL_PHONE_DISPLAY,
+          error: err.message
         }));
       }
     })();
-    return;
-  }
-
-  if (req.method === 'POST' && (pathname === '/api/whatsapp/restart' || pathname === '/api/whatsapp/restart-session')) {
-    (async () => {
-      try {
-        const remoteRestart = await fetchFromPersistentBackend('/api/whatsapp/restart', { method: 'POST' });
-        if (remoteRestart && remoteRestart.success) {
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(remoteRestart));
-          return;
-        }
-
-        let result = { success: true, status: 'waiting', qr: null, message: 'Generando código QR oficial de WhatsApp Web...' };
-        if (waService && typeof waService.restartWhatsAppSession === 'function') {
-          result = await waService.restartWhatsAppSession();
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result));
-      } catch (err) {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, status: 'waiting', qr: null, message: err.message }));
-      }
-    })();
-    return;
-  }
-
-  if (req.method === 'POST' && (pathname === '/api/whatsapp/request-pair-code' || pathname === '/api/whatsapp/request-pairing-code')) {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const remotePair = await fetchFromPersistentBackend('/api/whatsapp/request-pair-code', {
-          method: 'POST',
-          body
-        });
-        if (remotePair && remotePair.success) {
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(remotePair));
-          return;
-        }
-
-        const { phoneNumber } = JSON.parse(body || '{}');
-        const targetPhone = phoneNumber || '5215563266526';
-
-        if (!waService) {
-          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: false, error: 'Servicio no disponible' }));
-          return;
-        }
-
-        const code = await waService.requestPairingCode(targetPhone);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: true, pairingCode: code, phoneNumber: targetPhone }));
-      } catch (err) {
-        console.error('[WhatsApp Pairing Code Error]', err);
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-    });
     return;
   }
 
@@ -7955,32 +7914,6 @@ ${visualFormatRule}`;
           paused: false,
           message: 'API de WhatsApp reconectada exitosamente. El bot está listo y respondiendo normalmente.'
         }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-    })();
-    return;
-  }
-
-  if (false && req.method === 'POST' && pathname === '/api/whatsapp/disconnect_legacy') {
-    (async () => {
-      try {
-        const remoteDisc = await fetchFromPersistentBackend('/api/whatsapp/disconnect', { method: 'POST' });
-        if (remoteDisc && remoteDisc.success) {
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(remoteDisc));
-          return;
-        }
-
-        if (waService) {
-          const result = await waService.disconnectWhatsApp();
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(result));
-        } else {
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ success: true, message: 'Desconectado' }));
-        }
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: err.message }));
