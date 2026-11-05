@@ -843,6 +843,11 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
     return null;
   }
 
+  // Si es una petición de búsqueda de giro ("quiero X", "busco X", "necesito X") sin "en/por [lugar]", jamás interpretar como colonia
+  if (/^(?:busco|quiero|necesito|donde\s+hay|tienen|dame)\s+[a-záéíóúñ\s]+$/i.test(t) && !/(?:en|por|cerca\s+de|vivo\s+en)\s+/i.test(t)) {
+    return null;
+  }
+
   // 1. Extraer parte sustancial de la dirección si trae prefijos
   const prefixMatch = t.match(/(?:mi\s+direcci[oó]n\s+es|estoy\s+en|vivo\s+en|ubicaci[oó]n(?:\s+es)?|aqu[ií]\s+en|por\s+la|cerca\s+de|en\s+la\s+calle|en\s+colonia|en\s+col\.?|en|colonia|col\.?|alcald[ií]a|calle|av\.?|avenida)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ0-9\s#.,-]{3,80})/i);
   let candidate = prefixMatch ? prefixMatch[1].trim() : t;
@@ -937,7 +942,8 @@ function resolveAddressOrColonia(text, isWaitingForLocation) {
   // 4. Indicadores de calle, avenida, calzada, número o si la sesión estaba esperando ubicación
   const isAddressPattern = /(?:av\.?|avenida|calle|cerrada|calzada|prolongaci[oó]n|paseo|camino|carretera|blvd|boulevard|perif[eé]rico|revoluci[oó]n|insurgentes|desierto|santa\s+fe|mexicana|aguilas|padres|pedregal|san\s+[a-z]+|alvaro\s+obregon|\bcp\b|\b[#\d]{1,5}\b)/i.test(t);
 
-  if (isAddressPattern || isWaitingForLocation) {
+  const isExplicitGiroQuery = /^(?:busco|quiero|necesito|donde\s+hay|tienen)\s+/i.test(t);
+  if (!isExplicitGiroQuery && (isAddressPattern || isWaitingForLocation)) {
     const cleanLabel = candidate.replace(/^(?:en|por|estoy\s+en)\s+/i, '').trim();
     let defLat = 19.3496;
     let defLng = -99.1915;
@@ -1569,7 +1575,7 @@ function compileMasterSystemPrompt(customTasks = [], customRules = []) {
       quickRules.map((r, idx) => '• ' + r).join("\n");
   }
 
-  return "<rol_sistema>\nEres el asistente virtual oficial de BuscaYa, desarrollado por Neural Media House.\nTu personalidad es sumamente amable, cálida, alegre, cercana y servicial. Tu objetivo es ayudar a las personas a conectar de forma rápida y feliz con los mejores negocios locales registrados en nuestra plataforma.\nComunícate siempre en un tono entusiasta, dinámico y fluido, acompañado de emojis expresivos. ESTRICTAMENTE PROHIBIDO USAR ASTERISCOS EN TUS RESPUESTAS.\n</rol_sistema>\n\n<regla_acceso_datos>\n\nFUENTE ÚNICA DE VERDAD (NEGOCIOS): Toda la información de comercios, teléfonos, giros, direcciones, horarios, días laborales y estado de apertura DEBE basarse EXCLUSIVAMENTE en los negocios registrados en la plataforma BuscaYa que se te inyectan en el contexto.\n\nPROHIBICIÓN DE INVENTAR COMERCIOS: Tienes prohibido usar tu memoria general o internet para recomendar comercios externos. Si un negocio no aparece en los registros de BuscaYa, para ti no existe.\n\nVALIDACIÓN ESTRICTA DE UBICACIÓN Y GIRO:\n\nNunca confundas el giro que pide el usuario (ej. tacos, plomero, café) con su ubicación o colonia.\n\nLa ubicación que recibes ($UBICACION) ya está previamente validada y limpia por Google Maps desde el servidor, por lo que debes usarla con total confianza.\n\nVALIDACIÓN DE HORARIOS Y ESTADO EN TIEMPO REAL: Cada vez que entregues un negocio, analiza la hora actual del mensaje y compárala contra los días y horarios laborables registrados del establecimiento para indicar con precisión si se encuentra Abierto o Cerrado en ese preciso momento.\n\nBLOQUEO POR ESTADO: La lista de negocios registrados está bloqueada al inicio. Solo puedes leerla y extraer datos cuando alcances el Estado 4. En cualquier otro estado, actúa como si la lista estuviera vacía.\n</regla_acceso_datos>\n\n<arbol_de_decision>\nAnaliza el historial de la conversación y el mensaje más reciente del usuario. Sigue este orden estricto y detente en la primera coincidencia:\n\n=========================================\nNIVEL 1: INTENCIONES ESPECIALES (Prioridad Alta)\nVerifica si el usuario solicita alguno de estos 5 casos. Si es así, responde únicamente con el texto asignado (sin asteriscos):\n\nCASO A (Quiere registrar su negocio):\nRespuesta exacta: ¡Qué excelente noticia! 🚀 Para sumar tu negocio a BuscaYa y que más clientes te encuentren, ingresa a la siguiente pagina https://buscaya.neuralmediahouse.com ¡Estamos listos para apoyarte! 🤝\n\nCASO B (Pregunta qué es BuscaYa o cuánto cuesta):\nRespuesta exacta: BuscaYa es el asistente gratuito creado con mucho entusiasmo por Neural Media House para conectarte al instante con los comercios y oficios más cercanos registrados en nuestra plataforma. 🌟 Dime, ¿qué se te ofrece hoy y en qué colonia te encuentras? 📍\n\nCASO C (Pide hablar con un humano / asesor):\nRespuesta exacta: ¡Por supuesto que sí! 🙋‍♂️ Comunicate al siguiente numero 5645234452. ⏳\n\nCASO D (Pregunta por Caramelo Media Music):\nRespuesta exacta: ¡Claro que sí! 🎵 Caramelo Media Music es nuestra productora musical estrella registrada en la plataforma. Dime por favor en qué colonia te encuentras para ubicarte y darte toda la información de contacto con gusto. ✨\n\nCASO E (Chistes, tareas o temas ajenos):\nRespuesta exacta: ¡Hola! 😄 Me encanta cotorrear, pero mi misión especial es ayudarte a encontrar el negocio o servicio perfecto cerca de ti. Dime qué andas buscando y en qué colonia te encuentras para echarte la mano. 🧭\n\n=========================================\nNIVEL 2: FLUJO DE BÚSQUEDA (Variables requeridas)\nSi el usuario no está en el Nivel 1, extrae con cuidado del historial estas dos variables:\n\n$GIRO: El producto, comida u oficio exacto que busca (ej. tacos, café, cerrajero). Cuida de no confundirlo con ubicaciones.\n\n$UBICACION: La colonia, avenida o zona oficial procesada y recibida desde el backend.\n\nEvalúa qué variables tienes y ejecuta únicamente el estado que corresponda:\n\n[ESTADO 1]: $GIRO = Vacío  Y  $UBICACION = Vacío\n-> Acción: Responde exactamente con este mensaje alegre y sin asteriscos:\n¡Hola! 👋 Qué gusto saludarte. Soy el asistente de BuscaYa. Para echarte la mano a encontrar justo lo que necesitas, dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras? 🏙️\n\n[ESTADO 2]: $GIRO = Confirmado  Y  $UBICACION = Vacío\n-> Acción: Responde exactamente con este mensaje, reemplazando [$GIRO] y sin asteriscos:\n¡Me parece excelente! 🎉 Te ayudo con mucho gusto a buscar opciones de [$GIRO]. Para recomendarte los lugares más cerquita de ti, por favor escríbeme en qué colonia estás. 📍\n\n[ESTADO 3]: $GIRO = Vacío  Y  $UBICACION = Confirmada\n-> Acción: Responde exactamente con este mensaje, reemplazando [$UBICACION] y sin asteriscos:\n¡Ubicación recibida con éxito en [$UBICACION]! 📍 Qué buena zona. Ahora dime por favor: ¿qué comida, oficio o servicio estás buscando en este momento para buscar las mejores opciones registradas? 🔎\n\n[ESTADO 4]: $GIRO = Confirmado  Y  $UBICACION = Confirmada\n-> Acción: Desbloquea la base de datos y ejecuta el motor de filtrado.\n</arbol_de_decision>\n\n<motor_de_filtrado>\nEjecuta este bloque solo si llegaste al Estado 4:\n\nVERIFICACIÓN Y FILTRO DE GIRO:\n\nRevisa la lista de negocios activos en la plataforma.\n\nSelecciona exclusivamente los negocios cuyo giro coincida al 100% con [$GIRO].\n\nEVALUACIÓN DE ZONA Y HORARIOS:\n\nCompara la colonia del usuario con la del negocio para determinar si está en zona cercana (misma colonia o colindante, estimado hasta 4 km) o en zona más retirada.\n\nVerifica el día y la hora actual del mensaje frente al horario registrado del negocio para determinar si se encuentra Abierto o Cerrado en ese instante.\n\nRESULTADO DEL FILTRO:\n\nESCENARIO A: SÍ HAY NEGOCIO EN ZONA CERCANA (<= 4 km)\nResponde con esta estructura limpia, amable, con emojis y sin asteriscos (incluyendo estatus en vivo y horario):\n\n¡Excelente noticia! 🥳 Encontré esta opción de [$GIRO] muy cerquita de tu ubicación en [$UBICACION]:\n🏪 [Nombre exacto del Comercio en la plataforma]\n📍 Ubicación: [Colonia o dirección registrada] (Zona cercana)\n⏰ Horario: [Días y horas de labor registradas] ([Estatus actual: Abierto ahora o Cerrado])\n📞 Teléfono: [Teléfono a 10 dígitos limpios sin espacios ni guiones]\n🗺️ Mapa: https://www.google.com/maps/search/?api=1&query=[Nombre+Del+Comercio+Colonia]\n¿Te gustaría marcarles directo o prefieres revisar si hay otra opción? ✨\n\nESCENARIO B: NO HAY EN ZONA CERCANA, PERO SÍ HAY UNO MÁS LEJOS\nResponde con esta plantilla amable, con emojis y sin asteriscos:\n\nEstuve checando las opciones en [$UBICACION] 🔍 y por el momento no tenemos un negocio de [$GIRO] en tu zona inmediata. Sin embargo, encontré este registrado un poco más retirado que te puede servir:\n🏪 [Nombre exacto del Comercio en la plataforma]\n📍 Ubicación: [Colonia o dirección registrada] (Zona retirada)\n⏰ Horario: [Días y horas de labor registradas] ([Estatus actual: Abierto ahora o Cerrado])\n📞 Teléfono: [Teléfono a 10 dígitos limpios sin espacios ni guiones]\n🗺️ Mapa: https://www.google.com/maps/search/?api=1&query=[Nombre+Del+Comercio+Colonia]\n¿Qué te parece esta opción o prefieres buscar algo diferente? 🤔\n\nESCENARIO C: NO EXISTE NINGÚN NEGOCIO DE ESE GIRO\nResponde con esta plantilla amable, con emojis y sin asteriscos:\n\nFíjate que revisé tu ubicación en [$UBICACION] 🗺️ y ahorita no tenemos ningún negocio registrado de [$GIRO] ni cerquita ni en áreas aledañas. Ya apunté tu búsqueda para traer opciones de este tipo muy pronto. 📝 ¿Te gustaría que busquemos algún otro servicio? 💡\n</motor_de_filtrado>" + tasksPrompt + rulesPrompt;
+  return "# INSTRUCCIÓN DE SISTEMA CRÍTICA (PRIORIDAD MÁXIMA)\nEres el asistente inteligente de BuscaYa (creado por Neural Media House) para la Alcaldía Álvaro Obregón, CDMX.\nTu operación se rige por una MÁQUINA DE ESTADOS DINÁMICA. \n\n⚠️ REGLA DE ORO CONTRA REPETICIONES: Tienes estrictamente prohibido usar siempre la misma frase de bienvenida o repetir comentarios genéricos idénticos. Debes alternar dinámicamente tus aperturas y respuestas basándote en el banco de variantes autorizado.\n\n---\n\n# PASO 1: EVALUACIÓN DE ESTADOS (DETECTAR INTENCIÓN)\nAnaliza el mensaje del usuario y clasifíquelo en uno de los 5 ESTADOS posibles antes de responder:\n\n### 🔵 ESTADO 0: CIERRE / DESPEDIDA / AGRADECIMIENTO (\"Gracias\", \"Ok gracias\", \"Nos vemos\", \"Sale bye\", \"Listo\")\n- Cuándo se activa: Cuando el usuario da las gracias, se despide o indica el fin de la charla.\n- ACCIÓN OBLIGATORIA: Cierra la conversación de forma cálida, limpia la memoria de la sesión actual y da por concluido el ciclo. \n- VARIEDAD OBLIGATORIA DE CIERRE (Elige una distinta cada vez):\n  - Opción A: \"¡De nada! Fue un gusto ayudarte hoy en Álvaro Obregón. Que tengas excelente día, ¡vuelve cuando gustes! 👋\"\n  - Opción B: \"¡Para servirte! Aquí estamos en BuscaYa para lo que necesites. ¡Hasta pronto! 🌟\"\n  - Opción C: \"¡Con mucho gusto! Que tengas una gran jornada. Si necesitas otro negocio después, por aquí nos vemos. 🚀\"\n- Nota: Una vez emitido este cierre, la conversación se reinicia. Si el usuario vuelve a mandar mensaje después de esto, el sistema lo tratará como una nueva sesión iniciando en el Estado 1 con un saludo completamente distinto.\n\n### 🔴 ESTADO 1: SALUDO / INICIO (\"Hola\", \"Buenas tardes\", o mensaje nuevo tras un cierre)\n- Cuándo se activa: Cuando inicia la charla o tras haberse despedido previamente.\n- ACCIÓN OBLIGATORIA: Saluda de forma única y variable, prohibiendo repetir el saludo anterior. Debes rotar obligatoriamente entre estas 5 variantes de bienvenida:\n  - Variante 1: \"¡Hola! Qué gusto saludarte. Soy el asistente de BuscaYa en Álvaro Obregón 📍. Dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras?\"\n  - Variante 2: \"¡Qué tal! Bienvenido a BuscaYa tu guía local en Álvaro Obregón 🏙️. Para empezar a buscarte opciones, ¿qué necesitas hoy y en qué colonia estás ubicado?\"\n  - Variante 3: \"¡Hola, qué tal! Aquí el equipo de BuscaYa listo para echarte la mano en Álvaro Obregón 🚀. Cuéntame, ¿qué servicio o comercio buscas y por qué colonia andas?\"\n  - Variante 4: \"¡Hola! Qué bueno tenerte por aquí. Ayúdame a ayudarte en Álvaro Obregón 📍: ¿qué andas buscando ahorita y en qué colonia te localizas?\"\n  - Variante 5: \"¡Hola! Bienvenido a las recomendaciones locales de BuscaYa en Álvaro Obregón 🎯. Escríbeme qué negocio necesitas y en qué colonia estás para comenzar.\"\n- PROHIBICIÓN: CERO NEGOCIOS DE LA BASE DE DATOS EN ESTE ESTADO.\n\n### 🟠 ESTADO 2: SÍ Tienes [GIRO], pero NO tienes [UBICACIÓN]\n- ACCIÓN OBLIGATORIA: Confirma lo que busca y exige la colonia o ubicación GPS.\n- VARIEDAD DE RESPUESTA: Varía tu redacción para no sonar robotizado:\n  - Opción A: \"¡Claro que sí! Vamos a buscar [GIRO]. Para mandarte los más cercanos a ti, escríbeme en qué colonia o avenida de Álvaro Obregón estás, o compárteme tu ubicación con el pin de WhatsApp 📍.\"\n  - Opción B: \"¡Entendido! Para ubicarte [GIRO] cerquita, por favor dime en qué colonia de Álvaro Obregón te encuentras o mándame tu ubicación actual por aquí 📍.\"\n\n### 🟡 ESTADO 3: SÍ tienes [UBICACIÓN], pero NO tienes [GIRO]\n- ACCIÓN OBLIGATORIA: Confirma su zona en Álvaro Obregón y pregunta qué giro desea.\n- VARIEDAD DE RESPUESTA:\n  - Opción A: \"¡Ubicación confirmada en [COLONIA], Álvaro Obregón! 📍 Dime: ¿qué comercio, comida o servicio estás buscando en este momento?\"\n  - Opción B: \"¡Perfecto, te tengo ubicado en [COLONIA]! 📍 ¿Qué andas buscando ahorita para rastrearte las mejores opciones cerquita?\"\n\n### 🟢 ESTADO 4: SÍ tienes [GIRO] Y SÍ tienes [UBICACIÓN]\n- ACCIÓN OBLIGATORIA: Pasa al PASO 2 para buscar en la base de datos aplicando los filtros estrictos de cercanía y mismo giro en Álvaro Obregón.\n\n---\n\n# PASO 2: REGLAS DE FILTRADO Y FORMATO DE ENTREGA (ESTADO 4)\n1. Filtro Estricto de Giro: Solo selecciona negocios que coincidan al 100% con el giro solicitado (cero recomendaciones cruzadas de otras categorías).\n2. Cercanía Real: Prioriza negocios en su misma colonia o en colonias colindantes a máximo 1-2 km en Álvaro Obregón.\n3. Formato Ficha Compacta Dinámica: Varía ligeramente la frase de entrega para que no suene igual en cada consulta:\n   - \"Aquí tienes la opción de [GIRO] más cercana en [COLONIA], Álvaro Obregón:\"\n   - o \"Encontré este negocio de [GIRO] cerquita de tu zona en [COLONIA]:\"\n   - [Nombre del Comercio]\n   - Tel: [10 dígitos limpios, ej. 5512345678]\n   - Ubicación: https://maps.google.com/?q=[Nombre+Del+Comercio+Colonia+Alvaro+Obregon]\n   - ¿Deseas llamar directamente o prefieres ver la siguiente opción más cercana?\n\n---\n\n# PASO 3: PROHIBICIONES ABSOLUTAS (CERO TOLERANCIA)\n1. NUNCA repitas dos veces seguidas la misma variante de bienvenida (rota obligatoriamente entre las 5 opciones del Estado 1).\n2. NUNCA envíes negocios si el usuario no ha dado su ubicación y su giro.\n3. NUNCA dejes la conversación abierta cuando el usuario da las gracias o se despide (activa de inmediato el Estado 0 de cierre).\n4. NUNCA mezcles giros de negocios diferentes al que pidió el cliente.\n5. NUNCA pongas guiones ni espacios en los teléfonos (solo 10 dígitos corridos)." + tasksPrompt + rulesPrompt;
 }
 
 CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt();
@@ -2632,6 +2638,96 @@ function normalizeFamilyKey(key) {
 /**
  * Formateador de Horarios y Apertura según Modelo Oficial BuscaYa (100% Sin Asteriscos)
  */
+/**
+ * Motor de Coincidencia de Tareas Dinámicas del Administrador
+ */
+function matchesTaskCondition(condition, normMsg, rawMsg) {
+  if (!condition || typeof condition !== 'string') return false;
+  const cClean = condition.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const mClean = (normMsg || rawMsg || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  // 1. Coincidencia directa
+  if (mClean.length >= 4 && (cClean.includes(mClean) || mClean.includes(cClean))) {
+    return true;
+  }
+
+  // 2. Extraer frases entre comillas
+  const quoteMatches = cClean.match(/["']([^"']+)["']/g);
+  if (quoteMatches) {
+    for (const q of quoteMatches) {
+      const qClean = q.replace(/["']/g, '').trim();
+      if (qClean.length >= 3 && mClean.includes(qClean)) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Quitar prefijos comunes ("cuando el usuario pregunte", "si dicen", etc.)
+  const strippedCond = cClean.replace(/^(?:cuando\s+(?:el\s+usuario\s+)?(?:pregunte|diga|hable|pida|escriba)|si\s+(?:el\s+usuario\s+)?(?:pregunta|dice|pide|quiere|escribe)|si\s+ocurre)\s+/i, '').trim();
+  if (strippedCond.length >= 4 && mClean.includes(strippedCond)) {
+    return true;
+  }
+
+  // 4. Tokens clave
+  const stopWords = new Set(["cuando", "usuario", "pregunte", "pregunta", "diga", "dice", "sobre", "acerca", "para", "como", "cual", "donde", "tiene", "tienen", "este", "esta", "estos", "estas"]);
+  const tokens = strippedCond.split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
+  if (tokens.length >= 2) {
+    const matchCount = tokens.filter(tok => mClean.includes(tok)).length;
+    if (matchCount >= Math.min(2, tokens.length)) {
+      return true;
+    }
+  } else if (tokens.length === 1 && mClean.includes(tokens[0]) && tokens[0].length >= 5) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Ejecutor de la Acción de una Tarea Dinámica
+ */
+function executeCustomTaskAction(action, context = {}) {
+  if (!action || typeof action !== 'string') return "";
+  let cleanAction = action.trim();
+
+  const quoted = cleanAction.match(/["']([^"']{8,})["']/);
+  if (quoted && quoted[1]) {
+    return quoted[1].replace(/\*/g, '').trim();
+  }
+
+  const strippedPrefix = cleanAction.replace(/^(?:responder(?:\s+con|\s+que|\s+al\s+usuario|\s+diciendo)?|decirle(?:\s+que)?|informarle(?:\s+que)?|contestar(?:\s+que)?)\s*:?\s*/i, '').trim();
+  if (strippedPrefix.length > 10) {
+    return strippedPrefix.replace(/\*/g, '').trim();
+  }
+
+  return cleanAction.replace(/\*/g, '').trim();
+}
+
+/**
+ * Formato Oficial Ficha Compacta Dinámica (Estado 4 - Paso 2)
+ */
+function formatCompactBusinessCard(b, giro, ubicacion, userSession = {}, isNearby = true) {
+  const cleanPhone10 = String(b.phone || "5512345678").replace(/\D/g, '').slice(-10);
+  const colBiz = b.neighborhood || b.colonia || (b.address && b.address.neighborhood) || ubicacion || "Álvaro Obregón";
+  const mapsQuery = encodeURIComponent(`${b.businessName} ${colBiz} Alvaro Obregon`);
+  const mapsUrl = `https://maps.google.com/?q=${mapsQuery}`;
+
+  const introVariants = [
+    `Aquí tienes la opción de ${giro} más cercana en ${ubicacion}, Álvaro Obregón:\n`,
+    `Encontré este negocio de ${giro} cerquita de tu zona en ${ubicacion}:\n`
+  ];
+  let introIdx = ((userSession.lastCardIntroIndex ?? -1) + 1) % introVariants.length;
+  userSession.lastCardIntroIndex = introIdx;
+  const intro = introVariants[introIdx];
+
+  return intro +
+    `${b.businessName}\n` +
+    `Tel: ${cleanPhone10}\n` +
+    `Ubicación: ${mapsUrl}\n` +
+    `¿Deseas llamar directamente o prefieres ver la siguiente opción más cercana?`;
+}
+
+
 function formatBusinessSchedule(b, mexTime) {
   const openInfo = typeof isBusinessOpenNow === 'function' ? isBusinessOpenNow(b, mexTime) : { isOpen: true, hoursDisplay: "09:00 - 20:00" };
   const openStatus = openInfo.isOpen ? "Abierto ahora" : "Cerrado";
@@ -4168,12 +4264,55 @@ async function processBuscaYaMessage({
     userSession.lockedTerm = nluResult.termino_especifico || userSession.lockedTerm;
   }
 
+  // Pre-evaluar tareas personalizadas activas del Control Maestro
+  let matchedCustomTask = null;
+  const activeTasks = (SERVER_AI_TRAINING_CONFIG && Array.isArray(SERVER_AI_TRAINING_CONFIG.tasks))
+    ? SERVER_AI_TRAINING_CONFIG.tasks.filter(t => t && t.active)
+    : [];
+  for (const t of activeTasks) {
+    if (matchesTaskCondition(t.condition, normMsg, messageText)) {
+      matchedCustomTask = t;
+      break;
+    }
+  }
+
   // ==============================================================
-    // ==============================================================
-  // ÁRBOL DE DECISIÓN: NIVEL 1 (INTENCIONES ESPECIALES DE ALTA PRIORIDAD - SIN ASTERISCOS)
+  // ESTADO 0: CIERRE / DESPEDIDA / AGRADECIMIENTO (MÁQUINA DE ESTADOS DINÁMICA)
   // ==============================================================
-  // CASO D: Pregunta por Caramelo Media Music (cuando aún no tenemos su colonia)
-  if ((nluResult.intencion === 'CARAMELO_MUSIC' || /(?:caramelo(?:\s+media)?(?:\s+music)?)/i.test(normMsg)) && !userSession.coloniaActual) {
+  if (nluResult.intencion === 'AGRADECIMIENTO_DESPEDIDA' || /(?:muchas\s+gracias|mil\s+gracias|gracias|ok\s+gracias|perfecto\s+gracias|nos\s+vemos|sale\s+bye|adi[oó]s|adios|bye|chao|hasta\s+luego|listo|ya\s+qued[oó]|vale\s+gracias)/i.test(normMsg)) {
+    currentPhase = 0;
+    userSession.intencion_actual = "cierre_sesion";
+    userSession.sesion_concluida = true;
+
+    // VARIEDAD OBLIGATORIA DE CIERRE (Elige una distinta cada vez):
+    const farewellVariants = [
+      "¡De nada! Fue un gusto ayudarte hoy en Álvaro Obregón. Que tengas excelente día, ¡vuelve cuando gustes! 👋",
+      "¡Para servirte! Aquí estamos en BuscaYa para lo que necesites. ¡Hasta pronto! 🌟",
+      "¡Con mucho gusto! Que tengas una gran jornada. Si necesitas otro negocio después, por aquí nos vemos. 🚀"
+    ];
+    let fIdx = ((userSession.lastFarewellIndex ?? -1) + 1) % farewellVariants.length;
+    userSession.lastFarewellIndex = fIdx;
+    finalBotReplyText = farewellVariants[fIdx];
+
+    // Limpia la memoria de la sesión actual y da por concluido el ciclo
+    userSession.coloniaActual = null;
+    userSession.lockedFamily = null;
+    userSession.lockedTerm = null;
+    userSession.shownBusinessIds = [];
+  }
+  // ==============================================================
+  // EVALUACIÓN DE TAREAS Y DIRECTIVAS EN VIVO DEL CONTROL MAESTRO
+  // ==============================================================
+  else if (matchedCustomTask) {
+    console.log(`[BuscaYa Live Custom Task Triggered] ID: ${matchedCustomTask.id} | Condición: "${matchedCustomTask.condition}"`);
+    userSession.intencion_actual = "tarea_personalizada_" + (matchedCustomTask.id || "custom");
+    finalBotReplyText = executeCustomTaskAction(matchedCustomTask.action, { userSession, activeBusinesses, mexTime, normMsg, messageText });
+  }
+  // ==============================================================
+  // NIVEL 1: INTENCIONES ESPECIALES (Prioridad Alta)
+  // ==============================================================
+  // CASO D: Pregunta por Caramelo Media Music
+  else if ((nluResult.intencion === 'CARAMELO_MUSIC' || /(?:caramelo(?:\s+media)?(?:\s+music)?)/i.test(normMsg)) && !userSession.coloniaActual) {
     currentPhase = 1;
     userSession.intencion_actual = "caramelo_music";
     userSession.lockedFamily = "ENTRETENIMIENTO_Y_ARTE";
@@ -4204,13 +4343,27 @@ async function processBuscaYaMessage({
     userSession.intencion_actual = "offtopic";
     finalBotReplyText = "¡Hola! 😄 Me encanta cotorrear, pero mi misión especial es ayudarte a encontrar el negocio o servicio perfecto cerca de ti. Dime qué andas buscando y en qué colonia te encuentras para echarte la mano. 🧭";
   }
-  // SALUDO PURO (ESTADO 1)
-  else if (nluResult.intencion === 'SALUDO' || /^(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|hey|saludos|que\s+onda)[!.,\s]*$/i.test(normMsg)) {
+  // ==============================================================
+  // ESTADO 1: SALUDO / INICIO (O MENSAJE NUEVO TRAS UN CIERRE PREVIO)
+  // ==============================================================
+  else if (userSession.sesion_concluida || nluResult.intencion === 'SALUDO' || /^(?:hola|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|hey|saludos|que\s+onda)[!.,\s]*$/i.test(normMsg)) {
     currentPhase = 1;
     userSession.intencion_actual = "saludo";
+    userSession.sesion_concluida = false;
     userSession.lockedFamily = null;
     userSession.lockedTerm = null;
-    finalBotReplyText = "¡Hola! 👋 Qué gusto saludarte. Soy el asistente de BuscaYa. Para echarte la mano a encontrar justo lo que necesitas, dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras? 🏙️";
+
+    // BANCO ROTATIVO DE BIENVENIDA (5 VARIANTES SIN REPETIR DOS VECES SEGUIDAS)
+    const welcomeVariants = [
+      "¡Hola! Qué gusto saludarte. Soy el asistente de BuscaYa en Álvaro Obregón 📍. Dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras?",
+      "¡Qué tal! Bienvenido a BuscaYa tu guía local en Álvaro Obregón 🏙️. Para empezar a buscarte opciones, ¿qué necesitas hoy y en qué colonia estás ubicado?",
+      "¡Hola, qué tal! Aquí el equipo de BuscaYa listo para echarte la mano en Álvaro Obregón 🚀. Cuéntame, ¿qué servicio o comercio buscas y por qué colonia andas?",
+      "¡Hola! Qué bueno tenerte por aquí. Ayúdame a ayudarte en Álvaro Obregón 📍: ¿qué andas buscando ahorita y en qué colonia te localizas?",
+      "¡Hola! Bienvenido a las recomendaciones locales de BuscaYa en Álvaro Obregón 🎯. Escríbeme qué negocio necesitas y en qué colonia estás para comenzar."
+    ];
+    let wIdx = ((userSession.lastWelcomeIndex ?? -1) + 1) % welcomeVariants.length;
+    userSession.lastWelcomeIndex = wIdx;
+    finalBotReplyText = welcomeVariants[wIdx];
   }
   // PEDIR OTRA OPCIÓN / SIGUIENTE OPCIÓN
   else if (nluResult.intencion === 'PEDIR_MAS_OPCIONES' || /(?:siguiente\s+opci[oó]n|otra\s+opci[oó]n|ver\s+la\s+siguiente|m[aá]s\s+opciones|otro)/i.test(normMsg)) {
@@ -4231,20 +4384,24 @@ async function processBuscaYaMessage({
       if (q.status === 'FOUND_NEARBY' && q.business) {
         selectedBiz = q.business;
         userSession.shownBusinessIds.push(selectedBiz.id);
-        finalBotReplyText = formatBusinessCardModel(selectedBiz, giroPedido, userSession.coloniaActual, true);
+        finalBotReplyText = formatCompactBusinessCard(selectedBiz, giroPedido, userSession.coloniaActual, userSession, true);
       } else if (q.status === 'FOUND_FAR' && q.business) {
         selectedBiz = q.business;
         userSession.shownBusinessIds.push(selectedBiz.id);
-        finalBotReplyText = formatBusinessCardModel(selectedBiz, giroPedido, userSession.coloniaActual, false);
+        finalBotReplyText = formatCompactBusinessCard(selectedBiz, giroPedido, userSession.coloniaActual, userSession, false);
       } else {
         finalBotReplyText = "Fíjate que revisé tu ubicación en " + userSession.coloniaActual + " 🗺️ y por el momento no tenemos más opciones registradas de " + giroPedido + ". Ya apunté tu búsqueda para traer más opciones muy pronto. 📝 ¿Te gustaría que busquemos algún otro servicio? 💡";
       }
     } else {
-      finalBotReplyText = "¡Hola! 👋 Qué gusto saludarte. Soy el asistente de BuscaYa. Para echarte la mano a encontrar justo lo que necesitas, dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras? 🏙️";
+      const welcomeVariants = [
+        "¡Hola! Qué gusto saludarte. Soy el asistente de BuscaYa en Álvaro Obregón 📍. Dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras?",
+        "¡Qué tal! Bienvenido a BuscaYa tu guía local en Álvaro Obregón 🏙️. Para empezar a buscarte opciones, ¿qué necesitas hoy y en qué colonia estás ubicado?"
+      ];
+      finalBotReplyText = welcomeVariants[0];
     }
   }
   // ==============================================================
-  // ÁRBOL DE DECISIÓN: NIVEL 2 (FLUJO DE BÚSQUEDA - ESTADOS 1, 2, 3, 4 SIN ASTERISCOS)
+  // EVALUACIÓN DE ESTADOS 1, 2, 3, 4 (MÁQUINA DE ESTADOS DINÁMICA)
   // ==============================================================
   else {
     const hasGiro = Boolean(userSession.lockedFamily || userSession.lockedTerm);
@@ -4254,23 +4411,44 @@ async function processBuscaYaMessage({
     if (!hasGiro && !hasUbicacion) {
       currentPhase = 1;
       userSession.intencion_actual = "esperando_giro_y_ubicacion";
-      finalBotReplyText = "¡Hola! 👋 Qué gusto saludarte. Soy el asistente de BuscaYa. Para echarte la mano a encontrar justo lo que necesitas, dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras? 🏙️";
+      const welcomeVariants = [
+        "¡Hola! Qué gusto saludarte. Soy el asistente de BuscaYa en Álvaro Obregón 📍. Dime por favor: ¿qué negocio, comida o servicio estás buscando y en qué colonia te encuentras?",
+        "¡Qué tal! Bienvenido a BuscaYa tu guía local en Álvaro Obregón 🏙️. Para empezar a buscarte opciones, ¿qué necesitas hoy y en qué colonia estás ubicado?",
+        "¡Hola, qué tal! Aquí el equipo de BuscaYa listo para echarte la mano en Álvaro Obregón 🚀. Cuéntame, ¿qué servicio o comercio buscas y por qué colonia andas?",
+        "¡Hola! Qué bueno tenerte por aquí. Ayúdame a ayudarte en Álvaro Obregón 📍: ¿qué andas buscando ahorita y en qué colonia te localizas?",
+        "¡Hola! Bienvenido a las recomendaciones locales de BuscaYa en Álvaro Obregón 🎯. Escríbeme qué negocio necesitas y en qué colonia estás para comenzar."
+      ];
+      let wIdx = ((userSession.lastWelcomeIndex ?? -1) + 1) % welcomeVariants.length;
+      userSession.lastWelcomeIndex = wIdx;
+      finalBotReplyText = welcomeVariants[wIdx];
     }
-    // [ESTADO 2]: $GIRO = Confirmado Y $UBICACION = Vacío (Solo pide escribir colonia)
+    // [ESTADO 2]: SÍ Tienes [GIRO], pero NO tienes [UBICACIÓN]
     else if (hasGiro && !hasUbicacion) {
       currentPhase = 2;
       userSession.intencion_actual = "esperando_ubicacion";
       const giroPedido = userSession.lockedTerm || userSession.lockedFamily;
-      finalBotReplyText = "¡Me parece excelente! 🎉 Te ayudo con mucho gusto a buscar opciones de " + giroPedido + ". Para recomendarte los lugares más cerquita de ti, por favor escríbeme en qué colonia estás. 📍";
+      const state2Variants = [
+        "¡Claro que sí! Vamos a buscar " + giroPedido + ". Para mandarte los más cercanos a ti, escríbeme en qué colonia o avenida de Álvaro Obregón estás, o compárteme tu ubicación con el pin de WhatsApp 📍.",
+        "¡Entendido! Para ubicarte " + giroPedido + " cerquita, por favor dime en qué colonia de Álvaro Obregón te encuentras o mándame tu ubicación actual por aquí 📍."
+      ];
+      let s2Idx = ((userSession.lastState2Index ?? -1) + 1) % state2Variants.length;
+      userSession.lastState2Index = s2Idx;
+      finalBotReplyText = state2Variants[s2Idx];
     }
-    // [ESTADO 3]: $GIRO = Vacío Y $UBICACION = Confirmada
+    // [ESTADO 3]: SÍ tienes [UBICACIÓN], pero NO tienes [GIRO]
     else if (!hasGiro && hasUbicacion) {
       currentPhase = 2;
       userSession.intencion_actual = "esperando_giro";
       const colDetectada = userSession.coloniaActual;
-      finalBotReplyText = "¡Ubicación recibida con éxito en " + colDetectada + "! 📍 Qué buena zona. Ahora dime por favor: ¿qué comida, oficio o servicio estás buscando en este momento para buscar las mejores opciones registradas? 🔎";
+      const state3Variants = [
+        "¡Ubicación confirmada en " + colDetectada + ", Álvaro Obregón! 📍 Dime: ¿qué comercio, comida o servicio estás buscando en este momento?",
+        "¡Perfecto, te tengo ubicado en " + colDetectada + "! 📍 ¿Qué andas buscando ahorita para rastrearte las mejores opciones cerquita?"
+      ];
+      let s3Idx = ((userSession.lastState3Index ?? -1) + 1) % state3Variants.length;
+      userSession.lastState3Index = s3Idx;
+      finalBotReplyText = state3Variants[s3Idx];
     }
-    // [ESTADO 4]: $GIRO = Confirmado Y $UBICACION = Confirmada -> <motor_de_filtrado>
+    // [ESTADO 4]: SÍ tienes [GIRO] Y SÍ tienes [UBICACIÓN] -> PASO 2 BÚSQUEDA Y FILTRADO
     else {
       currentPhase = 3;
       userSession.intencion_actual = "entregar_negocio";
@@ -4285,20 +4463,15 @@ async function processBuscaYaMessage({
         mexTime
       });
 
-      // ESCENARIO A: SÍ HAY NEGOCIO EN ZONA CERCANA (<= 4 km / misma colonia o colindante)
       if (q.status === 'FOUND_NEARBY' && q.business) {
         selectedBiz = q.business;
         userSession.shownBusinessIds.push(selectedBiz.id);
-        finalBotReplyText = formatBusinessCardModel(selectedBiz, giroPedido, userSession.coloniaActual, true);
-      }
-      // ESCENARIO B: NO HAY EN ZONA CERCANA (<= 4 km), PERO SÍ HAY UNO MÁS LEJOS
-      else if (q.status === 'FOUND_FAR' && q.business) {
+        finalBotReplyText = formatCompactBusinessCard(selectedBiz, giroPedido, userSession.coloniaActual, userSession, true);
+      } else if (q.status === 'FOUND_FAR' && q.business) {
         selectedBiz = q.business;
         userSession.shownBusinessIds.push(selectedBiz.id);
-        finalBotReplyText = formatBusinessCardModel(selectedBiz, giroPedido, userSession.coloniaActual, false);
-      }
-      // ESCENARIO C: NO EXISTE NINGÚN NEGOCIO DE ESE GIRO
-      else {
+        finalBotReplyText = formatCompactBusinessCard(selectedBiz, giroPedido, userSession.coloniaActual, userSession, false);
+      } else {
         finalBotReplyText = "Fíjate que revisé tu ubicación en " + userSession.coloniaActual + " 🗺️ y ahorita no tenemos ningún negocio registrado de " + giroPedido + " ni cerquita ni en áreas aledañas. Ya apunté tu búsqueda para traer opciones de este tipo muy pronto. 📝 ¿Te gustaría que busquemos algún otro servicio? 💡";
       }
     }
@@ -6335,6 +6508,131 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+
+  
+  // ==============================================================
+  // AUTO-CORRECTOR INTELIGENTE EN VIVO (SELF-HEALING AI PARA WHATSAPP)
+  // Permite al Administrador reportar un error y que la IA se auto-corrija al instante
+  // ==============================================================
+  if (req.method === 'POST' && pathname === '/api/admin/ai-training/auto-heal') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { issueDescription } = JSON.parse(body || '{}');
+        if (!issueDescription || !issueDescription.trim()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Por favor describe el error o comportamiento que deseas corregir.' }));
+          return;
+        }
+
+        const cleanDesc = issueDescription.trim();
+        console.log('[BuscaYa Auto-Heal Engine] Analizando reporte de error:', cleanDesc);
+
+        let diagnosis = "Diagnóstico completado y directiva correctiva generada automáticamente.";
+        let generatedCondition = cleanDesc;
+        let generatedAction = cleanDesc;
+
+        // Intentar estructuración inteligente con IA (Groq) si está disponible
+        if (process.env.GROQ_API_KEY) {
+          try {
+            const aiPrompt = `Eres el Ingeniero de Auto-Reparación de Inteligencia Artificial para BuscaYa en WhatsApp.
+El administrador de la plataforma ha reportado el siguiente error o comportamiento indeseado:
+"${cleanDesc}"
+
+Tu misión es generar una corrección en formato JSON estricto con:
+1. "diagnosis": Resumen breve (1 línea) de qué estaba fallando y cómo se corrige.
+2. "condition": Condición precisa o frase que activa la corrección cuando el usuario la escribe en WhatsApp (ej. "Cuando el usuario pregunte por X en Y").
+3. "action": Instrucción o respuesta exacta que la IA de WhatsApp DEBE dar para resolver el problema y satisfacer al usuario (sin asteriscos).
+4. "ruleSummary": Una regla de oro de 1 línea para evitar que el error se repita.
+
+Responde ÚNICAMENTE con el objeto JSON válido:`;
+
+            const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": "Bearer " + process.env.GROQ_API_KEY,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+                messages: [{ role: "user", content: aiPrompt }],
+                temperature: 0.2,
+                max_tokens: 400
+              })
+            });
+
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              const rawAiText = aiData.choices?.[0]?.message?.content || "";
+              const jsonMatch = rawAiText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsedCorrection = JSON.parse(jsonMatch[0]);
+                if (parsedCorrection.condition) generatedCondition = parsedCorrection.condition;
+                if (parsedCorrection.action) generatedAction = parsedCorrection.action.replace(/\*/g, '');
+                if (parsedCorrection.diagnosis) diagnosis = parsedCorrection.diagnosis;
+              }
+            }
+          } catch (aiErr) {
+            console.warn('[Auto-Heal AI Fallback]', aiErr.message);
+          }
+        }
+
+        // Si la acción no fue estructurada, generar heurística directa limpia
+        if (generatedAction === cleanDesc) {
+          diagnosis = `Regla de corrección directa creada para: "${cleanDesc.slice(0, 60)}..."`;
+          generatedCondition = `Cuando ocurra: "${cleanDesc}"`;
+          generatedAction = cleanDesc.replace(/\*/g, '');
+        }
+
+        // Crear la nueva tarea correctiva en vivo
+        const newTask = {
+          id: `auto-fix-${Date.now()}`,
+          active: true,
+          condition: generatedCondition,
+          action: generatedAction,
+          priority: "Alta (Auto-Corrección)",
+          diagnosis: diagnosis,
+          createdAt: new Date().toISOString()
+        };
+
+        if (!Array.isArray(SERVER_AI_TRAINING_CONFIG.tasks)) {
+          SERVER_AI_TRAINING_CONFIG.tasks = [];
+        }
+        SERVER_AI_TRAINING_CONFIG.tasks.unshift(newTask);
+
+        if (!Array.isArray(SERVER_AI_TRAINING_CONFIG.quickRules)) {
+          SERVER_AI_TRAINING_CONFIG.quickRules = [];
+        }
+        SERVER_AI_TRAINING_CONFIG.quickRules.unshift(`Auto-Corrección: ${diagnosis}`);
+
+        SERVER_AI_TRAINING_CONFIG.updatedAt = new Date().toISOString();
+
+        // Compilar inmediatamente el Master System Prompt en memoria viva
+        CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
+        saveServerDatabase();
+
+        console.log('[BuscaYa Auto-Heal Engine] ¡Error solucionado y directiva inyectada exitosamente!');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "¡Error diagnosticado y solucionado exitosamente! La directiva ya está activa en vivo en WhatsApp.",
+          newTask,
+          diagnosis,
+          tasks: SERVER_AI_TRAINING_CONFIG.tasks,
+          quickRules: SERVER_AI_TRAINING_CONFIG.quickRules,
+          compiledPrompt: CURRENT_SYSTEM_PROMPT
+        }));
+      } catch (err) {
+        console.error('[BuscaYa Auto-Heal Error]', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
 
   if (req.method === 'POST' && pathname === '/api/admin/ai-training/quick-fix') {
     let body = '';

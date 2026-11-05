@@ -4688,6 +4688,98 @@ async function handleApplyQuickFix() {
   }
 }
 
+/**
+ * Auto-Corrector Inteligente de Errores en Vivo (Auto-Heal Engine)
+ * Describe cualquier problema en lenguaje común y el sistema genera el diagnóstico,
+ * crea la directiva ejecutable en vivo y recompila el motor de WhatsApp al instante.
+ */
+async function handleAutoHealAiError() {
+  const issueInput = document.getElementById("aiAutoHealIssueInput");
+  const resultsContainer = document.getElementById("aiAutoHealResultsContainer");
+  const issueDescription = (issueInput ? issueInput.value.trim() : "");
+
+  if (!issueDescription) {
+    alert("Por favor describe el error o comportamiento que deseas corregir.");
+    return;
+  }
+
+  const btn = document.getElementById("aiAutoHealBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Analizando y Auto-Corrigiendo con IA...</span>`;
+  }
+  if (resultsContainer) {
+    resultsContainer.classList.remove("hidden");
+    resultsContainer.innerHTML = `<div class="p-3 bg-purple-50 text-purple-800 rounded-xl text-xs flex items-center space-x-2 border border-purple-200"><i class="fa-solid fa-gear fa-spin text-purple-600"></i><span>Analizando reporte, generando diagnóstico y directiva correctiva en vivo...</span></div>`;
+  }
+
+  try {
+    const res = await fetch("/api/admin/ai-training/auto-heal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ issueDescription })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (issueInput) issueInput.value = "";
+      if (typeof showToastNotification === 'function') {
+        showToastNotification("🚀 ¡Directiva correctiva aplicada y activa en WhatsApp!");
+      }
+
+      if (resultsContainer) {
+        resultsContainer.innerHTML = `
+          <div class="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 space-y-2">
+            <div class="flex items-center space-x-2 font-black text-emerald-800">
+              <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+              <span>¡Error Resuelto e Inyectado en Vivo en WhatsApp!</span>
+            </div>
+            <p><strong>Diagnóstico:</strong> ${data.diagnosis || "Directiva correctiva generada exitosamente."}</p>
+            <div class="bg-white p-3 rounded-xl border border-emerald-200 text-xs font-mono space-y-1">
+              <div><span class="text-gray-500 font-sans font-bold">Condición:</span> ${data.newTask?.condition || issueDescription}</div>
+              <div><span class="text-gray-500 font-sans font-bold">Acción Ejecutable:</span> ${data.newTask?.action || issueDescription}</div>
+            </div>
+            <div class="text-[11px] text-emerald-700 font-bold flex items-center space-x-1">
+              <i class="fa-solid fa-bolt text-amber-500"></i>
+              <span>Esta corrección ya se encuentra activa para cualquier chat de WhatsApp en tiempo real.</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const editor = document.getElementById("aiMasterPromptEditor");
+      if (editor && data.compiledPrompt) editor.value = data.compiledPrompt;
+      const promptView = document.getElementById("aiPromptCompiledView");
+      if (promptView && data.compiledPrompt) promptView.value = data.compiledPrompt;
+
+      if (Array.isArray(data.tasks)) {
+        if (typeof CURRENT_AI_TRAINING_STATE !== 'undefined') {
+          CURRENT_AI_TRAINING_STATE.tasks = data.tasks;
+        }
+        if (typeof renderAiTasksCards === 'function') {
+          renderAiTasksCards(data.tasks);
+        }
+      }
+      if (Array.isArray(data.quickRules) && typeof renderAiQuickRulesChips === 'function') {
+        if (typeof CURRENT_AI_TRAINING_STATE !== 'undefined') {
+          CURRENT_AI_TRAINING_STATE.quickRules = data.quickRules;
+        }
+        renderAiQuickRulesChips(data.quickRules);
+      }
+    } else {
+      alert("Error al auto-corregir: " + (data.error || "Error desconocido"));
+      if (resultsContainer) resultsContainer.classList.add("hidden");
+    }
+  } catch (err) {
+    alert("Error de comunicación: " + err.message);
+    if (resultsContainer) resultsContainer.classList.add("hidden");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i><span>🚀 Corregir y Activar en Vivo Ahora</span>`;
+    }
+  }
+}
+
 // ==========================================================
 // NÚCLEO DE RESPUESTA DE IA: GROQ AI & SYSTEM PROMPT SYNC
 // ==========================================================
