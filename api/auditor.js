@@ -118,16 +118,34 @@ async function runFullVercelAudit() {
     auditGroq()
   ]);
 
+  let isPaused = false;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const dbPath = path.join(__dirname, '..', 'data', 'server-db.json');
+    if (fs.existsSync(dbPath)) {
+      const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+      isPaused = !!db.whatsappApiPaused;
+    }
+  } catch (_) {}
+
   const whatsappMeta = {
     healthy: true,
     httpStatus: 200,
     mode: "meta_cloud_api",
     qrDisabled: true,
+    connected: !isPaused,
+    paused: isPaused,
+    status: isPaused ? "paused_by_user" : "active",
     phoneNumberId: "1347239435149856",
     phoneNumber: "+52 1 55 6326 6526",
     webhookPath: "/api/whatsapp/webhook",
-    semaphore: "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)",
-    detail: "Nombre: Busca Ya | Tel: +52 1 55 6326 6526 | Phone ID: 1347239435149856 (Meta Cloud API Activo)"
+    semaphore: isPaused
+      ? "🟡 WhatsApp: Desconectado / En Pausa Temporal (Credenciales Preservadas al 100%)"
+      : "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)",
+    detail: isPaused
+      ? "Nombre: Busca Ya | Tel: +52 1 55 6326 6526 | Phone ID: 1347239435149856 (API Desconectada a petición del usuario. Toda la información, credenciales y números se mantienen 100% preservados para reconectar cuando se solicite)"
+      : "Nombre: Busca Ya | Tel: +52 1 55 6326 6526 | Phone ID: 1347239435149856 (Meta Cloud API Activo)"
   };
 
   const geoSearch = {

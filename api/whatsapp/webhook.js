@@ -60,6 +60,30 @@ module.exports = async (req, res) => {
 
   // 2. RECEPCIÓN DE MENSAJES (POST)
   if (req.method === 'POST') {
+    // Verificación de pausa/desconexión temporal solicitada por el usuario
+    let isPaused = false;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const dbPath = path.join(__dirname, '..', '..', 'data', 'server-db.json');
+      if (fs.existsSync(dbPath)) {
+        const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+        isPaused = !!db.whatsappApiPaused;
+      }
+    } catch (_) {}
+
+    if (isPaused) {
+      console.log('[Meta Cloud Webhook Paused] Mensaje entrante descartado porque la API de WhatsApp está en pausa temporal. Credenciales 100% preservadas.');
+      const resp = {
+        success: true,
+        status: "whatsapp_api_paused",
+        message: "La API de WhatsApp está desconectada temporalmente a petición del usuario. Credenciales intactas."
+      };
+      if (typeof res.status === 'function') return res.status(200).json(resp);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify(resp));
+    }
+
     let payload = req.body;
     if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
       try {

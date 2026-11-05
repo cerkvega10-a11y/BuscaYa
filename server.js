@@ -1740,6 +1740,19 @@ const DEFAULT_BIWEEKLY_REPORTS_CONFIG = {
   history: []
 };
 let SERVER_BIWEEKLY_REPORTS_CONFIG = { ...DEFAULT_BIWEEKLY_REPORTS_CONFIG };
+let WHATSAPP_API_PAUSED = false;
+let WHATSAPP_DISCONNECTED_AT = null;
+
+function setWhatsAppPaused(paused) {
+  WHATSAPP_API_PAUSED = !!paused;
+  WHATSAPP_DISCONNECTED_AT = paused ? new Date().toISOString() : null;
+  try { saveServerDatabase(); } catch (_) {}
+  return WHATSAPP_API_PAUSED;
+}
+
+function getWhatsAppPaused() {
+  return WHATSAPP_API_PAUSED;
+}
 
 let lastDbBackupTimestamp = 0;
 
@@ -1766,6 +1779,8 @@ function saveServerDatabase() {
       viewSimulation: SERVER_VIEW_SIMULATION,
       marketDemand: SERVER_MARKET_DEMAND,
       biweeklyReports: SERVER_BIWEEKLY_REPORTS_CONFIG,
+      whatsappApiPaused: WHATSAPP_API_PAUSED,
+      whatsappDisconnectedAt: WHATSAPP_DISCONNECTED_AT,
       processedMessageIds: Array.from(PROCESSED_WEBHOOK_MESSAGE_IDS.keys()).slice(-5000),
       sessionMemory: serializedSessions
     };
@@ -1910,6 +1925,10 @@ function loadServerDatabase() {
               USER_SESSION_MEMORY.set(phoneKey, sessVal);
             }
           }
+        }
+        if (typeof parsed.whatsappApiPaused !== "undefined") {
+          WHATSAPP_API_PAUSED = !!parsed.whatsappApiPaused;
+          WHATSAPP_DISCONNECTED_AT = parsed.whatsappDisconnectedAt || null;
         }
         CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
         console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde almacenamiento persistente.`);
@@ -3578,6 +3597,19 @@ async function processBuscaYaMessage({
   let currentPhase = 1;
   let finalBotReplyText = "";
   const controlQuestion = "¿Qué te parece esta opción? 😊 ¿Te gusta o prefieres que busque otra alternativa por la zona? 🙌";
+
+  // 0. VERIFICACIÓN DE PAUSA TEMPORAL DE WHATSAPP (A solicitud del usuario)
+  if (!isSandbox && WHATSAPP_API_PAUSED) {
+    console.log(`[WhatsApp API Paused] Mensaje de ${senderPhone} omitido porque la API de WhatsApp está en pausa temporal.`);
+    return {
+      paused: true,
+      duplicate: true,
+      replyText: "",
+      bubbles: [],
+      botReply: "",
+      debugState: { status: "whatsapp_api_paused" }
+    };
+  }
 
   // 1. DEDUPLICACIÓN DE MENSAJES (WhatsApp real)
   const incomingMsgId = (rawMsg && rawMsg.id) || (rawPayload && (rawPayload.id || rawPayload.messageId)) || null;
@@ -7547,6 +7579,18 @@ ${visualFormatRule}`;
         const entry = payload.entry && payload.entry[0];
         const changes = entry && entry.changes && entry.changes[0];
 
+        // Verificación de pausa/desconexión temporal de WhatsApp
+        if (WHATSAPP_API_PAUSED) {
+          console.log('[WhatsApp Webhook Paused] Mensaje entrante descartado con HTTP 200 porque la API está en pausa temporal.');
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: true,
+            status: "whatsapp_api_paused",
+            message: "La API de WhatsApp está desconectada temporalmente a petición del usuario. Credenciales 100% preservadas."
+          }));
+          return;
+        }
+
         // 1. Si no hay cambios o si es recibo de entrega (sent/delivered/read), confirmar HTTP 200 inmediatamente
         if (!changes || !changes.value) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -7865,6 +7909,61 @@ ${visualFormatRule}`;
   }
 
   if (req.method === 'POST' && pathname === '/api/whatsapp/disconnect') {
+    (async () => {
+      try {
+        WHATSAPP_API_PAUSED = true;
+        WHATSAPP_DISCONNECTED_AT = new Date().toISOString();
+        try { saveServerDatabase(); } catch (_) {}
+        console.log('[WhatsApp Disconnect] API de WhatsApp pausada a petición del usuario. Credenciales 100% preservadas.');
+
+        try {
+          await fetchFromPersistentBackend('/api/whatsapp/disconnect', { method: 'POST' });
+        } catch (_) {}
+
+        if (waService) {
+          try { await waService.disconnectWhatsApp(); } catch (_) {}
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          status: 'disconnected',
+          paused: true,
+          disconnectedAt: WHATSAPP_DISCONNECTED_AT,
+          message: 'API de WhatsApp desconectada exitosamente. Todas las credenciales, números y datos permanecen 100% intactos.'
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  if (req.method === 'POST' && (pathname === '/api/whatsapp/connect' || pathname === '/api/whatsapp/reconnect')) {
+    (async () => {
+      try {
+        WHATSAPP_API_PAUSED = false;
+        WHATSAPP_DISCONNECTED_AT = null;
+        try { saveServerDatabase(); } catch (_) {}
+        console.log('[WhatsApp Connect] API de WhatsApp reconectada y activa.');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          status: 'connected',
+          paused: false,
+          message: 'API de WhatsApp reconectada exitosamente. El bot está listo y respondiendo normalmente.'
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  if (false && req.method === 'POST' && pathname === '/api/whatsapp/disconnect_legacy') {
     (async () => {
       try {
         const remoteDisc = await fetchFromPersistentBackend('/api/whatsapp/disconnect', { method: 'POST' });
@@ -8331,6 +8430,9 @@ server.extractStructuredNLU = extractStructuredNLU;
 server.callGroqApi = callGroqApi;
 server.ALVARO_OBREGON_COLONIAS = ALVARO_OBREGON_COLONIAS;
 server.SERVER_ADMIN_USERS = SERVER_ADMIN_USERS;
+server.setWhatsAppPaused = setWhatsAppPaused;
+server.getWhatsAppPaused = getWhatsAppPaused;
+server.isWhatsAppPaused = () => WHATSAPP_API_PAUSED;
 
 // Exportar listener para Vercel Serverless Functions
 module.exports = server;
