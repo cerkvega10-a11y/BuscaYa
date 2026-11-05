@@ -768,6 +768,66 @@ function reverseGeocodeServer(lat, lng) {
   };
 }
 
+
+/**
+ * 🗺️ Función Oficial: Conversión de Coordenadas GPS a Dirección y Colonia Legible
+ * Utiliza Google Maps Geocoding API con fallback automático al índice geoespacial local de 242 colonias de Álvaro Obregón.
+ */
+async function obtenerDireccionPorCoordenadas(lat, lng) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_GEOCODING_API_KEY || (SERVER_SETTINGS && SERVER_SETTINGS.googleMapsApiKey) || '';
+
+  // 1. Si hay API Key configurada, consultar Google Maps Geocoding API oficial
+  if (apiKey && apiKey.trim()) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey.trim()}&language=es`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const data = await res.json();
+
+      if (data && data.status === 'OK' && data.results && data.results.length > 0) {
+        const resultado = data.results[0];
+        const extraerComponente = (resObj, tipo) => {
+          if (!resObj.address_components) return null;
+          const comp = resObj.address_components.find(c => c.types && c.types.includes(tipo));
+          return comp ? comp.long_name : null;
+        };
+
+        const colonia = extraerComponente(resultado, 'sublocality') ||
+                        extraerComponente(resultado, 'sublocality_level_1') ||
+                        extraerComponente(resultado, 'neighborhood') ||
+                        extraerComponente(resultado, 'colonia');
+
+        const alcaldia = extraerComponente(resultado, 'locality') ||
+                         extraerComponente(resultado, 'administrative_area_level_2') ||
+                         'Álvaro Obregón';
+
+        console.log(`[Google Maps Geocoding API] Coords (${lat}, ${lng}) -> Colonia: "${colonia}", Alcaldía: "${alcaldia}"`);
+
+        return {
+          source: 'google_maps_api',
+          colonia: colonia || 'Álvaro Obregón',
+          alcaldia: alcaldia,
+          direccionCompleta: resultado.formatted_address,
+          success: true
+        };
+      } else {
+        console.warn(`[Google Maps Geocoding API Status]: ${data?.status || 'EMPTY_RESULTS'}`);
+      }
+    } catch (err) {
+      console.warn(`[Google Maps Geocoding API Warning]: ${err.message}. Activando respaldo geoespacial local.`);
+    }
+  }
+
+  // 2. Fallback Geoespacial Local Certificado (242 colonias oficiales de Álvaro Obregón - CDMX)
+  const fallback = reverseGeocodeServer(lat, lng);
+  return {
+    source: 'local_geospatial_index',
+    colonia: fallback?.neighborhood || 'Álvaro Obregón',
+    alcaldia: fallback?.municipality || 'Álvaro Obregón',
+    direccionCompleta: fallback?.formattedAddress || `${fallback?.neighborhood}, Álvaro Obregón, CDMX`,
+    success: true
+  };
+}
+
 /**
  * Extractor Universal de Dirección / Calle / Colonia en Texto (Anti-Bucle de Ubicación)
  * Resuelve cualquier dirección o colonia escrita por el usuario en texto libre,
@@ -3920,13 +3980,15 @@ async function processBuscaYaMessage({
   const isGpsPinMessage = (incomingType === "location" || (rawLat && rawLng && !isNaN(rawLat) && !isNaN(rawLng)));
 
   if (isGpsPinMessage) {
-    const geo = reverseGeocodeServer(rawLat, rawLng);
-    userSession.coloniaActual = geo?.neighborhood || "Álvaro Obregón";
+    const geo = await obtenerDireccionPorCoordenadas(rawLat, rawLng);
+    userSession.coloniaActual = geo?.colonia || "Álvaro Obregón";
     userSession.lastLocation = {
       latitude: rawLat,
       longitude: rawLng,
       neighborhood: userSession.coloniaActual,
-      municipality: geo?.municipality || "Álvaro Obregón",
+      municipality: geo?.alcaldia || "Álvaro Obregón",
+      fullAddress: geo?.direccionCompleta,
+      source: geo?.source,
       timestamp: Date.now()
     };
     userSession.saludo_enviado = true;
@@ -8597,6 +8659,7 @@ server.setWhatsAppPaused = setWhatsAppPaused;
 server.getWhatsAppPaused = getWhatsAppPaused;
 server.isWhatsAppPaused = () => WHATSAPP_API_PAUSED;
 server.compileMasterSystemPrompt = compileMasterSystemPrompt;
+server.obtenerDireccionPorCoordenadas = obtenerDireccionPorCoordenadas;
 
 // Exportar listener para Vercel Serverless Functions
 module.exports = server;
