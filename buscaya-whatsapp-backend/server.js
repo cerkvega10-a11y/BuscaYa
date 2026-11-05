@@ -22,7 +22,7 @@ const QRCode = require('qrcode');
 const pino = require('pino');
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.WHATSAPP_BACKEND_PORT || (process.env.PORT && process.env.PORT !== '3000' ? process.env.PORT : 4000);
 
 // Configuración de almacenamiento persistente de credenciales
 const SESSION_DIR = path.resolve(process.env.SESSION_DIR || path.join(__dirname, 'auth_info_baileys'));
