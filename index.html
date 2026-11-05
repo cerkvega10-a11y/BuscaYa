@@ -2853,7 +2853,7 @@
 
               <!-- Input de Clave -->
               <div class="sm:col-span-6 relative">
-                <input type="password" id="customAiApiKeyInput" placeholder="gsk_zlt2L3... (Groq Cloud API)" class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-gray-300 text-xs font-mono bg-white focus:outline-none focus:border-purple-600">
+                <input type="password" id="customAiApiKeyInput" oninput="handleAiApiKeyInput(this.value)" placeholder="gsk_zlt2L3... (Groq Cloud API)" class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-gray-300 text-xs font-mono bg-white focus:outline-none focus:border-purple-600">
                 <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 text-xs">
                   <i class="fa-solid fa-eye" id="toggleApiKeyIcon"></i>
                 </button>

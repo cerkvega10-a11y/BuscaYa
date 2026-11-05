@@ -170,6 +170,18 @@ function saveBusinesses(list) {
   });
   localStorage.setItem("buscaya_businesses", JSON.stringify(sanitized));
   localStorage.setItem("buscaya_backup_snapshot", JSON.stringify(sanitized));
+
+  // Sincronización automática e inmediata en segundo plano con el servidor persistente
+  // Garantiza que cualquier negocio agregado o editado en el panel aparezca en WhatsApp
+  if (typeof window !== "undefined" && typeof fetch === "function") {
+    try {
+      fetch("/api/businesses/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businesses: sanitized, replaceAll: true })
+      }).catch(e => console.warn("[Auto-Sync Background Notice]:", e.message));
+    } catch (_) {}
+  }
 }
 
 /**

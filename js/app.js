@@ -3641,7 +3641,54 @@ function syncAiConfigToUI() {
   renderDynamicTasksList(config.tasks || []);
   updateModularCharCount();
   updateHealthCheckUI(config.lastHealthStatus === "connected", config.latencyMs || 28, config.provider || "Groq AI");
+
+  // Sincronizar automáticamente con /api/settings del backend
+  fetch('/api/settings')
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.success && data.settings) {
+        const s = data.settings;
+        if (providerEl && s.aiProvider) providerEl.value = s.aiProvider;
+        if (keyInputEl && (!keyInputEl.value || keyInputEl.value.trim() === '')) {
+          keyInputEl.value = s.groqApiKey || s.geminiApiKey || s.apiKey || '';
+        }
+        const editor = document.getElementById("aiMasterPromptEditor");
+        if (editor && (!editor.value || editor.value.trim() === '') && s.systemPrompt) {
+          editor.value = s.systemPrompt;
+        }
+      }
+    })
+    .catch(() => {});
 }
+
+function handleAiApiKeyInput(val) {
+  const trimmed = (val || "").trim();
+  const providerEl = document.getElementById("aiProviderSelect");
+  const feedbackMsg = document.getElementById("aiKeyValidationMessage");
+  let detected = null;
+
+  if (trimmed.startsWith("AIzaSy")) {
+    detected = { provider: "gemini", label: "Google Gemini" };
+  } else if (trimmed.startsWith("gsk_")) {
+    detected = { provider: "groq", label: "Groq Cloud (Ultra Rápido LPU)" };
+  } else if (trimmed.startsWith("sk-or-")) {
+    detected = { provider: "openrouter", label: "OpenRouter" };
+  } else if (trimmed.startsWith("sk-ant-")) {
+    detected = { provider: "claude", label: "Anthropic Claude" };
+  } else if (trimmed.startsWith("sk-proj-") || trimmed.startsWith("sk-")) {
+    detected = { provider: "openai", label: "OpenAI ChatGPT" };
+  }
+
+  if (detected) {
+    if (providerEl && providerEl.value !== detected.provider) {
+      providerEl.value = detected.provider;
+    }
+    if (feedbackMsg) {
+      feedbackMsg.innerHTML = `<span class="text-purple-700 font-bold">⚡ Proveedor auto-detectado:</span> ${detected.label}`;
+    }
+  }
+}
+window.handleAiApiKeyInput = handleAiApiKeyInput;
 
 function toggleApiKeyVisibility() {
   const input = document.getElementById("customAiApiKeyInput");
@@ -3720,7 +3767,7 @@ async function handleTestAiApiKey() {
   }
 }
 
-function handleSaveAiApiKey() {
+async function handleSaveAiApiKey() {
   const provider = document.getElementById("aiProviderSelect")?.value || "groq";
   const apiKey = document.getElementById("customAiApiKeyInput")?.value || "";
 
@@ -3729,7 +3776,22 @@ function handleSaveAiApiKey() {
   config.apiKey = apiKey;
   saveAiModularConfig(config);
 
-  showToast("API Key de Groq guardada de forma segura para este navegador.", "success");
+  try {
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aiProvider: provider,
+        groqApiKey: provider === "groq" ? apiKey : undefined,
+        geminiApiKey: provider === "gemini" ? apiKey : undefined,
+        apiKey: apiKey
+      })
+    });
+  } catch (e) {
+    console.warn("Backend settings sync notice:", e);
+  }
+
+  showToast("API Key guardada y sincronizada en todo el sistema.", "success");
   handleTestAiApiKey();
 }
 
