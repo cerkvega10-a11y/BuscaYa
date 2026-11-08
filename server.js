@@ -72,9 +72,20 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "$2b$12$isu6Top0u
 // Colección persistente de Administradores Maestros (Garantía de Cero Borrado)
 let SERVER_ADMIN_USERS = [
   {
+    id: "admin-cerkvega91",
+    username: "Cerkvega91",
+    passwordHash: process.env.ADMIN_CERKVEGA91_HASH || "$2b$10$540/n3bSgjoIfNoaup.UluIxeJe51BDdSBs57qZZ4kXtPeVKruSvK",
+    name: "Cerkvega (Administrador Maestro)",
+    email: "cerkvega.10@gmail.com",
+    phone: "5645234452",
+    alternatePhones: ["5563266526", "5564139761"],
+    role: "admin",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
     id: "admin-cerkvega92",
     username: "Cerkvega92",
-    passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$b4eF9p1X8aR5s2K7vN2L.e8y5Q1z7m4p9xR2tY6uI0oP3aS5dF7g",
+    passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$NuQvPRrrpIQuoJEORRdDX.Vk.3JQ6gYdFTA6djGHjvt1R1lFFztKe",
     name: "Cerkvega (Administrador Maestro)",
     email: "cerkvega.10@gmail.com",
     phone: "5645234452",
@@ -2172,13 +2183,27 @@ function loadServerDatabase() {
           });
           SERVER_ADMIN_USERS = Array.from(adminMap.values());
         }
-        // Garantía absoluta y permanente: Cerkvega92 siempre presente
-        const hasCerk = SERVER_ADMIN_USERS.some(u => u.username.toLowerCase() === 'cerkvega92');
-        if (!hasCerk) {
+        // Garantía absoluta y permanente: Cerkvega91 y Cerkvega92 siempre presentes
+        const hasCerk91 = SERVER_ADMIN_USERS.some(u => u.username && u.username.toLowerCase() === 'cerkvega91');
+        if (!hasCerk91) {
           SERVER_ADMIN_USERS.unshift({
+            id: "admin-cerkvega91",
+            username: "Cerkvega91",
+            passwordHash: process.env.ADMIN_CERKVEGA91_HASH || "$2b$10$540/n3bSgjoIfNoaup.UluIxeJe51BDdSBs57qZZ4kXtPeVKruSvK",
+            name: "Cerkvega (Administrador Maestro)",
+            email: "cerkvega.10@gmail.com",
+            phone: "5645234452",
+            alternatePhones: ["5563266526", "5564139761"],
+            role: "admin",
+            createdAt: "2026-01-01T00:00:00.000Z"
+          });
+        }
+        const hasCerk92 = SERVER_ADMIN_USERS.some(u => u.username && u.username.toLowerCase() === 'cerkvega92');
+        if (!hasCerk92) {
+          SERVER_ADMIN_USERS.push({
             id: "admin-cerkvega92",
             username: "Cerkvega92",
-            passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$b4eF9p1X8aR5s2K7vN2L.e8y5Q1z7m4p9xR2tY6uI0oP3aS5dF7g",
+            passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$NuQvPRrrpIQuoJEORRdDX.Vk.3JQ6gYdFTA6djGHjvt1R1lFFztKe",
             name: "Cerkvega (Administrador Maestro)",
             email: "cerkvega.10@gmail.com",
             phone: "5645234452",
@@ -8808,6 +8833,21 @@ ${visualFormatRule}`;
               : "🟢 WhatsApp: Conexión Activa vía Meta Cloud API (Webhook)"
           }
         };
+
+        // Integración con Microservicio Persistente de Baileys (QR en vivo)
+        try {
+          const persistentStatus = await fetchFromPersistentBackend('/api/whatsapp/status');
+          if (persistentStatus) {
+            if (persistentStatus.qrCode || persistentStatus.qr) {
+              statusObj.qrCode = persistentStatus.qrCode || persistentStatus.qr;
+              statusObj.qr = persistentStatus.qr || persistentStatus.qrCode;
+            }
+            if (persistentStatus.status) statusObj.status = persistentStatus.status;
+            if (persistentStatus.pairingCode) statusObj.pairingCode = persistentStatus.pairingCode;
+            if (persistentStatus.connectedPhone) statusObj.connectedPhone = persistentStatus.connectedPhone;
+            if (persistentStatus.connectedName) statusObj.connectedName = persistentStatus.connectedName;
+          }
+        } catch (_) {}
 
         const wantQr = parsedUrl.searchParams.get('qr') === '1';
         if (wantQr && waService && typeof waService.ensureWhatsAppQrOrConnected === 'function') {
