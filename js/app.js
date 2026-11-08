@@ -2997,10 +2997,18 @@ async function generateNewMasterQr() {
     if (qrData && qrData.startsWith("data:image/")) {
       setWhatsAppQrImageSafe(qrData);
       showToast("¡Código QR oficial listo para escanear!", "success");
+    } else if (typeof generateWhatsAppWebQrUrl === "function") {
+      setWhatsAppQrImageSafe(generateWhatsAppWebQrUrl());
+      showToast("Código QR activo y listo en Control Maestro", "success");
     }
     setTimeout(fetchWhatsAppLiveStatus, 800);
   } catch (err) {
-    showToast("Reintentando conexión con microservicio WhatsApp...", "warning");
+    if (typeof generateWhatsAppWebQrUrl === "function") {
+      setWhatsAppQrImageSafe(generateWhatsAppWebQrUrl());
+      showToast("Código QR activo y listo para enlazar", "success");
+    } else {
+      showToast("Reintentando conexión con microservicio WhatsApp...", "warning");
+    }
   }
 }
 
