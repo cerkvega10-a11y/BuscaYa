@@ -1,10 +1,12 @@
 /**
- * ESTADO DE CONEXIÓN OFICIAL WHATSAPP META CLOUD API - BUSCAYA
+ * ESTADO DE CONEXIÓN WHATSAPP - BUSCAYA
  * Endpoint: /api/whatsapp/status
- * Desarrollado e Integrado por Neural Media House
+ * Soporta Meta Cloud API y Microservicio Baileys QR
  */
 
-module.exports = (req, res) => {
+const BACKEND_URL = process.env.WHATSAPP_BACKEND_URL || "https://buscaya-wa-qr.loca.lt";
+
+module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -28,6 +30,28 @@ module.exports = (req, res) => {
       label: "Conexión Oficial Activa vía Meta Cloud API (Webhook)"
     }
   };
+
+  // Consultar microservicio de QR en vivo
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const qrResp = await fetch(`${BACKEND_URL}/api/whatsapp/status`, {
+      headers: { 'Bypass-Tunnel-Reminder': 'true' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (qrResp.ok) {
+      const qrData = await qrResp.json();
+      if (qrData.qrCode || qrData.qr) {
+        payload.qrCode = qrData.qrCode || qrData.qr;
+        payload.qr = payload.qrCode;
+      }
+      if (qrData.status) payload.status = qrData.status;
+      if (qrData.pairingCode) payload.pairingCode = qrData.pairingCode;
+      if (qrData.connectedPhone) payload.connectedPhone = qrData.connectedPhone;
+      if (qrData.connectedName) payload.connectedName = qrData.connectedName;
+    }
+  } catch (_) {}
 
   if (typeof res.status === 'function') {
     return res.status(200).json(payload);
