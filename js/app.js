@@ -1465,6 +1465,15 @@ function closeAiPreviewModal() {
 function renderAdminDashboard() {
   const businesses = getBusinesses();
 
+  // Sincronizar automáticamente el Directorio Maestro con el servidor (WhatsApp + Impulso de Confianza + Google Sheets)
+  if (Array.isArray(businesses) && businesses.length > 0) {
+    fetch("/api/businesses/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businesses: businesses, replaceAll: true })
+    }).catch(() => {});
+  }
+
   // 1. Calcular KPIs
   const total = businesses.length;
   let demoCount = 0;
@@ -3708,7 +3717,7 @@ function handleAiProviderChange() {
   const keyInput = document.getElementById("customAiApiKeyInput");
   if (!keyInput) return;
   if (provider === "groq") {
-    keyInput.placeholder = "gsk_zlt2L3... (Groq Cloud API Oficial)";
+    keyInput.placeholder = "gsk_... (Groq Cloud API Oficial)";
     if (!keyInput.value || keyInput.value.trim() === "" || keyInput.value.startsWith("AQ.Ab")) {
       keyInput.value = OFFICIAL_GROQ_API_KEY;
     }
@@ -8351,13 +8360,37 @@ let gViewSimulationConfig = { enabled: true, businesses: {} };
 
 async function loadViewSimulationUI() {
   try {
+    const masterList = typeof getBusinesses === "function" ? getBusinesses() : [];
     const res = await fetch("/api/admin/view-simulation");
     if (!res.ok) return;
     const data = await res.json();
     if (!data.success) return;
 
     gViewSimulationConfig = data.simulation || { enabled: true, businesses: {} };
-    const businesses = data.businesses || [];
+    const serverBizMap = new Map((data.businesses || []).map(b => [b.id, b]));
+
+    // Garantizar que Impulso de Confianza muestre exactamente los mismos negocios que el Directorio Maestro
+    const businesses = (masterList.length > 0 ? masterList : (data.businesses || [])).map(mb => {
+      const sb = serverBizMap.get(mb.id) || {};
+      const realViews = Number(sb.realViews || mb.realViews || 0);
+      const simulatedViews = Number(sb.simulatedViews || mb.simulatedViews || 0);
+      const simEntry = gViewSimulationConfig.businesses ? gViewSimulationConfig.businesses[mb.id] : undefined;
+      const simulationEnabled = typeof sb.simulationEnabled === "boolean"
+        ? sb.simulationEnabled
+        : (simEntry === false ? false : (simEntry && typeof simEntry === "object" ? simEntry.enabled !== false : true));
+      return {
+        id: mb.id,
+        businessName: mb.businessName,
+        ownerName: mb.ownerName,
+        category: mb.category,
+        neighborhood: mb.neighborhood,
+        createdAt: mb.createdAt,
+        realViews,
+        simulatedViews,
+        totalViews: realViews + simulatedViews,
+        simulationEnabled
+      };
+    });
 
     const badge = document.getElementById("viewSimStatusBadge");
     const badgeText = document.getElementById("viewSimStatusBadgeText");

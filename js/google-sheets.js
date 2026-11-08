@@ -86,14 +86,14 @@ function handleOpenGoogleSheetsDirect() {
 
 function getGoogleSheetsCloudRecords() {
   try {
-    const data = localStorage.getItem(GOOGLE_SHEETS_RECORDS_KEY);
-    if (!data) {
-      const businesses = typeof getBusinesses === 'function' ? getBusinesses() : [];
+    const businesses = typeof getBusinesses === 'function' ? getBusinesses() : [];
+    if (Array.isArray(businesses) && businesses.length > 0) {
       const formatted = businesses.map(b => formatBusinessForSheets(b));
       localStorage.setItem(GOOGLE_SHEETS_RECORDS_KEY, JSON.stringify(formatted));
       return formatted;
     }
-    return JSON.parse(data);
+    const data = localStorage.getItem(GOOGLE_SHEETS_RECORDS_KEY);
+    return data ? JSON.parse(data) : [];
   } catch (e) {
     return [];
   }
@@ -109,10 +109,10 @@ function saveGoogleSheetsCloudRecords(records) {
 function formatBusinessForSheets(business) {
   const daysLeft = typeof calculateDaysRemaining === 'function' 
     ? calculateDaysRemaining(business.expiresAt) 
-    : 7;
+    : 15;
   const statusLabel = business.status === "active" 
     ? "Activa (Pro)" 
-    : (business.status === "expired" ? "Vencida / Pausada (Sin acceso a IA)" : "Demo (7 días)");
+    : (business.status === "expired" ? "Vencida / Pausada (Sin acceso a IA)" : "Demo (15 días)");
 
   return {
     id: business.id,
@@ -377,69 +377,87 @@ function getGoogleAppsScriptTemplate() {
 // Pega este código en Extensiones > Apps Script de tu Hoja de Cálculo
 // ==============================================================
 
+function ensureHeaders(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      "ID del Negocio",
+      "Nombre Propietario",
+      "Correo Electrónico",
+      "Teléfono/WhatsApp",
+      "Nombre del Negocio",
+      "Categoría",
+      "Servicios",
+      "Estado",
+      "Municipio/Alcaldía",
+      "Colonia",
+      "Logotipo",
+      "Plan Patrocinado",
+      "Estado Suscripción",
+      "Días Restantes",
+      "Fecha de Registro",
+      "Timestamp Sincronización"
+    ]);
+    sheet.getRange(1, 1, 1, 16).setFontWeight("bold").setBackground("#075E54").setFontColor("#FFFFFF");
+  }
+}
+
+function recordToRow(record) {
+  return [
+    record.id,
+    record.ownerName,
+    record.email,
+    record.phone,
+    record.businessName,
+    record.category,
+    record.services,
+    record.state,
+    record.municipality,
+    record.neighborhood,
+    record.logoUrl || "Sin foto",
+    record.sponsoredPlan || "Estándar ($499/mes)",
+    record.subscriptionStatus,
+    record.daysRemaining,
+    record.registeredAt,
+    new Date().toISOString()
+  ];
+}
+
 function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = JSON.parse(e.postData.contents);
-    var record = data.data;
+    ensureHeaders(sheet);
 
-    // Encabezados si la hoja está vacía
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow([
-        "ID del Negocio",
-        "Nombre Propietario",
-        "Correo Electrónico",
-        "Teléfono/WhatsApp",
-        "Nombre del Negocio",
-        "Categoría",
-        "Servicios",
-        "Estado",
-        "Municipio/Alcaldía",
-        "Colonia",
-        "Logotipo",
-        "Plan Patrocinado",
-        "Estado Suscripción",
-        "Días Restantes",
-        "Fecha de Registro",
-        "Timestamp Sincronización"
-      ]);
-      sheet.getRange(1, 1, 1, 16).setFontWeight("bold").setBackground("#075E54").setFontColor("#FFFFFF");
+    if (data.action === "BULK_SYNC" && Array.isArray(data.records)) {
+      if (sheet.getLastRow() > 1) {
+        sheet.getRange(2, 1, sheet.getLastRow() - 1, 16).clearContent();
+      }
+      var rows = data.records.map(recordToRow);
+      if (rows.length > 0) {
+        sheet.getRange(2, 1, rows.length, 16).setValues(rows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", total: rows.length }))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    var rowValues = [
-      record.id,
-      record.ownerName,
-      record.email,
-      record.phone,
-      record.businessName,
-      record.category,
-      record.services,
-      record.state,
-      record.municipality,
-      record.neighborhood,
-      record.logoUrl || "Sin foto",
-      record.sponsoredPlan || "Estándar ($499/mes)",
-      record.subscriptionStatus,
-      record.daysRemaining,
-      record.registeredAt,
-      new Date().toISOString()
-    ];
-
-    // Upsert por ID de negocio para evitar duplicados al editar
-    var lastRow = sheet.getLastRow();
-    var updated = false;
-    if (lastRow > 1) {
-      var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      for (var i = 0; i < ids.length; i++) {
-        if (String(ids[i][0]) === String(record.id)) {
-          sheet.getRange(i + 2, 1, 1, rowValues.length).setValues([rowValues]);
-          updated = true;
-          break;
+    var record = data.data;
+    if (record) {
+      var rowValues = recordToRow(record);
+      var lastRow = sheet.getLastRow();
+      var updated = false;
+      if (lastRow > 1) {
+        var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (var i = 0; i < ids.length; i++) {
+          if (String(ids[i][0]) === String(record.id)) {
+            sheet.getRange(i + 2, 1, 1, rowValues.length).setValues([rowValues]);
+            updated = true;
+            break;
+          }
         }
       }
-    }
-    if (!updated) {
-      sheet.appendRow(rowValues);
+      if (!updated) {
+        sheet.appendRow(rowValues);
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({ status: "success" }))

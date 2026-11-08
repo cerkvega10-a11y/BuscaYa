@@ -8,14 +8,7 @@ const { processBuscaYaMessage } = require('../../server.js');
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'buscaya_token_2026';
 const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "1347239435149856";
-const META_TOKEN_PARTS = [
-  "EAAQV9tIT1lsBS",
-  "8ORpRHjLsYk89XgylEe",
-  "6yC90v6oay0hhLwZAQcAx7aVM",
-  "6UGbAgkEfwVHmn3XYPMeYCP3avZCZAZATafbacFUN8VKrBY",
-  "3Gz6cvsFtHOh3lbO4rZBLTs1usmMCf6QCQzvgvptjbYPHUiqalik3DeQWgfYNz0YIv5iTy96lkmRygFPgrWkXmQZDZD"
-];
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || META_TOKEN_PARTS.join("");
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -42,7 +35,7 @@ module.exports = async (req, res) => {
       'buscaya_webhook_token'
     ];
 
-    if (mode === 'subscribe' && challenge) {
+    if (mode === 'subscribe' && challenge && validTokens.includes(token)) {
       console.log(`[Meta Webhook Handshake] Verificado con éxito (mode=${mode}, token=${token}).`);
       if (typeof res.status === 'function') {
         return res.status(200).send(challenge);

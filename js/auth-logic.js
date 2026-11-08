@@ -65,6 +65,16 @@ function getBusinesses(options = {}) {
       }
       return b;
     });
+    // Filtrar registros obsoletos de pruebas para mantener el Directorio Maestro limpio
+    if (typeof STALE_SEED_IDS !== "undefined" && STALE_SEED_IDS instanceof Set) {
+      list = list.filter(b => b && !STALE_SEED_IDS.has(b.id));
+    }
+    const seenIds = new Set();
+    list = list.filter(b => {
+      if (!b || !b.id || seenIds.has(b.id)) return false;
+      seenIds.add(b.id);
+      return true;
+    });
   } catch (e) {
     console.warn("[getBusinesses Parse Error]", e);
     return [];

@@ -30,11 +30,9 @@ if (!fs.existsSync(SESSION_DIR)) {
   fs.mkdirSync(SESSION_DIR, { recursive: true });
 }
 
-// Configuración de credenciales de IA (Google Gemini 1.5 Pro & Groq LPU)
-const GEM_PARTS = ["AQ.", "Ab8RN6L7O", "5NEQIRscZ", "eZQcRxq3n", "jDEJRYmzQ", "qL8dwO9iX", "8bDOg"];
-const GROQ_PARTS = ["gsk", "_zlt2L3l5", "mQdPI66no", "SD5WGdyb3", "FYz4GZx5Y", "EXMZi5Q6J", "OgMPi3yF"];
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || GEM_PARTS.join("");
-const GROQ_API_KEY = process.env.GROQ_API_KEY || GROQ_PARTS.join("");
+// Configuración de credenciales de IA desde variables de entorno (.env)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const AI_MODEL = process.env.AI_MODEL || "gemini-1.5-pro";
 
 // Middleware Express

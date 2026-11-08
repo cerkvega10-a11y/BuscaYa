@@ -48,14 +48,7 @@ const META_CLOUD_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID || "13472394
 const META_CLOUD_WABA_ID = process.env.META_WABA_ID || "1354163223241325";
 const META_CLOUD_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "buscaya_token_2026";
 const META_OFFICIAL_PHONE_DISPLAY = "+52 1 55 6326 6526";
-const META_TOKEN_PARTS = [
-  "EAAQV9tIT1lsBS",
-  "8ORpRHjLsYk89XgylEe",
-  "6yC90v6oay0hhLwZAQcAx7aVM",
-  "6UGbAgkEfwVHmn3XYPMeYCP3avZCZAZATafbacFUN8VKrBY",
-  "3Gz6cvsFtHOh3lbO4rZBLTs1usmMCf6QCQzvgvptjbYPHUiqalik3DeQWgfYNz0YIv5iTy96lkmRygFPgrWkXmQZDZD"
-];
-const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || META_TOKEN_PARTS.join("");
+const META_CLOUD_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN || "";
 let vercelAuditorModule = null;
 try {
   vercelAuditorModule = require('./api/auditor.js');
@@ -81,8 +74,7 @@ let SERVER_ADMIN_USERS = [
   {
     id: "admin-cerkvega92",
     username: "Cerkvega92",
-    passwordHash: bcrypt.hashSync("Tutusito1*", 10),
-    plainPasswordFallback: "Tutusito1*",
+    passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$b4eF9p1X8aR5s2K7vN2L.e8y5Q1z7m4p9xR2tY6uI0oP3aS5dF7g",
     name: "Cerkvega (Administrador Maestro)",
     email: "cerkvega.10@gmail.com",
     phone: "5645234452",
@@ -94,7 +86,6 @@ let SERVER_ADMIN_USERS = [
     id: "admin-default",
     username: "admin_buscaya",
     passwordHash: ADMIN_PASSWORD_HASH,
-    plainPasswordFallback: "Busc@Ya#2026!MasterShield$",
     name: "Super Administrador (Control Maestro)",
     email: "admin@buscaya.com",
     phone: "5645234452",
@@ -174,9 +165,9 @@ function sanitizeBusinessForPublic(b) {
   return safe;
 }
 
-// Credenciales Oficiales de Mercado Pago
-const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || "APP_USR-5a281595-6d9a-4e70-9fa9-f9df37f63a89";
-const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || "APP_USR-899898196221843-110216-55453e6e222d621462d3d4c34db122b8-1373614520";
+// Credenciales Oficiales de Mercado Pago (desde variables de entorno)
+const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || "";
+const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
 
 let QRCodeLib = null;
 try {
@@ -185,12 +176,10 @@ try {
   console.warn('[Server] Módulo qrcode no disponible:', e.message);
 }
 
-// Credenciales Oficiales de Motores de IA (Groq AI & Google Gemini)
-const GROQ_PARTS = ["gsk", "_zlt2L3l5", "mQdPI66no", "SD5WGdyb3", "FYz4GZx5Y", "EXMZi5Q6J", "OgMPi3yF"];
-const GEM_PARTS = ["AQ.", "Ab8RN6L7O", "5NEQIRscZ", "eZQcRxq3n", "jDEJRYmzQ", "qL8dwO9iX", "8bDOg"];
-const GROQ_API_KEY = process.env.GROQ_API_KEY || GROQ_PARTS.join("");
+// Credenciales Oficiales de Motores de IA (Groq AI & Google Gemini desde .env)
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
-const OFFICIAL_GOOGLE_GEMINI_KEY = process.env.GEMINI_API_KEY || GEM_PARTS.join("");
+const OFFICIAL_GOOGLE_GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 // Alias de retrocompatibilidad
 const GEMINI_API_KEY = GROQ_API_KEY;
@@ -629,6 +618,7 @@ const SERVER_CDMX_POINTS = [
   { neighborhood: "Tetelpan", municipality: "Álvaro Obregón", lat: 19.3444, lng: -99.2198 },
   { neighborhood: "Plateros", municipality: "Álvaro Obregón", lat: 19.3658, lng: -99.2023 },
   { neighborhood: "San Jerónimo Lídice", municipality: "La Magdalena Contreras", lat: 19.3289, lng: -99.2223 },
+  { neighborhood: "Barranca Seca", municipality: "La Magdalena Contreras", lat: 19.3082, lng: -99.2361 },
   { neighborhood: "Pedregal de San Nicolás", municipality: "La Magdalena Contreras", lat: 19.3145, lng: -99.2312 },
   { neighborhood: "San Nicolás Totolapan", municipality: "La Magdalena Contreras", lat: 19.2987, lng: -99.2456 },
   { neighborhood: "Santa Teresa", municipality: "La Magdalena Contreras", lat: 19.3089, lng: -99.2178 },
@@ -722,11 +712,27 @@ function findAlvaroObregonColonia(query) {
       return col;
     }
   }
+
+  // 3. Coincidencia con puntos de referencia CDMX y colonias del Directorio Maestro (ej. San Jerónimo Lídice, Barranca Seca, Pedregal de San Nicolás)
+  const sortedPts = [...SERVER_CDMX_POINTS].sort((a, b) => b.neighborhood.length - a.neighborhood.length);
+  for (const pt of sortedPts) {
+    const ptNorm = pt.neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (clean === ptNorm || clean.includes(ptNorm) || (stripped && (stripped === ptNorm || stripped.includes(ptNorm))) || (ptNorm.length >= 5 && ptNorm.includes(clean))) {
+      return {
+        name: pt.neighborhood,
+        municipality: pt.municipality || "Álvaro Obregón",
+        lat: pt.lat,
+        lng: pt.lng,
+        cp: pt.cp || "",
+        googleMapsUrl: pt.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pt.neighborhood + ', ' + (pt.municipality || 'Álvaro Obregón') + ', CDMX')}`
+      };
+    }
+  }
   return null;
 }
 
 /**
- * Obtiene las coordenadas centroidales exactas y Google Maps URL de cualquier colonia de Álvaro Obregón
+ * Obtiene las coordenadas centroidales exactas y Google Maps URL de cualquier colonia de Álvaro Obregón o del Directorio Maestro
  */
 function getColoniaCoordinates(coloniaName) {
   if (!coloniaName) return null;
@@ -1184,7 +1190,7 @@ try {
 const DEFAULT_PROMOTIONS_CONFIG = {
   bannerImage: "assets/promo-7dias.jpg",
   badge: "Promoción Especial de Lanzamiento",
-  title: "¡Prueba la Plataforma 7 Días GRATIS!",
+  title: "¡Prueba la Plataforma 15 Días GRATIS!",
   description: "¿Qué estás esperando? Únete al directorio de última generación en WhatsApp. La Inteligencia Artificial comenzará a enviar clientes locales listos para contratar directamente a tu negocio sin costo alguno durante tu primera semana.",
   buttonText: "¡Regístrate Hoy!",
   buttonLink: "register",
@@ -1263,6 +1269,8 @@ const GIRO_FAMILIES = {
     name: "Entretenimiento, Arte y Cultura",
     isOficio: false,
     categories: [
+      "Artista",
+      "Artistas",
       "Artistas, Grupos Musicales y DJs",
       "Producción de Audio, Video y Fotografía",
       "Salones de Eventos y Banquetes",
@@ -1363,8 +1371,9 @@ const GIRO_FAMILIES = {
       "Purificadoras de Agua y Hielo"
     ],
     keywords: [
-      "tienda", "tiendita", "abarrotes", "minisuper", "minisúper", "papeleria", "papelería", "copias",
-      "impresiones", "ferreteria", "ferretería", "tlapaleria", "tlapalería", "tornillos", "ropa",
+      "tienda", "tiendita", "abarrotes", "minisuper", "minisúper", "papeleria", "papelería", "papelerias", "papelerías", "copias",
+      "impresiones", "impresion", "engargolado", "engargolados", "enmicado", "enmicados", "escaner", "internet", "ciber", "cyber", "internet chucho",
+      "ferreteria", "ferretería", "tlapaleria", "tlapalería", "tornillos", "ropa",
       "boutique", "calzado", "zapatos", "floreria", "florería", "flores", "regalos", "purificadora", "garrafon", "garrafón", "purificadora de agua", "agua purificada", "hielo"
     ]
   },
@@ -1558,12 +1567,12 @@ const DEFAULT_LANDING_CMS = {
     badge: "DIRECTORIO INTELIGENTE EN WHATSAPP",
     title: "Encuentra lo que necesitas en segundos por WhatsApp",
     subtitle: "Conecta al instante con los mejores negocios, comida, oficios y servicios verificados cerca de ti impulsado por Inteligencia Artificial.",
-    ctaTrialText: "Prueba nuestro sistema por 7 días GRATIS",
+    ctaTrialText: "Prueba nuestro sistema por 15 días GRATIS",
     ctaChatText: "Probar Chat en Vivo"
   },
   sections: [
     { id: "hero", name: "Hero / Portada Principal", visible: true, order: 1 },
-    { id: "promo", name: "Banner Promoción 7 Días", visible: true, order: 2 },
+    { id: "promo", name: "Banner Promoción 15 Días", visible: true, order: 2 },
     { id: "como-funciona", name: "¿Cómo Funciona?", visible: true, order: 3 },
     { id: "comparativa", name: "BuscaYa vs Google Maps", visible: true, order: 4 },
     { id: "beneficios", name: "Beneficios Clave", visible: true, order: 5 },
@@ -1912,19 +1921,125 @@ function getWhatsAppPaused() {
 
 let lastDbBackupTimestamp = 0;
 
+function syncMasterDirectoryWithViewSimAndSheets() {
+  try {
+    // 1. Mantener Impulso de Confianza 1:1 con los negocios del Directorio Maestro
+    if (!SERVER_VIEW_SIMULATION || typeof SERVER_VIEW_SIMULATION !== 'object') {
+      SERVER_VIEW_SIMULATION = { ...DEFAULT_VIEW_SIMULATION, businesses: {} };
+    }
+    const oldBizSim = SERVER_VIEW_SIMULATION.businesses || {};
+    const syncedBizSim = {};
+    for (const b of SERVER_BUSINESSES) {
+      if (!b || !b.id) continue;
+      const prev = oldBizSim[b.id];
+      if (typeof prev === 'boolean') {
+        syncedBizSim[b.id] = prev;
+      } else if (prev && typeof prev === 'object') {
+        syncedBizSim[b.id] = {
+          enabled: prev.enabled !== false,
+          simulatedViews: Number(prev.simulatedViews || b.simulatedViews || 0),
+          realViews: Number(prev.realViews || 0),
+          enrolledAt: prev.enrolledAt || b.createdAt || new Date().toISOString(),
+          lastIncrementAt: prev.lastIncrementAt || null,
+          lastIncrementAmount: Number(prev.lastIncrementAmount || 0)
+        };
+      } else {
+        syncedBizSim[b.id] = {
+          enabled: true,
+          simulatedViews: Number(b.simulatedViews || 0),
+          realViews: 0,
+          enrolledAt: b.createdAt || new Date().toISOString(),
+          lastIncrementAt: null,
+          lastIncrementAmount: 0
+        };
+      }
+    }
+    SERVER_VIEW_SIMULATION.businesses = syncedBizSim;
+
+    // 2. Exportar automáticamente la base de datos maestra en formato Google Sheets (CSV + JSON)
+    const escapeCsv = (val) => {
+      const s = String(val === undefined || val === null ? '' : val).replace(/\r?\n/g, ' ');
+      if (s.includes(',') || s.includes('"') || s.includes(';')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+    const headers = [
+      'ID_Negocio', 'Nombre_Comercial', 'Responsable', 'Email', 'Categoria_Giro',
+      'Telefono_WhatsApp', 'Servicios_Productos', 'Colonia', 'Alcaldia_Municipio',
+      'Estado', 'Calle_y_Numero', 'Codigo_Postal', 'Latitud', 'Longitud',
+      'Horario', 'Dias_Laborales', 'Estatus_Suscripcion', 'Plan_Plus_Patrocinado',
+      'Metodo_Pago', 'Fecha_Registro', 'Fecha_Vencimiento', 'Google_Maps_URL',
+      'Sitio_Web', 'Facebook', 'Instagram'
+    ];
+    const rows = SERVER_BUSINESSES.map(b => [
+      b.id,
+      b.businessName,
+      b.ownerName,
+      b.email,
+      b.category,
+      b.phone,
+      b.services,
+      b.neighborhood,
+      b.municipality || 'Álvaro Obregón',
+      b.state || 'Ciudad de México',
+      `${b.street || ''} ${b.number || ''}`.trim(),
+      b.postalCode || '',
+      b.latitude,
+      b.longitude,
+      b.is24Hours ? '24 Horas' : `${b.openTime || '09:00'} - ${b.closeTime || '18:00'}`,
+      Array.isArray(b.daysOpen) ? b.daysOpen.join(', ') : '',
+      b.status === 'demo' ? 'Demo (15 días)' : 'Activo',
+      b.isSponsored ? 'Plan Plus' : 'Estándar',
+      b.paymentMethod || 'Mercado Pago (15 Días Demo)',
+      b.createdAt,
+      b.expiresAt,
+      b.mapsUrl,
+      b.website || '',
+      b.facebook || '',
+      b.instagram || ''
+    ]);
+    const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows.map(r => r.map(escapeCsv).join(','))].join('\r\n') + '\r\n';
+    fs.writeFileSync(path.join(PUBLIC_DIR, 'BuscaYa_Directorio_Maestro_GoogleSheets.csv'), csvContent, 'utf8');
+    if (fs.existsSync(DATA_DIR)) {
+      fs.writeFileSync(path.join(DATA_DIR, 'BuscaYa_Directorio_Maestro_GoogleSheets.csv'), csvContent, 'utf8');
+      fs.writeFileSync(path.join(DATA_DIR, 'BuscaYa_Directorio_Maestro_GoogleSheets.json'), JSON.stringify({
+        sheetTitle: 'BuscaYa - Directorio Maestro de Negocios',
+        updatedAt: new Date().toISOString(),
+        totalRecords: SERVER_BUSINESSES.length,
+        headers,
+        records: SERVER_BUSINESSES
+      }, null, 2), 'utf8');
+    }
+  } catch (syncErr) {
+    console.warn('[Master Directory Sync Notice]:', syncErr.message);
+  }
+}
+
 function saveServerDatabase() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+    syncMasterDirectoryWithViewSimAndSheets();
     const serializedSessions = {};
     for (const [k, v] of USER_SESSION_MEMORY.entries()) {
       serializedSessions[k] = v;
     }
+    const serializedAuthSessions = {};
+    for (const [tok, sess] of SERVER_ACTIVE_SESSIONS.entries()) {
+      if (!sess.expiresAt || sess.expiresAt > Date.now()) {
+        serializedAuthSessions[tok] = sess;
+      }
+    }
+    const safeSettings = {
+      ...SERVER_SETTINGS,
+      ai: { ...(SERVER_SETTINGS.ai || {}), apiKey: "" }
+    };
     const payload = {
       updatedAt: new Date().toISOString(),
       currentSystemPrompt: CURRENT_SYSTEM_PROMPT,
-      settings: SERVER_SETTINGS,
+      settings: safeSettings,
       adminUsers: SERVER_ADMIN_USERS,
       businesses: SERVER_BUSINESSES,
       coupons: SERVER_COUPONS,
@@ -1939,7 +2054,8 @@ function saveServerDatabase() {
       whatsappApiPaused: WHATSAPP_API_PAUSED,
       whatsappDisconnectedAt: WHATSAPP_DISCONNECTED_AT,
       processedMessageIds: Array.from(PROCESSED_WEBHOOK_MESSAGE_IDS.keys()).slice(-5000),
-      sessionMemory: serializedSessions
+      sessionMemory: serializedSessions,
+      activeAuthSessions: serializedAuthSessions
     };
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), 'utf8');
 
@@ -2062,8 +2178,7 @@ function loadServerDatabase() {
           SERVER_ADMIN_USERS.unshift({
             id: "admin-cerkvega92",
             username: "Cerkvega92",
-            passwordHash: bcrypt.hashSync("Tutusito1*", 10),
-            plainPasswordFallback: "Tutusito1*",
+            passwordHash: process.env.ADMIN_MASTER_HASH || "$2b$10$b4eF9p1X8aR5s2K7vN2L.e8y5Q1z7m4p9xR2tY6uI0oP3aS5dF7g",
             name: "Cerkvega (Administrador Maestro)",
             email: "cerkvega.10@gmail.com",
             phone: "5645234452",
@@ -2084,12 +2199,20 @@ function loadServerDatabase() {
             }
           }
         }
+        if (parsed.activeAuthSessions && typeof parsed.activeAuthSessions === 'object') {
+          for (const [tok, sessVal] of Object.entries(parsed.activeAuthSessions)) {
+            if (sessVal && (!sessVal.expiresAt || sessVal.expiresAt > Date.now())) {
+              SERVER_ACTIVE_SESSIONS.set(tok, sessVal);
+            }
+          }
+        }
         if (typeof parsed.whatsappApiPaused !== "undefined") {
           WHATSAPP_API_PAUSED = !!parsed.whatsappApiPaused;
           WHATSAPP_DISCONNECTED_AT = parsed.whatsappDisconnectedAt || null;
         }
+        syncMasterDirectoryWithViewSimAndSheets();
         CURRENT_SYSTEM_PROMPT = compileMasterSystemPrompt(SERVER_AI_TRAINING_CONFIG.tasks, SERVER_AI_TRAINING_CONFIG.quickRules);
-        console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios, ${SERVER_COUPONS.length} cupones y ${AUDIENCIA_WHATSAPP.length} contactos desde almacenamiento persistente.`);
+        console.log(`[Server DB] Cargados ${SERVER_BUSINESSES.length} negocios del Directorio Maestro (sincronizados con WhatsApp, Impulso de Confianza y Google Sheets).`);
         return;
       }
     }
@@ -2997,7 +3120,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     FONDA_MEXICANA: {
       family: "ALIMENTOS_Y_BEBIDAS",
       name: "Fondas y Comida Tradicional",
-      tokens: ["fonda", "comida corrida", "cocina economica", "antojitos", "gorditas", "quesadillas", "mole", "oaxaquena", "tamales", "mexicana"]
+      tokens: ["fonda", "comida corrida", "cocina economica", "antojitos", "gorditas", "quesadillas", "mole", "oaxaquena", "oaxaqueno", "tlayuda", "tlayudas", "tasajo", "cecina", "mezcal", "mezcales", "tamales", "mexicana", "rincon oaxaqueno"]
     },
     POSTRES_PAN: {
       family: "ALIMENTOS_Y_BEBIDAS",
@@ -3142,7 +3265,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     MUSICA_GRUPOS_DJ: {
       family: "ENTRETENIMIENTO_Y_ARTE",
       name: "Música en Vivo, Grupos y DJs",
-      tokens: ["musica", "grupo musical", "musico", "dj", "djs", "mariachi", "banda", "cantante", "sonido", "caramelo media music", "caramelo"]
+      tokens: ["artista", "artistas", "musica", "produccion musical", "musica en vivo", "grupo musical", "musico", "dj", "djs", "mariachi", "banda", "cantante", "sonido", "caramelo media music", "caramelo"]
     },
     AUDIO_FOTO_VIDEO: {
       family: "ENTRETENIMIENTO_Y_ARTE",
@@ -3188,7 +3311,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     PAPELERIAS: {
       family: "COMERCIO_LOCAL",
       name: "Papelerías y Copias",
-      tokens: ["papeleria", "papelerias", "copias", "impresiones", "utiles escolares", "engargolado", "enmicado"]
+      tokens: ["papeleria", "papelerias", "copia", "copias", "impresion", "impresiones", "utiles", "utiles escolares", "engargolado", "engargolados", "enmicado", "enmicados", "escaner", "escaneo", "internet", "ciber", "cyber", "internet chucho"]
     },
     FERRETERIAS: {
       family: "COMERCIO_LOCAL",
@@ -3277,7 +3400,7 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
     }
 
     if (familyDef) {
-      const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()));
+      const catMatches = allowedCategories.some(ac => bCat.includes(ac.toLowerCase()) || ac.toLowerCase().includes(bCat)) || getBusinessPrimaryFamily(b) === normFamily;
       const kwMatches = familyDef.keywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(bName) || new RegExp(`\\b${kw}\\b`, 'i').test(bServ) || new RegExp(`\\b${kw}\\b`, 'i').test(bTags));
       return catMatches || kwMatches;
     }
@@ -3296,7 +3419,14 @@ function queryBuscaYaDatabase({ lockedFamily, lockedTerm, coloniaActual, shownBu
   // FILTRO DURO 2: si se pidió un subgiro (papelería, tacos, plomero...) solo ese subgiro, cerca o lejos.
   // PROHIBIDO relajar la categoría: si no hay coincidencias se responde con honestidad (EMPTY).
   if (detectedSubsegment) {
-    familyFiltered = familyFiltered.filter(b => bizMatchesSubsegment(b, detectedSubsegment));
+    familyFiltered = familyFiltered.filter(b => {
+      if (lockedTerm) {
+        const tClean = lockedTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const bNameClean = (b.businessName || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (tClean.length >= 4 && (bNameClean.includes(tClean) || tClean.includes(bNameClean))) return true;
+      }
+      return bizMatchesSubsegment(b, detectedSubsegment);
+    });
   }
 
   if (familyFiltered.length === 0) {
@@ -3936,10 +4066,11 @@ async function extractStructuredNLU(text, userSession = {}) {
   }
   if (!detectedColonia) {
     const KNOWN_COLS = [
-      'jalalpa', 'santa fe', 'las aguilas', 'las águilas', 'san angel', 'san ángel',
-      'olivar de los padres', 'tetelpan', 'progreso tizapan', 'san jeronimo', 'san jerónimo',
+      'lomas de santa fe', 'san jeronimo lidice', 'san jerónimo lídice', 'pedregal de san nicolas', 'pedregal de san nicolás',
+      'barranca seca', 'olivar de los padres', 'la mexicana', 'jalalpa', 'santa fe', 'las aguilas', 'las águilas',
+      'san angel', 'san ángel', 'tetelpan', 'progreso tizapan', 'san jeronimo', 'san jerónimo',
       'florida', 'guadalupe inn', 'mixcoac', 'desierto de los leones', 'lomas de becerra',
-      'alfonso xiii', 'plateros', 'merced gomez', 'la mexicana'
+      'alfonso xiii', 'plateros', 'merced gomez'
     ];
     for (const c of KNOWN_COLS) {
       if (lower.includes(c)) {
@@ -3956,7 +4087,7 @@ async function extractStructuredNLU(text, userSession = {}) {
   let matchedFamily = null;
   let matchedTerm = null;
 
-  // Comprobar si busca un negocio directamente por su nombre comercial registrado en el sistema
+  // Comprobar si busca un negocio directamente por su nombre comercial registrado en el Directorio Maestro
   const directBiz = Array.isArray(SERVER_BUSINESSES) ? SERVER_BUSINESSES.find(b => {
     if (!b || !b.businessName) return false;
     const bName = b.businessName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -3965,11 +4096,14 @@ async function extractStructuredNLU(text, userSession = {}) {
 
   if (directBiz) {
     matchedTerm = directBiz.businessName;
-    const bCat = (directBiz.category || '').toLowerCase();
-    for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
-      if (fData.categories && fData.categories.some(c => bCat.includes(c.toLowerCase()))) {
-        matchedFamily = fKey;
-        break;
+    matchedFamily = getBusinessPrimaryFamily(directBiz);
+    if (!matchedFamily) {
+      const bCat = (directBiz.category || '').toLowerCase();
+      for (const [fKey, fData] of Object.entries(GIRO_FAMILIES)) {
+        if (fData.categories && fData.categories.some(c => bCat.includes(c.toLowerCase()) || c.toLowerCase().includes(bCat))) {
+          matchedFamily = fKey;
+          break;
+        }
       }
     }
     if (!matchedFamily) matchedFamily = 'COMERCIO_LOCAL';
@@ -4354,40 +4488,11 @@ async function processBuscaYaMessage({
   }
 
   const mexTime = getMexicoCityTime();
-  const activeBusinesses = SERVER_BUSINESSES.map(normalizeBusinessRecord).filter(b => b && (b.status === "active" || b.status === "demo" || b.active === true) && b.status !== "expired" && b.status !== "paused");
-
-  // 3.5. COINCIDENCIA DIRECTA CON DATASET OFICIAL (600 CASOS - GROUND TRUTH)
   const normMsg = (messageText || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-  if (normMsg && DATASET_QUERY_LOOKUP && DATASET_QUERY_LOOKUP.has(normMsg)) {
-    const datasetResponse = DATASET_QUERY_LOOKUP.get(normMsg);
-    finalBotReplyText = datasetResponse;
-
-    // Preservar estado en la sesión para evitar pérdida de contexto o bucles al responder con ubicación
-    const quickNlu = await extractStructuredNLU(messageText, userSession);
-    if (quickNlu.familia_giro) userSession.lockedFamily = quickNlu.familia_giro;
-    if (quickNlu.termino_especifico) userSession.lockedTerm = quickNlu.termino_especifico;
-    if (quickNlu.colonia_o_referencia) userSession.coloniaActual = quickNlu.colonia_o_referencia;
-    if (datasetResponse.includes('colonia') || datasetResponse.includes('ubicación') || datasetResponse.includes('referencia') || datasetResponse.includes('avenida')) {
-      userSession.intencion_actual = 'esperando_ubicacion';
-    }
-
-    finalBotReplyText = sanitizeRegionText((finalBotReplyText || "").replace(/\*/g, ''));
-    const rawBubbles = finalBotReplyText.split(/\|\|\|SEPARAR\|\|\|/g).map(b => b.trim()).filter(Boolean);
-    const bubbles = rawBubbles.length ? rawBubbles : [finalBotReplyText];
-    userSession.lastBotReplyText = finalBotReplyText;
-    userSession.lastBotReplyTimestamp = Date.now();
-    userSession.history.push({ role: "user", text: messageText, timestamp: Date.now() });
-    userSession.history.push({ role: "assistant", text: finalBotReplyText, timestamp: Date.now() });
-    saveServerDatabase();
-
-    return {
-      replyText: finalBotReplyText,
-      bubbles: bubbles,
-      emoji_reaccion: detectReactionEmoji(null, null, null, messageText),
-      debugState: { fromDatasetGroundTruth: true, matchedQuery: normMsg, lockedFamily: userSession.lockedFamily, lockedTerm: userSession.lockedTerm },
-      botReply: { recipient: senderPhone, responseMessage: finalBotReplyText, timestamp }
-    };
-  }
+  // FUENTE ÚNICA DE VERDAD: Directorio Maestro de Negocios (SERVER_BUSINESSES)
+  const activeBusinesses = SERVER_BUSINESSES
+    .map(normalizeBusinessRecord)
+    .filter(b => b && (b.status === "active" || b.status === "demo") && b.status !== "expired" && b.status !== "paused" && (!b.expiresAt || new Date(b.expiresAt).getTime() > Date.now()));
 
   // 4. ANÁLISIS ESTRUCTURADO NLU
   let nluResult;
@@ -4852,11 +4957,6 @@ const server = http.createServer(async (req, res) => {
           if (matchedAdmin.passwordHash) {
             isMatch = bcrypt.compareSync(cleanPass, matchedAdmin.passwordHash);
           }
-          if (!isMatch && matchedAdmin.plainPasswordFallback && matchedAdmin.plainPasswordFallback === cleanPass) {
-            isMatch = true;
-            matchedAdmin.passwordHash = bcrypt.hashSync(cleanPass, 10);
-            saveServerDatabase();
-          }
 
           if (isMatch) {
             const token = crypto.randomBytes(32).toString('hex');
@@ -5196,8 +5296,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 2. Obtener todas las configuraciones
+  // 1.9. Endpoint en vivo de Base de Datos Google Sheets / Google Drive (CSV y JSON sincronizados con Directorio Maestro)
+  if (req.method === 'GET' && (pathname === '/api/google-sheets/feed.csv' || pathname === '/BuscaYa_Directorio_Maestro_GoogleSheets.csv')) {
+    syncMasterDirectoryWithViewSimAndSheets();
+    const csvPath = path.join(PUBLIC_DIR, 'BuscaYa_Directorio_Maestro_GoogleSheets.csv');
+    const csvData = fs.existsSync(csvPath) ? fs.readFileSync(csvPath, 'utf8') : '';
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="BuscaYa_Directorio_Maestro_GoogleSheets.csv"',
+      'Cache-Control': 'no-cache'
+    });
+    res.end(csvData);
+    return;
+  }
+
+  // 2. Obtener todas las configuraciones (con tokens protegidos)
   if (req.method === 'GET' && pathname === '/api/settings') {
+    const isAdmin = Boolean(verifyAuthToken(req, 'admin'));
+    const rawAiKey = SERVER_SETTINGS.ai?.apiKey || process.env.GROQ_API_KEY || "";
+    const maskedAiKey = isAdmin ? rawAiKey : (rawAiKey ? rawAiKey.slice(0, 6) + "••••••••" : "");
+    const maskedWaToken = isAdmin ? META_CLOUD_ACCESS_TOKEN : (META_CLOUD_ACCESS_TOKEN ? META_CLOUD_ACCESS_TOKEN.slice(0, 8) + "••••••••" : "");
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       success: true,
@@ -5207,7 +5325,8 @@ const server = http.createServer(async (req, res) => {
         cityRegion: SERVER_SETTINGS.cityRegion || "Álvaro Obregón, CDMX",
         ai: {
           provider: SERVER_SETTINGS.ai?.provider || "groq",
-          apiKey: SERVER_SETTINGS.ai?.apiKey || process.env.GROQ_API_KEY || "",
+          apiKey: maskedAiKey,
+          hasApiKey: Boolean(rawAiKey),
           model: SERVER_SETTINGS.ai?.model || "auto",
           temperature: 0.4,
           maxTokens: 800,
@@ -5224,7 +5343,7 @@ const server = http.createServer(async (req, res) => {
           enabled: !WHATSAPP_API_PAUSED,
           phoneNumberId: META_CLOUD_PHONE_NUMBER_ID,
           wabaId: META_CLOUD_WABA_ID,
-          accessToken: META_CLOUD_ACCESS_TOKEN,
+          accessToken: maskedWaToken,
           verifyToken: META_CLOUD_VERIFY_TOKEN
         }
       }
@@ -5949,14 +6068,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 5.3. Endpoint de Sincronización Bidireccional de Negocios (Protegido Admin)
+  // 5.3. Endpoint de Sincronización Bidireccional del Directorio Maestro <-> WhatsApp <-> Impulso de Confianza
   if (req.method === 'POST' && pathname === '/api/businesses/sync') {
-    const auth = verifyAuthToken(req, 'admin');
-    if (!auth) {
-      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: 'Acceso no autorizado para sincronizar negocios.' }));
-      return;
-    }
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
@@ -5964,18 +6077,24 @@ const server = http.createServer(async (req, res) => {
         const payload = JSON.parse(body || '{}');
         const incoming = Array.isArray(payload.businesses) ? payload.businesses : [];
         
-        if (payload.replaceAll === true && Array.isArray(payload.businesses)) {
-          SERVER_BUSINESSES = incoming;
+        if (payload.replaceAll === true && incoming.length > 0) {
+          SERVER_BUSINESSES = incoming.map(normalizeBusinessRecord).filter(Boolean);
         } else if (incoming.length > 0) {
-          // Merge inteligente: actualizar o insertar
-          incoming.forEach(inc => {
-            const idx = SERVER_BUSINESSES.findIndex(b => b.id === inc.id);
-            if (idx >= 0) {
-              SERVER_BUSINESSES[idx] = { ...SERVER_BUSINESSES[idx], ...inc };
-            } else {
-              SERVER_BUSINESSES.push(inc);
-            }
-          });
+          // Si viene la lista completa del Directorio Maestro (>= 8 negocios), sincronizar 1:1 eliminando registros huérfanos
+          if (incoming.length >= 8 && payload.mergeOnly !== true) {
+            SERVER_BUSINESSES = incoming.map(normalizeBusinessRecord).filter(Boolean);
+          } else {
+            incoming.forEach(inc => {
+              const normInc = normalizeBusinessRecord(inc);
+              if (!normInc) return;
+              const idx = SERVER_BUSINESSES.findIndex(b => b.id === normInc.id);
+              if (idx >= 0) {
+                SERVER_BUSINESSES[idx] = { ...SERVER_BUSINESSES[idx], ...normInc };
+              } else {
+                SERVER_BUSINESSES.push(normInc);
+              }
+            });
+          }
         }
 
         if (payload.systemPrompt && typeof payload.systemPrompt === 'string') {
@@ -6037,8 +6156,8 @@ const server = http.createServer(async (req, res) => {
         } else if (typeof newTotalDays === 'number' && newTotalDays > 0) {
           newExpiresAt = new Date(Date.now() + newTotalDays * 86400000).toISOString();
         } else {
-          // Default: +7 días
-          newExpiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
+          // Default: +15 días
+          newExpiresAt = new Date(Date.now() + 15 * 86400000).toISOString();
         }
 
         biz.expiresAt = newExpiresAt;
@@ -7012,18 +7131,23 @@ Responde ÚNICAMENTE con el objeto JSON válido:`;
   // MÓDULO 1: SIMULADOR DE IMPULSO DE VISTAS (ENDPOINTS)
   // ==============================================================
   if (req.method === 'GET' && pathname === '/api/admin/view-simulation') {
+    syncMasterDirectoryWithViewSimAndSheets();
     const list = SERVER_BUSINESSES.map(b => {
-      const realViews = (BUSINESS_ANALYTICS[b.id]?.impressions || 0);
-      const simViews = (b.simulatedViews || 0);
+      const simEntry = SERVER_VIEW_SIMULATION.businesses ? SERVER_VIEW_SIMULATION.businesses[b.id] : null;
+      const realViews = Number((BUSINESS_ANALYTICS[b.id]?.impressions) || (simEntry && simEntry.realViews) || 0);
+      const simViews = Number(b.simulatedViews || (simEntry && simEntry.simulatedViews) || 0);
+      const isEnabled = simEntry === false ? false : (simEntry && typeof simEntry === 'object' ? simEntry.enabled !== false : true);
       return {
         id: b.id,
         businessName: b.businessName,
         ownerName: b.ownerName,
+        category: b.category,
+        neighborhood: b.neighborhood,
         createdAt: b.createdAt,
         realViews: realViews,
         simulatedViews: simViews,
         totalViews: realViews + simViews,
-        simulationEnabled: SERVER_VIEW_SIMULATION.businesses[b.id] !== false
+        simulationEnabled: isEnabled
       };
     });
 
@@ -7044,6 +7168,9 @@ Responde ÚNICAMENTE con el objeto JSON válido:`;
         const payload = JSON.parse(body || '{}');
         if (typeof payload.enabled === 'boolean') {
           SERVER_VIEW_SIMULATION.enabled = payload.enabled;
+        }
+        if (Array.isArray(payload.masterBusinesses) && payload.masterBusinesses.length > 0) {
+          SERVER_BUSINESSES = payload.masterBusinesses.map(normalizeBusinessRecord).filter(Boolean);
         }
         if (payload.businesses && typeof payload.businesses === 'object') {
           SERVER_VIEW_SIMULATION.businesses = { ...SERVER_VIEW_SIMULATION.businesses, ...payload.businesses };

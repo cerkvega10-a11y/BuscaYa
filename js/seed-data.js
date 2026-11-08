@@ -1,10 +1,80 @@
 /**
  * AGENTE 2 - INGENIERO DE DATOS GEOGRÁFICOS Y PERSISTENCIA (DATA & GIS SPECIALIST)
- * Datos Semilla (Seed Data) iniciales de BuscaYa con 8 negocios representativos.
- * Incluye logotipos de alta calidad y persistencia segura no destructiva.
+ * Directorio Maestro de Negocios Oficial de BuscaYa (10 negocios principales).
+ * Sincronizado 1:1 con WhatsApp y con Impulso de Confianza.
  */
 
 const SEED_BUSINESSES = [
+  {
+    id: "by-dir-internetchucho",
+    ownerName: "Jesus",
+    email: "cerkvegaerick@gmail.com",
+    businessName: "Internet Chucho",
+    category: "Papelerías y Copias",
+    phone: "5645234452",
+    logoUrl: "https://images.unsplash.com/photo-1456735190827-d1262f71b8a3?auto=format&fit=crop&w=400&q=80",
+    services: "Papelería y copias, impresiones a color y blanco y negro, servicio de internet y computadoras, engargolados, enmicados, escaneo y útiles escolares y de oficina.",
+    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    is24Hours: false,
+    openTime: "09:00",
+    closeTime: "18:00",
+    state: "Ciudad de México",
+    municipality: "Álvaro Obregón",
+    neighborhood: "La Mexicana",
+    street: "Calle La Mexicana",
+    number: "10",
+    postalCode: "01260",
+    latitude: 19.3585,
+    longitude: -99.2675,
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Internet+Chucho%2C+La+Mexicana%2C+%C3%81lvaro+Obreg%C3%B3n%2C+Ciudad+de+M%C3%A9xico",
+    facebook: "",
+    instagram: "",
+    tiktok: "",
+    website: "",
+    menuUrl: "",
+    menuQrUrl: "",
+    isSponsored: false,
+    status: "demo",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "by-seed-caramelo",
+    ownerName: "Erick Vega",
+    email: "cerkvega@gmail.com",
+    businessName: "Caramelo Media Music",
+    category: "Artista",
+    phone: "5564139761",
+    logoUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80",
+    services: "Artista musical, producción musical, música en vivo para eventos, audio e iluminación profesional, DJ para fiestas y eventos corporativos.",
+    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    is24Hours: true,
+    openTime: "00:00",
+    closeTime: "23:59",
+    state: "Ciudad de México",
+    municipality: "Álvaro Obregón",
+    neighborhood: "Lomas de Santa Fe",
+    street: "Av. Vasco de Quiroga",
+    number: "3800",
+    postalCode: "01219",
+    latitude: 19.3610,
+    longitude: -99.2580,
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Caramelo+Media+Music%2C+Lomas+de+Santa+Fe%2C+%C3%81lvaro+Obreg%C3%B3n%2C+Ciudad+de+M%C3%A9xico",
+    facebook: "https://facebook.com/caramelomediamusic",
+    instagram: "https://instagram.com/caramelomediamusic",
+    tiktok: "",
+    website: "https://caramelomediamusic.com",
+    menuUrl: "",
+    menuQrUrl: "",
+    isSponsored: false,
+    status: "demo",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+  },
   {
     id: "by-seed-001",
     ownerName: "Carlos Mendoza Ramos",
@@ -33,9 +103,12 @@ const SEED_BUSINESSES = [
     website: "https://plomeriaexpress.com.mx",
     menuUrl: "",
     menuQrUrl: "",
+    isSponsored: false,
     status: "demo",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "by-seed-002",
@@ -65,7 +138,10 @@ const SEED_BUSINESSES = [
     website: "https://plomerosprocdmx.com",
     menuUrl: "",
     menuQrUrl: "",
+    isSponsored: false,
     status: "active",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: new Date(Date.now() + 24 * 24 * 60 * 60 * 1000).toISOString()
   },
@@ -99,6 +175,8 @@ const SEED_BUSINESSES = [
     menuUrl: "",
     menuQrUrl: "",
     status: "active",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString()
   },
@@ -121,8 +199,8 @@ const SEED_BUSINESSES = [
     street: "Av. San Jerónimo",
     number: "630",
     postalCode: "10200",
-    latitude: 19.3245,
-    longitude: -99.2298,
+    latitude: 19.3289,
+    longitude: -99.2223,
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+San+Jer%C3%B3nimo+630%2C+San+Jer%C3%B3nimo+L%C3%ADdice%2C+La+Magdalena+Contreras%2C+Ciudad+de+M%C3%A9xico%2C+M%C3%A9xico",
     facebook: "https://facebook.com/rinconoaxaquenocdmx",
     instagram: "https://instagram.com/rinconoaxaqueno_mx",
@@ -130,7 +208,10 @@ const SEED_BUSINESSES = [
     website: "https://rinconoaxaqueno.com.mx",
     menuUrl: "https://rinconoaxaqueno.com.mx/menu-digital",
     menuQrUrl: "",
+    isSponsored: false,
     status: "active",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
   },
@@ -164,8 +245,10 @@ const SEED_BUSINESSES = [
     menuUrl: "https://bellanapoli.mx/carta",
     menuQrUrl: "",
     status: "demo",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "by-seed-006",
@@ -195,9 +278,12 @@ const SEED_BUSINESSES = [
     website: "https://contrerasabogados.com.mx",
     menuUrl: "",
     menuQrUrl: "",
+    isSponsored: false,
     status: "active",
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "by-seed-007",
@@ -228,9 +314,11 @@ const SEED_BUSINESSES = [
     website: "https://contadoressanangel.com",
     menuUrl: "",
     menuQrUrl: "",
-    status: "expired",
-    createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    status: "active",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "by-seed-008",
@@ -251,8 +339,8 @@ const SEED_BUSINESSES = [
     street: "Av. San Nicolás",
     number: "112",
     postalCode: "10500",
-    latitude: 19.3015,
-    longitude: -99.2274,
+    latitude: 19.3145,
+    longitude: -99.2312,
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+San+Nicol%C3%A1s+112%2C+Pedregal+de+San+Nicol%C3%A1s%2C+La+Magdalena+Contreras%2C+Ciudad+de+M%C3%A9xico%2C+M%C3%A9xico",
     facebook: "https://facebook.com/vetpedregalcdmx",
     instagram: "https://instagram.com/vetpedregal",
@@ -260,548 +348,30 @@ const SEED_BUSINESSES = [
     website: "https://veterinariapedregal.com.mx",
     menuUrl: "",
     menuQrUrl: "",
+    isSponsored: false,
     status: "active",
+    paymentMethod: "Mercado Pago (15 Días Demo)",
+    googleSheetsSynced: true,
     createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-009",
-    ownerName: "Caramelo Media Music",
-    email: "contacto@caramelomediamusic.com",
-    businessName: "Caramelo Media Music",
-    category: "Artistas, Grupos Musicales y DJs",
-    phone: "55 4523 4452",
-    logoUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80",
-    services: "Música en vivo para eventos, producción musical, audio e iluminación profesional, DJ para fiestas y eventos corporativos",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "09:00",
-    closeTime: "22:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Av. Altavista",
-    number: "102",
-    postalCode: "01060",
-    latitude: 19.3496,
-    longitude: -99.1915,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Altavista+102+San+Angel+Alvaro+Obregon+CDMX",
-    facebook: "https://facebook.com/caramelomediamusic",
-    instagram: "https://instagram.com/caramelomediamusic",
-    tiktok: "",
-    website: "https://caramelomediamusic.com",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-010",
-    isSponsored: true,
-    ownerName: "Mariana Garza",
-    email: "contacto@bistrolamexicana.mx",
-    businessName: "Bistro & Café Parque La Mexicana",
-    category: "Restaurantes, Cafeterías y Bares",
-    phone: "55 6413 9761",
-    logoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=400&q=80",
-    services: "Café de especialidad, desayunos campestres, chilaquiles con arrachera, panadería artesanal recién horneada, pizzas al horno de leña, pastas frescas y hamburguesas gourmet.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "08:00",
-    closeTime: "22:00",
-    state: "Ciudad de México",
-    municipality: "Cuajimalpa / Álvaro Obregón",
-    neighborhood: "Santa Fe (La Mexicana)",
-    street: "Av. Luis Barragán",
-    number: "505",
-    postalCode: "05348",
-    latitude: 19.3585,
-    longitude: -99.2675,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Parque+La+Mexicana%2C+Av.+Luis+Barrag%C3%A1n+505%2C+Santa+Fe%2C+CDMX",
-    facebook: "https://facebook.com/bistrolamexicana",
-    instagram: "https://instagram.com/bistrolamexicana",
-    tiktok: "",
-    website: "https://bistrolamexicana.mx",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-011",
-    isSponsored: false,
-    ownerName: "Carlos Mendoza",
-    email: "carlos@taqueriaelfogon.mx",
-    businessName: "Taquería El Fogón Santa Fe",
-    category: "Taquerías y Antojitos Mexicanos",
-    phone: "55 4123 9876",
-    logoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=400&q=80",
-    services: "Tacos al pastor tradicional, gringas, volcanes de queso, tacos de bistec, costilla, chuleta y aguas frescas naturales.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "12:00",
-    closeTime: "01:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón / Cuajimalpa",
-    neighborhood: "Santa Fe",
-    street: "Av. Vasco de Quiroga",
-    number: "3800",
-    postalCode: "05348",
-    latitude: 19.3600,
-    longitude: -99.2600,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Vasco+de+Quiroga+3800%2C+Santa+Fe%2C+CDMX",
-    facebook: "https://facebook.com/taqueriaelfogonsantafe",
-    instagram: "https://instagram.com/elfogonsantafe",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-012",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Roberto Méndez",
-    email: "contacto@losarcossantafe.mx",
-    businessName: "Marisquería Los Arcos Santa Fe",
-    category: "Marisquerías y Pescados",
-    phone: "55 6326 6526",
-    logoUrl: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=400&q=80",
-    services: "Especialidad en mariscos frescos estilo Sinaloa, ceviche de camarón, aguachile negro, pulpo a las brasas, tacos de pescado gobernador y cocteles.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "11:00",
-    closeTime: "22:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Av. Vasco de Quiroga",
-    number: "3800",
-    postalCode: "05348",
-    latitude: 19.3590,
-    longitude: -99.2680,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Vasco+de+Quiroga+3800%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "https://facebook.com/losarcossantafe",
-    instagram: "https://instagram.com/losarcossantafe",
-    tiktok: "",
-    website: "https://losarcossantafe.mx",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["mariscos", "marisco", "pescado", "ceviche", "aguachile", "camarones", "pulpo", "marisqueria"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-013",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Sofía Morales",
-    email: "hola@verdesanomx.com",
-    businessName: "Verde & Sano Bowls & Ensaladas Santa Fe",
-    category: "Comida Saludable, Ensaladas y Bowls",
-    phone: "55 5543 2198",
-    logoUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=80",
-    services: "Bowls de quinoa y salmón, ensaladas orgánicas personalizadas, wraps integrales, jugos prensados en frío, smoothies detox y opciones veganas.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "08:00",
-    closeTime: "21:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Av. Santa Fe",
-    number: "482",
-    postalCode: "05348",
-    latitude: 19.3575,
-    longitude: -99.2660,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Santa+Fe+482%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "https://facebook.com/verdesanosantafe",
-    instagram: "https://instagram.com/verdesanosantafe",
-    tiktok: "",
-    website: "https://verdesanomx.com",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["comida saludable", "saludable", "ensaladas", "ensalada", "bowls", "comida sana", "vegano", "vegetariano", "smoothies"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-014",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Carlos Salcedo",
-    email: "contacto@rincondelpuerto.com",
-    businessName: "Marisquería El Rincón del Puerto San Ángel",
-    category: "Marisquerías y Pescados",
-    phone: "55 5616 1234",
-    logoUrl: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=400&q=80",
-    services: "Filete de pescado a la veracruzana, camarones al mojo de ajo, cocteles de mariscos, cazuela de mariscos y empanadas de cazón.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "11:00",
-    closeTime: "21:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Av. de la Paz",
-    number: "45",
-    postalCode: "01000",
-    latitude: 19.3485,
-    longitude: -99.1905,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+de+la+Paz+45%2C+San+Angel%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "https://facebook.com/rincondelpuertosanangel",
-    instagram: "https://instagram.com/rincondelpuertosanangel",
-    tiktok: "",
-    website: "https://rincondelpuerto.com",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["mariscos", "marisco", "pescado", "ceviche", "camarones", "marisqueria", "san angel"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-015",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Mariana Vega",
-    email: "contacto@greendelisanangel.mx",
-    businessName: "Green Deli & Ensaladas San Ángel",
-    category: "Comida Saludable, Ensaladas y Bowls",
-    phone: "55 5616 4321",
-    logoUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400&q=80",
-    services: "Ensaladas orgánicas gourmet, sándwiches artesanales en pan integral, bowls keto, jugos naturales y opciones veganas.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "08:30",
-    closeTime: "20:30",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Calle de la Amargura",
-    number: "12",
-    postalCode: "01000",
-    latitude: 19.3478,
-    longitude: -99.1912,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Calle+de+la+Amargura+12%2C+San+Angel%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "https://facebook.com/greendelisanangel",
-    instagram: "https://instagram.com/greendelisanangel",
-    tiktok: "",
-    website: "https://greendelisanangel.mx",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["comida saludable", "saludable", "ensaladas", "ensalada", "bowls", "organico", "san angel"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-016",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Fernando Mendoza",
-    email: "contacto@cerrajeriaao24.mx",
-    businessName: "Cerrajería Rápida Álvaro Obregón 24/7",
-    category: "Cerrajería",
-    phone: "55 5616 9988",
-    logoUrl: "https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=400&q=80",
-    services: "Apertura de autos y casas 24 horas sin daño, cambio de combinaciones, instalación de chapas de alta seguridad y duplicados de llaves con chip.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: true,
-    openTime: "00:00",
-    closeTime: "23:59",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Av. Revolución",
-    number: "1520",
-    postalCode: "01000",
-    latitude: 19.3490,
-    longitude: -99.1920,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Revolucion+1520%2C+San+Angel%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["cerrajero", "cerrajeros", "cerrajeria", "chapas", "llaves", "cerraduras", "abrir puerta", "san angel"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-017",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Ing. Javier Rivas",
-    email: "servicio@electricistassantafe.mx",
-    businessName: "Electricistas Certificados Santa Fe",
-    category: "Electricistas",
-    phone: "55 5292 4433",
-    logoUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80",
-    services: "Reparación urgente de cortos circuitos, balanceo de cargas, instalaciones eléctricas residenciales y comerciales, cambio de centros de carga y cableado.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "07:00",
-    closeTime: "22:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Av. Vasco de Quiroga",
-    number: "3200",
-    postalCode: "05348",
-    latitude: 19.3610,
-    longitude: -99.2630,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Vasco+de+Quiroga+3200%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["electricista", "electricistas", "corto", "luz", "cableado", "centro de carga", "santa fe"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-018",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Dra. Patricia Alarcón",
-    email: "citas@dentalsanangel.mx",
-    businessName: "Clínica Dental & Ortodoncia San Ángel",
-    category: "Dentistas",
-    phone: "55 5550 1122",
-    logoUrl: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=400&q=80",
-    services: "Limpieza con ultrasonido, resinas estéticas, blanqueamiento dental, ortodoncia, brackets, endodoncias y atención a urgencias de dolor dental.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-    is24Hours: false,
-    openTime: "09:00",
-    closeTime: "20:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Calle de la Amargura",
-    number: "22",
-    postalCode: "01000",
-    latitude: 19.3475,
-    longitude: -99.1910,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Calle+de+la+Amargura+22%2C+San+Angel%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["dentista", "dentistas", "odontologo", "muela", "dientes", "caries", "brackets", "san angel"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-019",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Lic. Manuel Ortiz",
-    email: "pedidos@farmaciasanangel.mx",
-    businessName: "Farmacia San Ángel 24 Horas",
-    category: "Farmacias",
-    phone: "55 5616 7700",
-    logoUrl: "https://images.unsplash.com/photo-1586015555751-63c252d6a524?auto=format&fit=crop&w=400&q=80",
-    services: "Medicamentos de patente y genéricos, servicio a domicilio 24 horas, toma de presión, curaciones menores y productos dermatológicos.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: true,
-    openTime: "00:00",
-    closeTime: "23:59",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "San Ángel",
-    street: "Av. Insurgentes Sur",
-    number: "2167",
-    postalCode: "01000",
-    latitude: 19.3498,
-    longitude: -99.1890,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Insurgentes+Sur+2167%2C+San+Angel%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["farmacia", "farmacias", "medicinas", "medicamentos", "pastillas", "24 horas", "san angel"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-020",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Héctor Valenzuela",
-    email: "servicio@tallersantafepro.mx",
-    businessName: "Taller Mecánico & Frenos Santa Fe Pro",
-    category: "Talleres Mecánicos",
-    phone: "55 5292 8811",
-    logoUrl: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=400&q=80",
-    services: "Afinación mayor por computadora, cambio de frenos y balatas, suspensión, clutch, escaneo automotriz multimarca y cambio de aceite sintético.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-    is24Hours: false,
-    openTime: "08:00",
-    closeTime: "19:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Prolongación Paseo de la Reforma",
-    number: "1015",
-    postalCode: "05348",
-    latitude: 19.3625,
-    longitude: -99.2650,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Prolongacion+Paseo+de+la+Reforma+1015%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["mecanico", "mecanicos", "taller mecanico", "afinacion", "frenos", "suspension", "santa fe"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-021",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Pedro Ramírez",
-    email: "contacto@vulcaelaguila.mx",
-    businessName: "Vulcanizadora & Llantas El Águila 24/7",
-    category: "Vulcanizadoras",
-    phone: "55 5593 3322",
-    logoUrl: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=400&q=80",
-    services: "Reparación de ponchaduras 24 horas con vulcanizado en frío y caliente, venta de llantas nuevas y seminuevas, balanceo y auxilio talachera a domicilio.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: true,
-    openTime: "00:00",
-    closeTime: "23:59",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Las Águilas",
-    street: "Calzada de las Águilas",
-    number: "890",
-    postalCode: "01710",
-    latitude: 19.3550,
-    longitude: -99.2150,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Calzada+de+las+Aguilas+890%2C+Las+Aguilas%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["vulcanizadora", "vulca", "talachera", "llantas", "ponchadura", "parche", "las aguilas"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-022",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Valeria Domínguez",
-    email: "citas@petspasantafe.mx",
-    businessName: "Pet Spa & Estética Canina Santa Fe",
-    category: "Veterinarios y Mascotas",
-    phone: "55 5292 6655",
-    logoUrl: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=400&q=80",
-    services: "Baño relajante con ozono, corte de pelo canino de raza y comercial, corte de uñas, limpieza de oídos, venta de alimento premium y accesorios.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-    is24Hours: false,
-    openTime: "09:00",
-    closeTime: "18:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Av. Santa Fe",
-    number: "428",
-    postalCode: "05348",
-    latitude: 19.3580,
-    longitude: -99.2665,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Santa+Fe+428%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["estetica canina", "veterinario", "bano de perro", "corte canino", "mascotas", "perros", "santa fe"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "by-seed-023",
-    isSponsored: true,
-    plan: "plus",
-    featured: true,
-    ownerName: "Rodrigo Guzmán",
-    email: "citas@barbersantafe.mx",
-    businessName: "Barber Shop & Estética Santa Fe",
-    category: "Barberías y Salones de Belleza",
-    phone: "55 5292 7744",
-    logoUrl: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=400&q=80",
-    services: "Corte de cabello para caballero, diseño de barba con toalla caliente, perfilado con navaja, faciales antiestrés y tintes y peinados para dama.",
-    daysOpen: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    is24Hours: false,
-    openTime: "10:00",
-    closeTime: "20:00",
-    state: "Ciudad de México",
-    municipality: "Álvaro Obregón",
-    neighborhood: "Santa Fe",
-    street: "Av. Santa Fe",
-    number: "505",
-    postalCode: "05348",
-    latitude: 19.3570,
-    longitude: -99.2670,
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Av.+Santa+Fe+505%2C+Santa+Fe%2C+Alvaro+Obregon%2C+CDMX",
-    facebook: "",
-    instagram: "",
-    tiktok: "",
-    website: "",
-    menuUrl: "",
-    menuQrUrl: "",
-    status: "active",
-    tags: ["barberia", "barbero", "barber shop", "estetica", "corte de cabello", "salon de belleza", "santa fe"],
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 360 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
+const STALE_SEED_IDS = new Set([
+  "by-seed-009", "by-seed-010", "by-seed-011", "by-seed-012", "by-seed-013",
+  "by-seed-014", "by-seed-015", "by-seed-016", "by-seed-017", "by-seed-018",
+  "by-seed-019", "by-seed-020", "by-seed-021", "by-seed-022", "by-seed-023",
+  "by-mw36cgwjzou1", "by-mw368cp3d8fk", "by-mw3661o5yl0p", "by-mw3646s6qgr0",
+  "biz-taqueria-san-angel-2026", "test-auditoria-1793788348530", "by-mvzuwp41nhm2",
+  "by-mvzp4iefnr3o", "biz-santafe-mexicana-1", "biz-santafe-tacos-2",
+  "test-auditoria-1793778254403", "70433419-7d60-42cd-8de3-978c83069339",
+  "a692576c-9dd3-4db6-b4a2-3727e11a34d0", "282222ad-a61d-464c-9244-8c3fc65495cf",
+  "6f756599-db14-4dac-b611-04073f6a39e9"
+]);
+
 /**
  * Inicializador persistente y seguro del almacén localStorage
- * Cero pérdida de datos: respeta estrictamente registros existentes creados por usuarios o admin.
+ * Sincroniza el Directorio Maestro con el servidor y con Impulso de Confianza.
  */
 function initDatabase() {
   const STORAGE_KEY = "buscaya_businesses";
@@ -809,8 +379,6 @@ function initDatabase() {
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    
-    // Si no existe o está completamente vacío
     if (!raw || raw.trim() === "" || raw === "[]") {
       const mappedSeeds = SEED_BUSINESSES.map(b => ({
         ...b,
@@ -819,49 +387,62 @@ function initDatabase() {
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedSeeds));
       localStorage.setItem(BACKUP_KEY, JSON.stringify(mappedSeeds));
-      console.log("[BuscaYa Storage] Base de datos inicializada con Seed Data.");
       return;
     }
 
-    const existing = JSON.parse(raw);
+    let existing = JSON.parse(raw);
     if (!Array.isArray(existing) || existing.length === 0) {
-      const mappedSeeds = SEED_BUSINESSES.map(b => ({
-        ...b,
-        isSponsored: !!b.isSponsored,
-        menuQrUrl: b.menuQrUrl || (b.category && b.category.includes("Restaurantes") && b.menuUrl && typeof generateMenuQrUrl === "function" ? generateMenuQrUrl(b.menuUrl) : "")
-      }));
+      const mappedSeeds = SEED_BUSINESSES.map(b => ({ ...b, isSponsored: !!b.isSponsored }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(mappedSeeds));
       localStorage.setItem(BACKUP_KEY, JSON.stringify(mappedSeeds));
-      console.log("[BuscaYa Storage] Base de datos regenerada con Seed Data.");
       return;
     }
 
-    // Migración inteligente y no destructiva:
-    // Conserva 100% de los negocios existentes y asegura propiedades nuevas sin sobrescribir nada
+    // 1. Limpiar registros basura de pruebas previas
     let modified = false;
-    const migrated = existing.map(item => {
-      let updated = false;
-      const copy = { ...item };
+    const beforeLen = existing.length;
+    existing = existing.filter(b => b && !STALE_SEED_IDS.has(b.id));
+    if (existing.length !== beforeLen) modified = true;
 
-      if (!copy.paymentMethod) {
-        copy.paymentMethod = "Mercado Pago (7 Días Demo)";
-        updated = true;
+    // 2. Asegurar que Internet Chucho y Caramelo Media Music estén presentes si no existen
+    SEED_BUSINESSES.forEach(seedBiz => {
+      const hasMatch = existing.some(b =>
+        b.id === seedBiz.id ||
+        (b.businessName && b.businessName.toLowerCase().trim() === seedBiz.businessName.toLowerCase().trim())
+      );
+      if (!hasMatch) {
+        if (seedBiz.id === "by-dir-internetchucho" || seedBiz.id === "by-seed-caramelo") {
+          existing.unshift({ ...seedBiz });
+        } else {
+          existing.push({ ...seedBiz });
+        }
+        modified = true;
+      }
+    });
+
+    // 3. Normalizar campos de los negocios existentes
+    const migrated = existing.map(item => {
+      const copy = { ...item };
+      if (!copy.paymentMethod || copy.paymentMethod.includes("7 Días")) {
+        copy.paymentMethod = "Mercado Pago (15 Días Demo)";
+        modified = true;
       }
       if (typeof copy.googleSheetsSynced === "undefined") {
         copy.googleSheetsSynced = true;
-        updated = true;
+        modified = true;
       }
       if (!copy.createdAt) {
         copy.createdAt = new Date().toISOString();
-        updated = true;
+        modified = true;
       }
-      if (!copy.expiresAt) {
-        copy.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        updated = true;
+      if (!copy.expiresAt || (copy.id && copy.id.startsWith("by-seed-") && new Date(copy.expiresAt).getTime() <= Date.now())) {
+        copy.expiresAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
+        if (copy.status === "expired") copy.status = "active";
+        modified = true;
       }
-      if (typeof copy.isSponsored === "undefined") {
-        copy.isSponsored = (copy.id === "by-seed-003" || copy.id === "by-seed-005" || copy.id === "by-seed-007");
-        updated = true;
+      if (copy.businessName && copy.businessName.toLowerCase().includes("internet chucho") && (!copy.services || copy.services.length < 15)) {
+        copy.services = "Papelería y copias, impresiones a color y blanco y negro, servicio de internet y computadoras, engargolados, enmicados, escaneo y útiles escolares y de oficina.";
+        modified = true;
       }
       if (!copy.latitude || !copy.longitude) {
         const coords = (typeof getCoordinatesForNeighborhood === "function")
@@ -869,34 +450,15 @@ function initDatabase() {
           : { latitude: 19.3496, longitude: -99.1915 };
         copy.latitude = coords.latitude;
         copy.longitude = coords.longitude;
-        updated = true;
+        modified = true;
       }
-      if (typeof copy.logoUrl === "undefined" || !copy.logoUrl) {
-        const seedMatch = SEED_BUSINESSES.find(s => s.id === copy.id);
-        if (seedMatch && seedMatch.logoUrl) {
-          copy.logoUrl = seedMatch.logoUrl;
-          updated = true;
-        } else {
-          copy.logoUrl = copy.logoUrl || "";
-        }
-      }
-      if (!copy.menuQrUrl && copy.category && copy.category.includes("Restaurantes") && copy.menuUrl && typeof generateMenuQrUrl === "function") {
-        copy.menuQrUrl = generateMenuQrUrl(copy.menuUrl);
-        updated = true;
-      }
-
-      if (updated) modified = true;
       return copy;
     });
 
     if (modified) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-      console.log("[BuscaYa Storage] Migración estructural aplicada respetando datos de usuario.");
     }
-
-    // Resguardo preventivo
     localStorage.setItem(BACKUP_KEY, JSON.stringify(migrated));
-
   } catch (err) {
     console.error("[BuscaYa Storage Error]", err);
   }
