@@ -508,12 +508,13 @@ async function handleIncomingMessage(sock, msg) {
       name: pushName,
       type: msgType,
       text: isLocation ? "" : userText,
-      location: (isLocation && typeof lat === 'number' && typeof lng === 'number') ? { latitude: lat, longitude: lng } : null
+      location: (isLocation && typeof lat === 'number' && typeof lng === 'number') ? { latitude: lat, longitude: lng } : null,
+      source: 'baileys'
     };
 
     const masterRes = await fetch("http://localhost:3000/api/whatsapp/webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Source": "baileys" },
       body: JSON.stringify(payload)
     });
 

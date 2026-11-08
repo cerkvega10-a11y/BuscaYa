@@ -22,12 +22,13 @@ module.exports = async (req, res) => {
     success: true,
     status: 'connected',
     metaCloudApi: {
-      connected: true,
+      connected: false,
+      paused: true,
       phoneNumberId: "1347239435149856",
       phoneNumber: "+52 1 55 6326 6526",
-      status: "active",
+      status: "paused_by_user",
       webhookPath: "/api/whatsapp/webhook",
-      label: "Conexión Oficial Activa vía Meta Cloud API (Webhook)"
+      label: "🟡 Meta Cloud API: En Pausa Temporal (Standby - Credenciales Preservadas al 100%)"
     }
   };
 
